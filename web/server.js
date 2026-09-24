@@ -84,9 +84,13 @@ async function readLog(runId) {
   if (!job) return '';
   const res = await fetch(`${API}/repos/${owner}/${repo}/actions/jobs/${job.id}/logs`, { headers: UA, redirect: 'follow' });
   if (!res.ok) throw new Error('log ' + res.status);
-  const zip = Buffer.from(await res.arrayBuffer());
-  const entries = unzipEntries(zip).sort((a, b) => a.name.localeCompare(b.name));
-  return entries.map(e => e.txt).join('\n');
+  const buf = Buffer.from(await res.arrayBuffer());
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  if (ct.includes('zip') || (buf.length > 4 && buf.readUInt32LE(0) === 0x04034b50)) {
+    const entries = unzipEntries(buf).sort((a, b) => a.name.localeCompare(b.name));
+    return entries.map(e => e.txt).join('\n');
+  }
+  return buf.toString('utf8'); // GitHub kini memberi job log sebagai text/plain
 }
 
 async function handle(req, res) {

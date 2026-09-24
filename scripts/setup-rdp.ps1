@@ -139,9 +139,21 @@ Section "4. Install + join Tailscale"
 $tsExe = Join-Path $env:ProgramFiles 'Tailscale\tailscale.exe'
 if (-not (Test-Path $tsExe)) {
   $msi = Join-Path $env:RUNNER_TEMP 'Tailscale.msi'
-  Log "Download installer Tailscale..."
-  Invoke-WebRequest -Uri 'https://tailscale.com/installer/Tailscale.msi' -OutFile $msi -UseBasicParsing
-  Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /norestart" -Wait
+  $msiUrl = 'https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi'
+  Log "Download installer Tailscale dari $msiUrl ..."
+  try { Invoke-WebRequest -Uri $msiUrl -OutFile $msi -UseBasicParsing } catch { Log "download msi gagal: $($_.Exception.Message)" }
+  $ok = (Test-Path $msi) -and ((Get-Item $msi).Length -gt 1MB)
+  if ($ok) {
+    Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /norestart" -Wait
+    if (-not (Test-Path $tsExe)) { Log "msiexec exit=$LASTEXITCODE, coba installer exe..." }
+  } else { Log "file msi terlalu kecil / tidak terunduh (kemungkinan 404 HTML)" }
+  if (-not (Test-Path $tsExe)) {
+    $exe = Join-Path $env:RUNNER_TEMP 'tailscale-setup.exe'
+    try {
+      Invoke-WebRequest -Uri 'https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe' -OutFile $exe -UseBasicParsing
+      if ((Get-Item $exe).Length -gt 1MB) { Start-Process $exe -ArgumentList '/S' -Wait }
+    } catch { Log "fallback exe gagal: $($_.Exception.Message)" }
+  }
 }
 if (-not (Test-Path $tsExe)) { Log "ERROR: instalasi Tailscale gagal."; exit 1 }
 Log "Tailscale terpasang: $(& $tsExe version)"

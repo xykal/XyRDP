@@ -36,7 +36,14 @@ async function fetchStatusFile() {
   try {
     const r = await fetch(STATUS_RAW + `?t=${Math.floor(Date.now() / 60000)}`);
     if (r.ok) data = JSON.parse(await r.text());
-  } catch { /* belum ada branch status */ }
+  } catch { /* raw belum tersedia */ }
+  if (!data) {
+    // fallback: baca lewat API (bypass cache raw)
+    try {
+      const c = await gh('GET', `/repos/${owner}/${repo}/contents/rdp-status.json?ref=status`);
+      if (c && c.content) data = JSON.parse(Buffer.from(c.content, 'base64').toString('utf8'));
+    } catch { /* branch status belum ada */ }
+  }
   statusCache = { at: Date.now(), data };
   return data;
 }

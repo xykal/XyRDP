@@ -1,0 +1,28 @@
+name: debug-token (buang setelah selesai)
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      JT: ${{ github.token }}
+    steps:
+      - name: probe
+        run: |
+          echo "len env GITHUB_TOKEN=${#GITHUB_TOKEN} len env JT(expression)=${#JT}"
+          if [ -n "$JT" ]; then
+            code=$(curl -s -o /tmp/g1 -w "%{http_code}" -H "Authorization: Bearer $JT" "https://api.github.com/repos/$GITHUB_REPOSITORY")
+            echo "GET /repos with JT -> $code"
+            canwrite=$(curl -s -o /tmp/g2 -w "%{http_code}" -X PUT -H "Authorization: Bearer $JT" \
+              -H "Accept: application/vnd.github+json" \
+              -d '{"message":"debug probe (auto-revert)","content":"ZGVidWc=\n","branch":"debug-probe"}' \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/contents/debug-probe.txt")
+            echo "PUT contents ke branch debug-probe -> $canwrite"; head -c 200 /tmp/g2; echo
+          fi
+          settings=$(curl -s -H "Authorization: Bearer $JT" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/permissions" 2>/dev/null)
+          echo "actions-permissions: $settings" | head -c 300; echo
+          wf=$(curl -s -H "Authorization: Bearer ${GH_TOKEN:-$JT}" "https://api.github.com/repos/$GITHUB_REPOSITORY" | grep -o '"default_branch": *"[^"]*"')
+          echo "repo: $wf | env GH_TOKEN len=${#GH_TOKEN}"

@@ -123,6 +123,25 @@ async function handle(req, res) {
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
       const [file, run] = await Promise.all([fetchStatusFile(), activeRun()]);
+      let session = file;
+      // fallback: status file belum ada → ekstrak IP dari log run aktif
+      if ((!session || !session.active) && run && (run.status === 'in_progress' || run.status === 'queued')) {
+        try {
+          const txt = await readLog(run.id);
+          const mIp = txt.match(/TAILNET IP\s*:\s*(100\.\d+\.\d+\.\d+)/);
+          const mDns = txt.match(/MAGICDNS\s*:\s*(\S+)/);
+          const mEnds = txt.match(/SESI SIAP/) ? (txt.match(/Durasi sesi\s*:\s*(\d+) menit/) || [])[1] : null;
+          if (mIp) {
+            session = {
+              active: true, tailscale_ip: mIp[1], tailscale_dns: mDns ? mDns[1] : '',
+              rdp_port: 3389, rdp_user: CFG.rdp_user || 'xyadmin',
+              started_at: run.run_started_at || run.created_at,
+              expires_at: new Date(Date.parse(run.run_started_at || run.created_at) + (+mEnds || 360) * 60000).toISOString(),
+              source: 'log',
+            };
+          }
+        } catch { /* log belum tersedia */ }
+      }
       let runView = null;
       if (run) {
         runView = {
@@ -130,7 +149,7 @@ async function handle(req, res) {
           created_at: run.run_started_at || run.created_at, html_url: run.html_url,
         };
       }
-      return send(200, { session: file, run: runView });
+      return send(200, { session, run: runView });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/start') {

@@ -214,7 +214,8 @@ $status = [ordered]@{
   run_url         = "https://github.com/$($env:GITHUB_REPOSITORY)/actions/runs/$($env:GITHUB_RUN_ID)"
   exit_node       = if ($env:EXIT_NODE) { $env:EXIT_NODE } else { '' }
 }
-New-Item -ItemType Directory -Path $env:GITHUB_WORKSPACE\out -Force | Out-Null
+$outDir = Join-Path $env:GITHUB_WORKSPACE 'out'
+New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 $status | ConvertTo-Json | Set-Content -Encoding utf8 -Path (Join-Path $env:GITHUB_WORKSPACE 'out\rdp-status.json')
 $now.ToString('s') | Set-Content -Path (Join-Path $env:GITHUB_WORKSPACE 'out\started.txt')
 $status | ConvertTo-Json | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY

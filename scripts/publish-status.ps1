@@ -46,6 +46,6 @@ if ($LASTEXITCODE -eq 0) {
   Log "status dipublikasikan (active=$($json.active)) → $repo @ branch status"
   Log "raw: https://raw.githubusercontent.com/$repo/status/rdp-status.json"
 } else {
-  Log "PUBLISH GAGANG (exit $LASTEXITCODE) — web dashboard tetap bisa baca dari log run"
+  Log "PUBLISH GAGAL (exit $LASTEXITCODE) — web dashboard tetap bisa baca dari log run"
 }
 exit 0

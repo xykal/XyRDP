@@ -117,10 +117,7 @@ async function handle(req, res) {
         runView = {
           id: run.id, status: run.status, conclusion: run.conclusion,
           created_at: run.run_started_at || run.created_at, html_url: run.html_url,
-          inputs: run.run_started_at ? run : undefined,
-          is_this_workflow: true,
         };
-        delete runView.inputs;
       }
       return send(200, { session: file, run: runView });
     }

@@ -77,6 +77,9 @@ jobs:
       RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
       TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
       TAILSCALE_API_TOKEN: ${{ secrets.TAILSCALE_API_TOKEN }}
+      # NB: runner >=2.3xx tidak lagi inject GITHUB_TOKEN ke env langkah;
+      # harus dieksplisitkan supaya publish-status.ps1 bisa push.
+      GITHUB_TOKEN: ${{ github.token }}
 
     steps:
       - name: Checkout

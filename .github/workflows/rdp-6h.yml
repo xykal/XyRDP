@@ -80,13 +80,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup RDP + Tailscale + Tweak
         shell: pwsh
         run: ./scripts/setup-rdp.ps1
 
       - name: Publish status ke branch 'status'
+        continue-on-error: true
         shell: pwsh
         run: ./scripts/publish-status.ps1 -Active $true
 

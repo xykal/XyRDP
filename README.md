@@ -45,7 +45,7 @@ disimpan lokal di `web/config.json`.
 - UAC dimatikan, SmartScreen off, IE ESC off, long path on, sleep/hibernate off
 - RDP tanpa prompt NLA/CredSSP (`UserAuthentication=0`) + banner login dihapus → connect langsung masuk
 - Auto-logon console aktif (VM ephemeral, registry ikut musnah bersama VM)
-- Tailscale **SSH** aktif → `ssh xyadmin@<tailnet-ip>` tanpa password (alternatif transfer file)
+- Tailscale terpasang; transfer file bisa pakai Drive/OneDrive dari browser (catatan: `tailscale --ssh` tidak didukung di Windows sejak v1.98+, jadi sengaja tidak diaktifkan)
 - Chrome di-tweak: no first-run, no promo tab, no cloud reporting, DoH off
 
 ## Jujur soal “IP bagus biar login Google aman tanpa klik”

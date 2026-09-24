@@ -163,8 +163,8 @@ if (-not $hostBase) { $hostBase = 'xyrdp' }
 if ($hostBase.Length -gt 30) { $hostBase = $hostBase.Substring(0,30) }
 $hostName = "$hostBase-$env:GITHUB_RUN_NUMBER"
 
-Log "tailscale up sebagai '$hostName' (+ Tailscale SSH)"
-$upArgs = @('up', "--authkey=$($env:TAILSCALE_AUTH_KEY)", "--hostname=$hostName", '--ssh', '--accept-routes=true')
+Log "tailscale up sebagai '$hostName'"
+$upArgs = @('up', "--authkey=$($env:TAILSCALE_AUTH_KEY)", "--hostname=$hostName", '--accept-routes=true')
 if ($env:EXIT_NODE) {
   Log "Exit node diminta: $env:EXIT_NODE"
   $upArgs += @("--exit-node=$($env:EXIT_NODE)", '--exit-node-allow-lan-access')
@@ -174,6 +174,7 @@ $tsOk = $LASTEXITCODE -eq 0
 if (-not $tsOk -and $env:EXIT_NODE) {
   Log "EXIT_NODE gagal, retry tanpa exit node..."
   & $tsExe @($upArgs | Where-Object { $_ -notlike '--exit-node*' })
+  $tsOk = $LASTEXITCODE -eq 0
 }
 
 $ip4 = ''; for ($i=0; $i -lt 30; $i++) {

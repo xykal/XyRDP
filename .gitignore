@@ -5,3 +5,5 @@ ini-buat-kerja.txt
 *.env
 out/
 node_modules/
+.vercel/
+deploy/vercel/.vercel/

@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "routes": [{ "src": "/(.*)", "dest": "/api/index.js" }],
+  "functions": {
+    "api/index.js": { "includeFiles": "assets/**", "maxDuration": 30 }
+  }
+}

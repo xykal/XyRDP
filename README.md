@@ -17,7 +17,26 @@ diakses lewat **Tailscale** (tidak ada port publik), sesi ditahan **pas 6 jam**
 | `scripts/keepalive.ps1` | Loop penahan sesi + heartbeat tiap 5 menit |
 | `scripts/publish-status.ps1` | Tulis `rdp-status.json` ke branch `status` (dibaca web) |
 | `scripts/finalize-rdp.ps1` | Logout Tailscale (+hapus device jika ada API token) |
-| `web/` | Dashboard lokal (Node, tanpa dependency, bukan GitHub Pages) |
+| `web/` | Dashboard lokal (Node, tanpa dependency) |
+| `deploy/vercel/` | Versi dashboard untuk hosting di Vercel (catch-all function + Basic Auth) |
+
+## Dashboard Vercel (produksi)
+URL produksi: **https://xyrdp-dash.vercel.app** — dilindungi Basic Auth (user/pass dari env, bukan dari repo).
+
+Env vars yang dipakai project `xyrdp-dash` (set via dashboard Vercel → Settings → Environment Variables, atau API):
+
+| Key | Type | Isi |
+|---|---|---|
+| `GITHUB_TOKEN` | sensitive | PAT dengan scope `repo` (buat dispatch/cancel/read logs) |
+| `RDP_PASSWORD` | sensitive | password tetap RDP (sama dgn secret Actions) |
+| `AUTH_USER` / `AUTH_PASS` | plain/sensitive | login Basic Auth web |
+| `GH_OWNER` `GH_REPO` `GH_WORKFLOW` `GH_BRANCH` `RDP_USER` | plain | `xykal` `XyRDP` `rdp-6h.yml` `main` `xyadmin` |
+
+Redeploy setelah ubah kode:
+```bash
+cd deploy/vercel && npx vercel deploy --prod --yes --token <VercelToken>
+```
+Config penting: `vercel.json` pakai `routes` legacy `/(.*) -> /api/index.js` supaya SEMUA path (termasuk halaman) kena Basic Auth, dan `includeFiles: assets/**` supaya `index.html` ikut ke-bundle ke function.
 
 ## Secrets repo (sudah dipasang)
 - `RDP_PASSWORD` — password **tetap** untuk user `xyadmin`

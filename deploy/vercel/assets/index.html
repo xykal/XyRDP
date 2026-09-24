@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XyRDP • Windows RDP 6 Jam via GitHub Actions</title>
+<style>
+  :root{--bg:#0b0f14;--card:#121a24;--line:#1f2c3a;--txt:#dbe7f3;--mut:#7d93a8;--ok:#2ecc71;--warn:#f1c40f;--bad:#e74c3c;--acc:#3ba7ff}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 ui-monospace,Consolas,"Cascadia Mono",monospace;background:var(--bg);color:var(--txt);padding:24px}
+  h1{font-size:18px;margin:0 0 2px} .sub{color:var(--mut);font-size:12px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;max-width:1200px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .card h2{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--mut);margin:0 0 10px}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;align-items:center}
+  .k{color:var(--mut)} .v{font-weight:700;word-break:break-all;text-align:right}
+  .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-weight:700;font-size:12px}
+  .b-off{background:#26313d;color:#9fb3c8}.b-run{background:#12401f;color:var(--ok)}.b-queue{background:#3d3512;color:var(--warn)}.b-err{background:#431414;color:var(--bad)}
+  button{background:var(--acc);border:0;color:#001322;font-weight:800;padding:10px 18px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px}
+  button.stop{background:var(--bad);color:#fff} button.gray{background:#25313e;color:var(--txt)} button:disabled{opacity:.45;cursor:not-allowed}
+  input,select{background:#0d141c;border:1px solid var(--line);color:var(--txt);padding:8px 10px;border-radius:8px;font-family:inherit;width:100%}
+  label{font-size:12px;color:var(--mut);display:block;margin:10px 0 4px}
+  .flex{display:flex;gap:10px;flex-wrap:wrap}.flex>*{flex:1;min-width:140px}
+  .chk{display:flex;gap:8px;align-items:center;color:var(--mut);font-size:12px;margin-top:8px}
+  .chk input{width:auto}
+  .copy{cursor:pointer;color:var(--acc);font-size:11px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;background:none}
+  pre#log{background:#0a0f14;border:1px solid var(--line);border-radius:10px;padding:12px;max-height:420px;overflow:auto;font-size:11.5px;color:#9fc3e8;white-space:pre-wrap;word-break:break-word;margin:0}
+  .bar{height:8px;background:#0d141c;border-radius:99px;overflow:hidden;margin-top:8px}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--ok));width:0%}
+  a{color:var(--acc)} .small{font-size:11px;color:var(--mut)}
+  .toast{position:fixed;right:16px;bottom:16px;background:#0d141c;border:1px solid var(--acc);padding:10px 14px;border-radius:8px;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+  <h1>⚡ XyRDP — Windows RDP 6 Jam <span class="small">(GitHub Actions + Tailscale)</span></h1>
+  <div class="sub">repo: <b id="repoinfo">…</b> • semua request lewat GitHub API dengan token lokal, tidak di-hosting di mana pun</div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Status</h2>
+      <div class="row"><span class="k">Kondisi</span><span class="v"><span id="badge" class="badge b-off">CHECKING…</span></span></div>
+      <div class="row"><span class="k">Run</span><span class="v"><a id="runlink" href="#" target="_blank">—</a></span></div>
+      <div class="row"><span class="k">Mulai</span><span class="v" id="started">—</span></div>
+      <div class="row"><span class="k">Berakhir otomatis</span><span class="v" id="expires">—</span></div>
+      <div class="row"><span class="k">Sisa waktu</span><span class="v" id="remain">—</span></div>
+      <div class="bar"><i id="bar"></i></div>
+      <div class="row" style="margin-top:8px"><span class="k">IP publik (dilihat Google)</span><span class="v" id="pubip">— <span class="small" id="ipnote"></span></span></div>
+    </div>
+
+    <div class="card">
+      <h2>Info koneksi RDP</h2>
+      <div class="row"><span class="k">Address (Tailscale)</span><span class="v"><span id="ip">—</span> <button class="copy" data-c="ip">copy</button></span></div>
+      <div class="row"><span class="k">MagicDNS</span><span class="v"><span id="dns">—</span></span></div>
+      <div class="row"><span class="k">Port</span><span class="v" id="port">—</span></div>
+      <div class="row"><span class="k">Username</span><span class="v"><span id="user">—</span> <button class="copy" data-c="user">copy</button></span></div>
+      <div class="row"><span class="k">Password (tetap)</span><span class="v"><span id="pass">••••••••••</span> <button class="copy" id="eye">lihat</button> <button class="copy" data-c="pass">copy</button></span></div>
+      <div class="small" style="margin-top:8px">Syarat: PC/HP kamu harus login ke Tailscale di tailnet yang sama, lalu pakai aplikasi "Remote Desktop" → alamat di atas.</div>
+    </div>
+
+    <div class="card">
+      <h2>Kontrol</h2>
+      <div class="flex">
+        <div><label>Durasi</label>
+          <select id="durasi">
+            <option value="15">15 mnt (tes)</option><option value="60">1 jam</option>
+            <option value="180">3 jam</option><option value="300">5 jam</option>
+            <option value="360" selected>6 jam (pas)</option>
+          </select>
+        </div>
+        <div><label>Hostname Tailscale</label><input id="hostname" value="xyrdp"></div>
+      </div>
+      <label>Exit node <span class="small">(opsional, isi nama node tailnet lain biar IP keluar = IP node itu — paling efektif agar IP "bersih" buat Google)</span></label>
+      <input id="exitnode" placeholder="kosongkan jika tidak perlu">
+      <div class="chk"><input type="checkbox" id="aman" checked><label for="aman" style="margin:0">Tweak aman-Google (Chrome/SmartScreen/first-run)</label></div>
+      <div class="chk"><input type="checkbox" id="defender" checked><label for="defender" style="margin:0">Matikan Defender realtime</label></div>
+      <div class="flex" style="margin-top:14px">
+        <button id="btnStart" onclick="startRdp()">▶ NYALAKAN RDP</button>
+        <button id="btnStop" class="stop" onclick="stopRdp()">■ MATIKAN</button>
+      </div>
+      <div class="small" style="margin-top:8px">Windows runner = 2× kuota menit Actions (Free 2000 mnt/bln ≈ 2,7 sesi 6 jam). Sesi ke-2 otomatis antre.</div>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:1200px;margin-top:14px">
+    <div class="row"><h2 style="margin:0">Log run</h2>
+      <span><label class="chk" style="display:inline-flex;margin:0"><input type="checkbox" id="autoLog" checked> auto-refresh</label>
+      <button class="gray" onclick="pullLogs(true)">↻ refresh</button></span>
+    </div>
+    <pre id="log">belum ada log — tekan refresh setelah menyalakan</pre>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let cfg={}, passHidden=true, currentRun=null, lastIp=null;
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function fmt(iso){if(!iso)return '—';const d=new Date(iso);return d.toLocaleString('id-ID',{timeZoneName:'short'})}
+
+async function loadConfig(){
+  cfg=await (await fetch('/api/config')).json();
+  $('repoinfo').textContent=cfg.owner+'/'+cfg.repo;
+  $('user').textContent=cfg.rdp_user; $('port').textContent=cfg.rdp_port;
+}
+
+async function poll(){
+  let s; try{ s=await (await fetch('/api/status')).json(); }catch(e){ $('badge').textContent='SERVER?'; return }
+  const run=s.run, ses=s.session;
+  currentRun=run?run.id:currentRun;
+  let cls='b-off',txt='OFF';
+  if(run && run.status==='queued'){cls='b-queue';txt='ANTRE'}
+  else if(run && run.status==='in_progress'){cls='b-run';txt='BOOTING / LIVE'}
+  else if(run && (run.conclusion==='cancelled')){cls='b-err';txt='DIHENTIKAN'}
+  else if(run && run.conclusion==='failure'){cls='b-err';txt='GAGAL'}
+  if(ses && ses.active){cls='b-run';txt='LIVE — RDP SIAP'}
+  $('badge').className='badge '+cls; $('badge').textContent=txt;
+  if(run){ $('runlink').textContent='#'+run.id; $('runlink').href=run.html_url }
+  if(ses){
+    $('ip').textContent=ses.tailscale_ip||'—'; $('dns').textContent=ses.tailscale_dns||'—';
+    $('started').textContent=fmt(ses.started_at); $('expires').textContent=fmt(ses.expires_at);
+    $('pubip').textContent=ses.public_ip||'—';
+    $('ipnote').textContent=ses.ip_note==='FLAGGED-DATACENTER'?'⚠ flagged hosting — pakai exit node':'('+(ses.ip_note||'?')+')';
+    const t0=Date.parse(ses.started_at), t1=Date.parse(ses.expires_at), now=Date.now();
+    const left=Math.max(0,t1-now), total=Math.max(1,t1-t0);
+    $('bar').style.width=(100*(1-left/total)).toFixed(1)+'%';
+    if(left<=0){$('remain').textContent=ses.active?'habis (cleanup)':'—'}
+    else{const h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000);$('remain').textContent=(h?h+'j ':'')+m+'m'}
+    if(ses.tailscale_ip && ses.active && lastIp!==ses.tailscale_ip){lastIp=ses.tailscale_ip;toast('RDP LIVE → '+ses.tailscale_ip)}
+  } else { $('started').textContent=$('expires').textContent=$('remain').textContent='—'; $('bar').style.width='0%';
+    if(run && run.status==='in_progress'){ $('remain').textContent='menunggu VM siap…' } }
+}
+
+async function startRdp(){
+  $('btnStart').disabled=true;
+  const body={durasi:$('durasi').value, hostname:$('hostname').value, exit_node:$('exitnode').value,
+              aman_google:$('aman').checked, mati_defender:$('defender').checked};
+  try{
+    const r=await (await fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+    if(r.error) throw new Error(r.error);
+    toast('Workflow dikirim! VM Windows mulai boot (±2-4 menit).');
+    setTimeout(()=>{pullLogs(true)},20000);
+  }catch(e){toast('GAGAL: '+e.message)}
+  $('btnStart').disabled=false; poll();
+}
+async function stopRdp(){
+  if(!confirm('Hentikan sesi RDP sekarang?'))return;
+  try{
+    const r=await (await fetch('/api/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(currentRun?{run_id:currentRun}:{})})).json();
+    if(r.error) throw new Error(r.error); toast('Run #'+(r.run_id||'')+' dibatalkan');
+  }catch(e){toast('GAGAL: '+e.message)}
+  poll();
+}
+async function pullLogs(manual){
+  if(!currentRun){ if(manual) toast('belum ada run'); return }
+  try{
+    const r=await (await fetch('/api/logs?run_id='+currentRun)).json();
+    if(r.error) throw new Error(r.error);
+    const el=$('log'); el.textContent=(r.log||'').trimEnd(); el.scrollTop=el.scrollHeight;
+  }catch(e){ if(manual) toast('log: '+e.message) }
+}
+$('eye').onclick=()=>{const p=cfg.rdp_password||'';$('pass').textContent=passHidden?p:'••••••••••';passHidden=!passHidden;$('eye').textContent=passHidden?'lihat':'sembunyi'};
+document.querySelectorAll('.copy[data-c]').forEach(b=>b.onclick=()=>{
+  const map={ip:$('ip').textContent,user:$('user').textContent,pass:cfg.rdp_password||''};
+  navigator.clipboard.writeText(map[b.dataset.c]).then(()=>toast('disalin ✅'));
+});
+setInterval(poll,10000); setInterval(()=>{if($('autoLog').checked)pullLogs(false)},30000);
+loadConfig().then(()=>{poll();pullLogs(false)});
+</script>
+</body>
+</html>

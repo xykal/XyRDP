@@ -1,0 +1,7 @@
+# kredensial lokal — JANGAN PERNAH di-commit ke repo publik
+web/config.json
+ini-buat-kerja.json
+ini-buat-kerja.txt
+*.env
+out/
+node_modules/

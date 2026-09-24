@@ -1,0 +1,10 @@
+{
+  "token": "ghp_CTOKEN_GITHUB_DISINI",
+  "owner": "xykal",
+  "repo": "XyRDP",
+  "workflow": "rdp-6h.yml",
+  "branch": "main",
+  "port": 4173,
+  "rdp_user": "xyadmin",
+  "rdp_password": "PASSWORD-TETAP-YANG-SAMA-DENGAN-SECRET-RDP_PASSWORD"
+}

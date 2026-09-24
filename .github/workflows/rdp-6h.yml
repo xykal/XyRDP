@@ -1,0 +1,103 @@
+name: XyRDP - Windows RDP 6 Jam (Tailscale)
+run-name: "XyRDP ${{ inputs.ts_hostname || 'xyrdp' }} • ${{ inputs.durasi_menit || '360' }} menit"
+
+# ============================================================================
+#  XyRDP — Windows Server RDP via GitHub Actions + Tailscale
+#  - runs-on: windows-latest (Windows Server 2022, Azure datacenter)
+#  - Sesi RDP ditahan PERSIS sampai 6 jam (limit keras job GitHub = 360 menit)
+#  - Akses masuk via Tailscale (IP 100.x.x.x), tidak ada port publik dibuka
+#  - Admin user: xyadmin (group Administrators, full super access, password tetap
+#    dari secret RDP_PASSWORD)
+#  - Status session ditulis ke branch `status` -> dibaca web dashboard
+#  - Password TIDAK PERNAH ditulis ke log, commit, maupun file status
+# ============================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      durasi_menit:
+        description: "Durasi sesi (menit). 6 jam pas = 360"
+        required: false
+        default: "360"
+        type: choice
+        options:
+          - "15"
+          - "30"
+          - "60"
+          - "120"
+          - "180"
+          - "240"
+          - "300"
+          - "330"
+          - "360"
+      ts_hostname:
+        description: "Hostname Tailscale (akan dapat suffix nomor run, mis: xyrdp-42)"
+        required: false
+        default: "xyrdp"
+        type: string
+      exit_node:
+        description: "(OPSIONAL) Tailscale exit node (nama/IP). Isi supaya trafik Chrome keluar lewat node lain, mis. node rumah = IP residential yang lebih 'bersih' untuk Google"
+        required: false
+        default: ""
+        type: string
+      aman_google:
+        description: "Tweak Chrome/Windows biar login Google minim prompt (matikan SmartScreen, first-run, dll)"
+        required: false
+        default: true
+        type: boolean
+      mati_defender:
+        description: "Matikan Windows Defender realtime (opsional, VM sekali-pakai)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  actions: read
+
+# Satu sesi aktif. Run kedua antre, bukan barengan.
+concurrency:
+  group: xyrdp
+  cancel-in-progress: false
+
+jobs:
+  rdp:
+    runs-on: windows-latest
+    # Limit keras job runner hosted = 360 menit (6 jam). Jangan naikkan:
+    # di atas itu job di-kill GitHub.
+    timeout-minutes: 360
+
+    env:
+      DUR: ${{ inputs.durasi_menit }}
+      TS_HOSTNAME: ${{ inputs.ts_hostname }}
+      EXIT_NODE: ${{ inputs.exit_node }}
+      SAFE_GOOGLE: ${{ inputs.aman_google }}
+      KILL_DEFENDER: ${{ inputs.mati_defender }}
+      RDP_USER: xyadmin
+      RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+      TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+      TAILSCALE_API_TOKEN: ${{ secrets.TAILSCALE_API_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup RDP + Tailscale + Tweak
+        shell: pwsh
+        run: ./scripts/setup-rdp.ps1
+
+      - name: Publish status ke branch 'status'
+        shell: pwsh
+        run: ./scripts/publish-status.ps1 -Active $true
+
+      - name: Tahan sesi sampai durasi habis (6 jam)
+        shell: pwsh
+        run: ./scripts/keepalive.ps1
+
+      - name: Finalize (matikan status, tailscale logout)
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          ./scripts/publish-status.ps1 -Active $false
+          ./scripts/finalize-rdp.ps1

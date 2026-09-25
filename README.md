@@ -13,7 +13,7 @@ diakses lewat **Tailscale** (tidak ada port publik), sesi ditahan **pas 6 jam**
 | Path | Fungsi |
 |---|---|
 | `.github/workflows/rdp-6h.yml` | Workflow utama: boot VM, setup RDP, join Tailscale, tahan 6 jam |
-| `scripts/setup-rdp.ps1` | Semua aksi: bikin admin, buka RDP, tweak/unlock, cek reputasi IP |
+| `scripts/setup-rdp.ps1` | MODE BERSIH: bikin admin, buka RDP, join Tailscale (tanpa tweak lain) |
 | `scripts/keepalive.ps1` | Loop penahan sesi + heartbeat tiap 5 menit |
 | `scripts/publish-status.ps1` | Tulis `rdp-status.json` ke branch `status` (dibaca web) |
 | `scripts/finalize-rdp.ps1` | Logout Tailscale (+hapus device jika ada API token) |
@@ -39,7 +39,7 @@ Redeploy setelah ubah kode:
 ```bash
 cd deploy/vercel && npx vercel deploy --prod --yes --token <VercelToken>
 ```
-Config penting: `vercel.json` pakai `routes` legacy `/(.*) -> /api/index.js` supaya SEMUA path (termasuk halaman) kena Basic Auth, dan `includeFiles: assets/**` supaya `index.html` ikut ke-bundle ke function.
+Config penting: `vercel.json` pakai `routes` legacy `/(.*) -> /api/index.js` supaya semua path lewat function (auth cookie dipegang aplikasi, bukan popup browser), dan `includeFiles: assets/**` supaya `index.html` ikut ke-bundle ke function.
 
 ## Secrets repo (sudah dipasang)
 - `RDP_PASSWORD` — password **tetap** untuk user `xyadmin`
@@ -55,40 +55,31 @@ disimpan lokal di `web/config.json`.
    ```bash
    cd web && node server.js      # butuh Node >= 18, tidak perlu npm install
    ```
-   → http://localhost:4173 → tombol **▶ NYALAKAN RDP**.
+   → http://localhost:4173 → tombol **NYALAKAN RDP**.
    (atau manual: Actions → “XyRDP - Windows RDP 6 Jam” → Run workflow)
 3. Tunggu ±2–4 menit. Setelah status **LIVE**, dashboard menampilkan **IP Tailscale**.
 4. Remote Desktop Connection → alamat `100.x.x.x` → login `xyadmin` + password tetap.
-5. Sesi mati sendiri mendekati jam ke-6. Mau mati sekarang? tombol **■ MATIKAN**.
+5. Sesi mati sendiri mendekati jam ke-6. Mau mati sekarang? tombol **MATIKAN**.
 
-## Akses admin “super penuh” yang di-unlock
-- User `xyadmin` ∈ **Administrators** + Remote Desktop Users, password tidak expire
-- `LocalAccountTokenFilterPolicy=1` → token admin penuh untuk login jaringan (bisa UAC-elevated remote)
-- UAC dimatikan, SmartScreen off, IE ESC off, long path on, sleep/hibernate off
-- RDP tanpa prompt NLA/CredSSP (`UserAuthentication=0`) + banner login dihapus → connect langsung masuk
-- Auto-logon console aktif (VM ephemeral, registry ikut musnah bersama VM)
-- Tailscale terpasang; transfer file bisa pakai Drive/OneDrive dari browser (catatan: `tailscale --ssh` tidak didukung di Windows sejak v1.98+, jadi sengaja tidak diaktifkan)
-- Chrome di-tweak: no first-run, no promo tab, no cloud reporting, DoH off
+## Mode bersih (default sekarang)
+Session = Windows Server **apa adanya**. Yang dilakukan script HANYA:
+- Buat user `xyadmin` ∈ **Administrators** + Remote Desktop Users (password tetap, tidak expire)
+- `LocalAccountTokenFilterPolicy=1` → supaya login jaringan dapat token admin penuh (ini bagian dari “akses admin”, bukan tweak)
+- Aktifkan Remote Desktop port 3389 dengan setting default Windows (NLA ON) + rule firewall grup “Remote Desktop”
+- Install + join Tailscale, tulis status
 
-## Jujur soal “IP bagus biar login Google aman tanpa klik”
-Yang **bisa** dijamin workflow ini: tweak Windows/Chrome mengurangi dialog
-first-run/promo/SmartScreen, dan sesi login kamu **tidak di-sniff siapa pun**
-karena trafik lewat tailnet terenkripsi.
+Tidak ada lagi: tweak UAC/Defender/SmartScreen/Chrome/auto-logon, dan cek reputasi IP sudah dihapus.
+Semua itu justru menambah variabel; sesuai request, balik ke vanilla.
 
-Yang **tidak bisa** dijamin siapa pun pada skema ini: reputasi IP di sisi Google.
-Runner GitHub = IP **datacenter Microsoft Azure**; Google sering minta
-“verifikasi keamanan” untuk akun baru di IP datacenter, sekeren apa pun tweak-nya.
-Makanya workflow ini:
-1. **mengecek reputasi IP tiap run** (`ip-api`) dan menulisnya ke log + dashboard:
-   `CLEAN` (tidak kena flag hosting/proxy) atau `FLAGGED-DATACENTER`;
-2. mendukung input **`exit_node`**: jalankan Tailscale di perangkat rumah (HP lama /
-   Raspberry Pi / PC) → isi nama node-nya → seluruh trafik Chrome keluar lewat IP
-   residential kamu. **Ini satu-satunya cara “terkonfirmasi aman” yang realistis.**
-   (Trafik RDP tetap langsung ke VM, yang lewat exit node hanya internet-out.)
+## Login Google dari dalam RDP — fakta jujurnya
+Google menantang login berdasarkan **perangkat baru + IP datacenter (Azure)**,
+bukan karena setting di Windows. VM-nya sekali-pakai, jadi tiap sesi = “perangkat
+asing” di mata Google dan prompt verifikasi (notif HP / telepon / SMS) bisa muncul
+kapan pun; tidak ada tweak yang bisa menghapus itu.
 
-Tips tambahan: login ke akun Google yang **sudah lama + ada history** di IP
-tersebut, jangan akun baru, jangan ganti-ganti IP di tengah sesi, dan simpan
-sesi login (checkbox “tetap login”) biar tidak perlu login ulang tiap sesi 6 jam.
+Yang tetap didukung kalau mau IP keluar yang “bersih”: input `exit_node`
+(Advanced, isi manual lewat Actions UI) — jalankan Tailscale di perangkat rumah
+lalu advertise exit node; trafik Chrome keluar dari IP residential.
 
 ## Batas & risiko yang wajib tahu
 - ⚠️ **ToS GitHub**: Actions diperuntukkan build/test, bukan VPS interaktif.

@@ -160,9 +160,6 @@ async function handle(req, res) {
       const inputs = {
         durasi_menit: String(p.durasi || '360'),
         ts_hostname: String(p.hostname || 'xyrdp').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 30) || 'xyrdp',
-        exit_node: String(p.exit_node || ''),
-        aman_google: p.aman_google === false ? 'false' : 'true',
-        mati_defender: p.mati_defender === false ? 'false' : 'true',
       };
       await gh('POST', `/repos/${owner}/${repo}/actions/workflows/${workflow}/dispatches`, { ref: branch, inputs });
       return send(200, { ok: true, inputs });

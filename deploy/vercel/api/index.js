@@ -198,9 +198,6 @@ module.exports = async (req, res) => {
       const inputs = {
         durasi_menit: String(body.durasi || '360'),
         ts_hostname: String(body.hostname || 'xyrdp').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 30) || 'xyrdp',
-        exit_node: String(body.exit_node || ''),
-        aman_google: body.aman_google === false ? 'false' : 'true',
-        mati_defender: body.mati_defender === false ? 'false' : 'true',
       };
       await gh('POST', `/repos/${CFG.owner}/${CFG.repo}/actions/workflows/${CFG.workflow}/dispatches`, { ref: CFG.branch, inputs });
       return send(200, { ok: true, inputs });

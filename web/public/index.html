@@ -97,8 +97,6 @@
       <div class="row"><span class="k">Berakhir otomatis</span><span class="v" id="stEnd">-</span></div>
       <div class="row"><span class="k">Sisa waktu</span><span class="v big" id="stLeft">-</span></div>
       <div class="bar"><i id="stBar"></i></div>
-      <div class="row" style="margin-top:10px"><span class="k">IP keluar (dilihat Google)</span>
-        <span class="v" id="stPub">- <small id="stNote"></small></span></div>
     </div>
 
     <div class="panel">
@@ -129,10 +127,7 @@
           </select></div>
         <div><label>Hostname</label><input id="fHost" value="xyrdp" spellcheck="false"></div>
       </div>
-      <label>Exit node (opsional)</label>
-      <input id="fExit" placeholder="nama node tailnet untuk IP keluar" spellcheck="false">
-      <label class="chk"><input type="checkbox" id="fSafe" checked> Tweak minim-dialog (Chrome dan Windows)</label>
-      <label class="chk"><input type="checkbox" id="fDef" checked> Matikan Defender realtime</label>
+      <div class="hint" style="margin-top:12px">Mode bersih: tanpa tweak Windows/Chrome dan tanpa cek reputasi IP. Windows apa adanya, akses admin penuh.</div>
       <div class="btns">
         <button class="primary" id="bStart" style="flex:2">NYALAKAN</button>
         <button class="danger" id="bStop" style="flex:1">MATIKAN</button>
@@ -215,8 +210,6 @@
       $('stStart').textContent=fmt(st); $('stEnd').textContent=fmt(en);
       t0=st?Date.parse(st):null; t1=en?Date.parse(en):null; tickLeft();
       if(g&&g.active&&ip!=='-'&&ip!==poll._ip){poll._ip=ip;flash('Sesi aktif: '+ip)}
-      $('stPub').firstChild.textContent=(g&&g.public_ip?g.public_ip:'-')+' ';
-      $('stNote').textContent=g?(g.ip_note==='FLAGGED-DATACENTER'?'terdeteksi datacenter':(g.ip_note==='CLEAN'?'bersih':'')):'';
     }).catch(function(){})
   }
   function tickLeft(){
@@ -232,8 +225,7 @@
 
   function startSesi(){
     var b=$('bStart');b.disabled=true;note('Mengirim permintaan ke GitHub Actions...');
-    api('/start','POST',{durasi:$('fDur').value,hostname:$('fHost').value.trim(),
-        exit_node:$('fExit').value.trim(),aman_google:$('fSafe').checked,mati_defender:$('fDef').checked})
+    api('/start','POST',{durasi:$('fDur').value,hostname:$('fHost').value.trim()})
     .then(function(){note('Permintaan terkirim. VM membutuhkan sekitar 2 sampai 4 menit.','ok');
       flash('Permintaan start terkirim');setTimeout(pullLogs,25000)})
     .catch(function(e){note('Gagal: '+e.message,'bad')})

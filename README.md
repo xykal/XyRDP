@@ -21,7 +21,10 @@ diakses lewat **Tailscale** (tidak ada port publik), sesi ditahan **pas 6 jam**
 | `deploy/vercel/` | Versi dashboard untuk hosting di Vercel (catch-all function + Basic Auth) |
 
 ## Dashboard Vercel (produksi)
-URL produksi: **https://xyrdp-dash.vercel.app** — dilindungi Basic Auth (user/pass dari env, bukan dari repo).
+URL produksi: **https://xyrdp-dash.vercel.app** — halaman terbuka tanpa login; SEMUA endpoint API butuh sesi.
+Login lewat form di web (custom, tanpa dialog browser); cookie `sid` HttpOnly 7 hari. Header `Authorization: Basic`
+tetap diterima sebagai fallback untuk curl/skrip. Kredensial dari env `AUTH_USER` / `AUTH_PASS` (bukan dari repo).
+UI: tanpa emoji, tanpa alert/confirm bawaan browser; stop sesi pakai tombol konfirmasi dua-klik.
 
 Env vars yang dipakai project `xyrdp-dash` (set via dashboard Vercel → Settings → Environment Variables, atau API):
 

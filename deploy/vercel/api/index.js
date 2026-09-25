@@ -116,6 +116,28 @@ function readBody(req) {
   });
 }
 
+// ---- auth: cookie login (form custom, tanpa popup browser) + fallback header Basic ----
+const crypto = require('crypto');
+function sessionCookie() {
+  return crypto.createHash('sha256')
+    .update(((process.env.AUTH_USER) || '') + '|' + (process.env.AUTH_PASS || '') + '|xyrdp-sid')
+    .digest('hex').slice(0, 48);
+}
+function credsOk(u, p) {
+  return u === (process.env.AUTH_USER || '') && p === (process.env.AUTH_PASS || '');
+}
+function authOk(req) {
+  if (!process.env.AUTH_PASS) return true;
+  const m = (req.headers.cookie || '').match(/sid=([a-f0-9]{48})/);
+  if (m && m[1] === sessionCookie()) return true;
+  const h = req.headers.authorization || '';
+  if (h.startsWith('Basic ')) {
+    const [u, ...ps] = Buffer.from(h.slice(6), 'base64').toString('utf8').split(':');
+    return credsOk(u, ps.join(':'));
+  }
+  return false;
+}
+
 module.exports = async (req, res) => {
   const send = (code, obj, type = 'application/json') => {
     const body = type === 'application/json' ? JSON.stringify(obj) : obj;
@@ -123,29 +145,29 @@ module.exports = async (req, res) => {
     res.end(body);
   };
   try {
-    // ---- Basic Auth ----
-    const AU = process.env.AUTH_USER || '', AP = process.env.AUTH_PASS || '';
-    if (AP) {
-      let ok = false;
-      const h = req.headers.authorization || '';
-      if (h.startsWith('Basic ')) {
-        const [u, ...ps] = Buffer.from(h.slice(6), 'base64').toString('utf8').split(':');
-        ok = (u === AU && ps.join(':') === AP);
-      }
-      if (!ok) {
-        res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="XyRDP", charset="UTF-8"', 'Content-Type': 'text/plain; charset=utf-8' });
-        return res.end('401 — login XyRDP dulu (user/pass Basic Auth dari env Vercel)');
-      }
-    }
-
     const url = new URL(req.url, 'http://x');
     const p = url.pathname.replace(/^\/api\/?/, '/');
 
+    // halaman (berisi form login; tanpa data sensitif) selalu boleh diakses
     if (p === '/' || p === '/index.html') {
       try {
         return send(200, fs.readFileSync(path.join(__dirname, '..', 'assets', 'index.html')), 'text/html');
-      } catch { return send(200, '<h1>XyRDP</h1><p>API hidup; buka /api/status.</p>', 'text/html'); }
+      } catch { return send(200, '<h1>XyRDP</h1>', 'text/html'); }
     }
+
+    // endpoint login: verifikasi kredensial lalu set cookie
+    if (req.method === 'POST' && p === '/login') {
+      if (!process.env.AUTH_PASS) return send(200, { ok: true, note: 'auth tidak aktif' });
+      const body = await readBody(req);
+      if (!credsOk(String(body.user || ''), String(body.pass || '')))
+        return send(403, { error: 'Kredensial salah' });
+      res.setHeader('Set-Cookie',
+        `sid=${sessionCookie()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 3600}${process.env.VERCEL_ENV === 'production' ? '; Secure' : ''}`);
+      return send(200, { ok: true });
+    }
+
+    if (!authOk(req)) return send(403, { error: 'unauthorized' });
+
     if (req.method === 'GET' && p === '/config') {
       return send(200, { owner: CFG.owner, repo: CFG.repo, workflow: CFG.workflow, rdp_user: CFG.rdp_user, rdp_password: CFG.rdp_password, rdp_port: 3389 });
     }

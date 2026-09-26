@@ -1,5 +1,5 @@
 {
-  "active": true,
+  "active": false,
   "tailscale_ip": "100.112.22.118",
   "tailscale_dns": "xyrdp-13.tail01cd7c.ts.net.",
   "ts_hostname": "xyrdp-13",
@@ -11,5 +11,6 @@
   "run_id": "36251638042",
   "run_number": "13",
   "run_url": "https://github.com/xykal/XyRDP/actions/runs/36251638042",
-  "mode": "bersih"
+  "mode": "bersih",
+  "stopped_at": "2026-09-26T21:11:47Z"
 }

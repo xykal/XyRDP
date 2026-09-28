@@ -1,16 +1,15 @@
 {
-  "active": false,
-  "tailscale_ip": "100.126.70.67",
-  "tailscale_dns": "xyrdp-17.tail01cd7c.ts.net.",
-  "ts_hostname": "xyrdp-17",
+  "active": true,
+  "tailscale_ip": "100.83.165.24",
+  "tailscale_dns": "xyrdp-18.tail01cd7c.ts.net.",
+  "ts_hostname": "xyrdp-18",
   "rdp_port": 3389,
   "rdp_user": "xyadmin",
-  "started_at": "2026-09-27T18:38:07Z",
-  "expires_at": "2026-09-28T00:33:07Z",
+  "started_at": "2026-09-28T07:29:38Z",
+  "expires_at": "2026-09-28T13:24:38Z",
   "duration_menit": 355,
-  "run_id": "36341350842",
-  "run_number": "17",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/36341350842",
-  "mode": "bersih",
-  "stopped_at": "2026-09-28T00:28:20Z"
+  "run_id": "36391908676",
+  "run_number": "18",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/36391908676",
+  "mode": "bersih"
 }

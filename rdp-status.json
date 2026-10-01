@@ -1,5 +1,5 @@
 {
-  "active": true,
+  "active": false,
   "tailscale_ip": "100.92.5.104",
   "tailscale_dns": "xyrdp-uji2-31.tail01cd7c.ts.net.",
   "ts_hostname": "xyrdp-uji2-31",
@@ -19,5 +19,6 @@
     "wallpaper_file": "wallpaper.jpg",
     "xydesk_host": "ok",
     "admin": true
-  }
+  },
+  "stopped_at": "2026-10-01T21:27:05Z"
 }

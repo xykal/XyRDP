@@ -1,7 +1,7 @@
 {
-  "active": true,
-  "tailscale_ip": "100.125.106.7",
-  "tailscale_dns": "xyrdp-36.tail01cd7c.ts.net.",
+  "active": false,
+  "tailscale_ip": "",
+  "tailscale_dns": "",
   "ts_hostname": "xyrdp-36",
   "rdp_port": 3389,
   "rdp_user": "xyadmin",
@@ -18,19 +18,9 @@
     "wallpaper": "ok",
     "wallpaper_file": "wallpaper.jpg",
     "xydesk_host": "ok",
-    "xydesk_id": "168-594-0743",
-    "xydesk_ids": [
-      {
-        "iface": "Ethernet 3",
-        "ip": "10.1.0.115",
-        "id": "016-783-7811"
-      },
-      {
-        "iface": "Tailscale",
-        "ip": "100.125.106.7",
-        "id": "168-594-0743"
-      }
-    ],
+    "xydesk_id": "",
+    "xydesk_ids": [],
     "admin": true
-  }
+  },
+  "stopped_at": "2026-10-02T20:34:35Z"
 }

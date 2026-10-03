@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "hostname": "xyrdp-47",
+  "active": true,
+  "hostname": "xyrdp-48",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
@@ -8,12 +8,12 @@
   "rdp_user": "xyadmin",
   "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
   "rdp_denyts": true,
-  "started_at": "2026-10-03T19:08:40Z",
-  "expires_at": "2026-10-04T01:03:40Z",
+  "started_at": "2026-10-03T19:16:54Z",
+  "expires_at": "2026-10-04T01:11:54Z",
   "duration_menit": 355,
-  "run_id": "37146812835",
-  "run_number": "47",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37146812835",
+  "run_id": "37147308657",
+  "run_number": "48",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37147308657",
   "mode": "bersih+win10",
   "win10": {
     "look": "ok",
@@ -40,25 +40,24 @@
     "note": "Host siap dipakai klien XyDesk Remote mode Koneksi RDP (Host+Port tunnel). Kunci WinStations\\RDP-Tcp sengaja TIDAK ditulis supaya listener 3389 tidak mati di runner GitHub."
   },
   "akses": {
-    "mode": "tunnel",
+    "mode": "keduanya",
     "rustdesk": {
-      "status": "skip",
-      "service": null,
+      "status": "ok",
+      "service": true,
+      "id": "147088785",
       "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
-      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password",
-      "id": ""
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
     },
     "tunnel": {
       "status": "ok",
       "provider": "bore",
+      "host": "bore.pub",
+      "port": 36603,
+      "address": "bore.pub:36603",
       "rdp_local": "127.0.0.1 -> terbuka",
+      "selftest": "ok",
       "note2": "Tunnel sudah diuji end-to-end (handshake RDP X.224 lewat endpoint publik)",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin",
-      "selftest": "gagal",
-      "host": "",
-      "port": 0,
-      "address": ""
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
     }
-  },
-  "stopped_at": "2026-10-03T19:16:07Z"
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "active": true,
+  "active": false,
   "hostname": "xyrdp-validasi-44",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
@@ -44,20 +44,21 @@
     "rustdesk": {
       "status": "ok",
       "service": true,
-      "id": "447170503",
       "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
-      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password",
+      "id": ""
     },
     "tunnel": {
       "status": "ok",
       "provider": "bore",
-      "host": "bore.pub",
-      "port": 55058,
-      "address": "bore.pub:55058",
       "rdp_local": "172.30.64.1 -> tertutup",
       "selftest": "gagal",
       "note2": "Tunnel hidup, tapi uji end-to-end belum lolos — coba lagi sebentar; jalur RustDesk tetap jalan",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin",
+      "host": "",
+      "port": 0,
+      "address": ""
     }
-  }
+  },
+  "stopped_at": "2026-10-03T15:24:50Z"
 }

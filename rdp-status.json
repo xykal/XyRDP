@@ -1,16 +1,16 @@
 {
-  "active": false,
-  "tailscale_ip": "",
-  "tailscale_dns": "",
-  "ts_hostname": "xyrdp-36",
+  "active": true,
+  "tailscale_ip": "100.114.89.95",
+  "tailscale_dns": "xyrdp-37.tail01cd7c.ts.net.",
+  "ts_hostname": "xyrdp-37",
   "rdp_port": 3389,
   "rdp_user": "xyadmin",
-  "started_at": "2026-10-02T14:43:24Z",
-  "expires_at": "2026-10-02T20:38:24Z",
+  "started_at": "2026-10-03T12:52:04Z",
+  "expires_at": "2026-10-03T18:47:04Z",
   "duration_menit": 355,
-  "run_id": "37021808279",
-  "run_number": "36",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37021808279",
+  "run_id": "37124248899",
+  "run_number": "37",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37124248899",
   "mode": "bersih",
   "extras": {
     "lightshot": "ok",
@@ -18,9 +18,24 @@
     "wallpaper": "ok",
     "wallpaper_file": "wallpaper.jpg",
     "xydesk_host": "ok",
-    "xydesk_id": "",
-    "xydesk_ids": [],
+    "xydesk_id": "168-521-5583",
+    "xydesk_ids": [
+      {
+        "iface": "vEthernet (nat)",
+        "ip": "172.20.112.1",
+        "id": "288-702-0545"
+      },
+      {
+        "iface": "Ethernet 3",
+        "ip": "10.1.0.141",
+        "id": "016-783-7837"
+      },
+      {
+        "iface": "Tailscale",
+        "ip": "100.114.89.95",
+        "id": "168-521-5583"
+      }
+    ],
     "admin": true
-  },
-  "stopped_at": "2026-10-02T20:34:35Z"
+  }
 }

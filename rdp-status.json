@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "hostname": "xyrdp-ts-54",
+  "active": true,
+  "hostname": "xyrdp-fun-56",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
@@ -8,12 +8,12 @@
   "rdp_user": "xyadmin",
   "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
   "rdp_denyts": true,
-  "started_at": "2026-10-03T23:16:56Z",
-  "expires_at": "2026-10-03T23:46:56Z",
+  "started_at": "2026-10-03T23:36:23Z",
+  "expires_at": "2026-10-04T00:06:23Z",
   "duration_menit": 30,
-  "run_id": "37161249750",
-  "run_number": "54",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37161249750",
+  "run_id": "37162292220",
+  "run_number": "56",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37162292220",
   "mode": "bersih+win10",
   "win10": {
     "look": "ok",
@@ -44,31 +44,30 @@
     "rustdesk": {
       "status": "skip",
       "service": null,
+      "id": "",
       "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
-      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password",
-      "id": ""
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
     },
     "tailscale": {
       "status": "ok",
-      "ip": "100.86.3.0",
-      "magicdns": "xyrdp-ts-54.tail01cd7c.ts.net.",
-      "hostname": "xyrdp-ts-54",
+      "ip": "100.94.238.123",
+      "magicdns": "xyrdp-fun-56.tail01cd7c.ts.net.",
+      "hostname": "xyrdp-fun-56",
       "funnel": "ok",
-      "funnel_addr": "xyrdp-ts-54.tail01cd7c.ts.net:10000",
-      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.86.3.0 Port=3389 di XyDesk Remote (atau mstsc). Funnel: xyrdp-ts-54.tail01cd7c.ts.net:10000"
+      "funnel_addr": "xyrdp-fun-56.tail01cd7c.ts.net:10000",
+      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.94.238.123 Port=3389 di XyDesk Remote (atau mstsc). Funnel: xyrdp-fun-56.tail01cd7c.ts.net:10000"
     },
     "tunnel": {
       "status": "skip",
       "provider": "",
+      "host": "",
+      "port": 0,
+      "address": "",
       "rdp_local": "",
       "selftest": "",
       "outside": "",
       "note2": "",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin",
-      "host": "",
-      "port": 0,
-      "address": ""
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
     }
-  },
-  "stopped_at": "2026-10-03T23:35:53Z"
+  }
 }

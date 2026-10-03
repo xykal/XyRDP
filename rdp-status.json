@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "hostname": "xyrdp-validasi-44",
+  "active": true,
+  "hostname": "xyrdp-validasi-45",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
@@ -8,12 +8,12 @@
   "rdp_user": "xyadmin",
   "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
   "rdp_denyts": true,
-  "started_at": "2026-10-03T14:57:35Z",
-  "expires_at": "2026-10-03T15:27:35Z",
+  "started_at": "2026-10-03T15:25:20Z",
+  "expires_at": "2026-10-03T15:55:20Z",
   "duration_menit": 30,
-  "run_id": "37131486821",
-  "run_number": "44",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37131486821",
+  "run_id": "37132337622",
+  "run_number": "45",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37132337622",
   "mode": "bersih+win10",
   "win10": {
     "look": "ok",
@@ -28,37 +28,36 @@
     "denyts": "ok",
     "multisession": "ok",
     "avc444": "ok",
-    "fontsmoothing": "ok",
-    "audio_out": "ok",
-    "audio_mic": "ok",
+    "fontsmoothing": "ok (ClearType profil Default)",
+    "audio_out": "ok (fDisableAudio=)",
+    "audio_mic": "ok (fDisableAudioCapture=0)",
     "firewall": "tcp3389=True udp3389=True udp4433=True",
     "services": "ok",
-    "rdp_ready": "belum",
-    "rdp_probe": "awal=True reg=False fw=False svc=False",
+    "rdp_ready": "127.0.0.1 (handshake OK)",
+    "rdp_probe": "awal=True multi=True audio=True grafis=True clear=True fw=True svc=True",
     "quic_udp4433": "dibuka di VM (tidak lewat tunnel TCP)",
     "akses": "(menyusul)",
-    "note": "Host siap dipakai klien XyDesk Remote mode Koneksi RDP (Host+Port tunnel)"
+    "note": "Host siap dipakai klien XyDesk Remote mode Koneksi RDP (Host+Port tunnel). Kunci WinStations\\RDP-Tcp sengaja TIDAK ditulis supaya listener 3389 tidak mati di runner GitHub."
   },
   "akses": {
     "mode": "keduanya",
     "rustdesk": {
       "status": "ok",
       "service": true,
+      "id": "226636470",
       "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
-      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password",
-      "id": ""
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
     },
     "tunnel": {
       "status": "ok",
       "provider": "bore",
-      "rdp_local": "172.30.64.1 -> tertutup",
-      "selftest": "gagal",
-      "note2": "Tunnel hidup, tapi uji end-to-end belum lolos — coba lagi sebentar; jalur RustDesk tetap jalan",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin",
-      "host": "",
-      "port": 0,
-      "address": ""
+      "host": "bore.pub",
+      "port": 35570,
+      "address": "bore.pub:35570",
+      "rdp_local": "127.0.0.1 -> terbuka",
+      "selftest": "ok",
+      "note2": "Tunnel sudah diuji end-to-end (handshake RDP X.224 lewat endpoint publik)",
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
     }
-  },
-  "stopped_at": "2026-10-03T15:24:50Z"
+  }
 }

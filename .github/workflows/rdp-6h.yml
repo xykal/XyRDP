@@ -1,5 +1,5 @@
 name: XyRDP - Windows 10 Style RDP 6 Jam (RustDesk / Tunnel)
-run-name: "XyRDP ${{ inputs.hostname || 'xyrdp' }} • ${{ inputs.durasi_menit || '360' }} mnt • ${{ inputs.akses || 'keduanya' }}"
+run-name: "XyRDP-TS ${{ inputs.hostname || 'xyrdp' }} • ${{ inputs.durasi_menit || '360' }} mnt"
 
 # ============================================================================
 #  XyRDP v2 — Windows "gaya 10" di runner GitHub, akses TANPA Tailscale dan
@@ -104,7 +104,7 @@ permissions:
 
 # Satu sesi aktif. Run kedua antre, bukan barengan.
 concurrency:
-  group: xyrdp
+  group: xyrdp-ts
   cancel-in-progress: false
 
 jobs:
@@ -138,6 +138,7 @@ jobs:
       # NB: runner >=2.3xx tidak lagi inject GITHUB_TOKEN ke env langkah;
       # harus dieksplisitkan supaya publish-status.ps1 bisa push.
       GITHUB_TOKEN: ${{ github.token }}
+      STATUS_BRANCH: status-ts
 
     steps:
       - name: Checkout

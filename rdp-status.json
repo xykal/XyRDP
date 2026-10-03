@@ -1,0 +1,48 @@
+{
+  "active": false,
+  "hostname": "xyrdp-validasi-39",
+  "os": "Microsoft Windows Server 2022 Datacenter",
+  "os_build": "10.0.20348",
+  "os_style": "Windows 10 look",
+  "rdp_port": 3389,
+  "rdp_user": "xyadmin",
+  "started_at": "2026-10-03T13:45:37Z",
+  "expires_at": "2026-10-03T14:00:37Z",
+  "duration_menit": 15,
+  "run_id": "37127256275",
+  "run_number": "39",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37127256275",
+  "mode": "bersih+win10",
+  "akses": {
+    "mode": "keduanya",
+    "tunnel": {
+      "status": "pending"
+    },
+    "rustdesk": {
+      "status": "pending"
+    }
+  },
+  "win10": {
+    "look": "ok",
+    "badge": "ok",
+    "wallpaper": "ok",
+    "search": "ok",
+    "os": "Microsoft Windows Server 2022 Datacenter",
+    "note": "Tampilan Windows 10 (UI Windows Server 2022 = kernel/UI Windows 10 21H2)"
+  },
+  "xydesk": {
+    "host": "sebagian",
+    "denyts": "gagal",
+    "multisession": "gagal",
+    "avc444": "ok",
+    "fontsmoothing": "ok",
+    "audio_out": "ok",
+    "audio_mic": "ok",
+    "firewall": "tcp3389=True udp3389=True udp4433=True",
+    "services": "ok",
+    "quic_udp4433": "dibuka di VM (tidak lewat tunnel TCP)",
+    "akses": "(menyusul)",
+    "note": "Sebagian setelan host gagal — sesi tetap jalan lewat RDP biasa; cek log step Host setup XyDesk"
+  },
+  "stopped_at": "2026-10-03T14:05:38Z"
+}

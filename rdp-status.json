@@ -1,27 +1,18 @@
 {
-  "active": false,
-  "hostname": "xyrdp-validasi-39",
+  "active": true,
+  "hostname": "xyrdp-validasi-40",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
   "rdp_port": 3389,
   "rdp_user": "xyadmin",
-  "started_at": "2026-10-03T13:45:37Z",
-  "expires_at": "2026-10-03T14:00:37Z",
+  "started_at": "2026-10-03T14:07:13Z",
+  "expires_at": "2026-10-03T14:22:13Z",
   "duration_menit": 15,
-  "run_id": "37127256275",
-  "run_number": "39",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37127256275",
+  "run_id": "37128501923",
+  "run_number": "40",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37128501923",
   "mode": "bersih+win10",
-  "akses": {
-    "mode": "keduanya",
-    "tunnel": {
-      "status": "pending"
-    },
-    "rustdesk": {
-      "status": "pending"
-    }
-  },
   "win10": {
     "look": "ok",
     "badge": "ok",
@@ -44,5 +35,22 @@
     "akses": "(menyusul)",
     "note": "Sebagian setelan host gagal — sesi tetap jalan lewat RDP biasa; cek log step Host setup XyDesk"
   },
-  "stopped_at": "2026-10-03T14:05:38Z"
+  "akses": {
+    "mode": "keduanya",
+    "rustdesk": {
+      "status": "gagal",
+      "service": null,
+      "id": "",
+      "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
+    },
+    "tunnel": {
+      "status": "ok",
+      "provider": "bore",
+      "host": "bore.pub",
+      "port": 63833,
+      "address": "bore.pub:63833",
+      "note": "Remote Desktop Connection (mstsc) ke alamat ini; user xyadmin"
+    }
+  }
 }

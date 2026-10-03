@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "hostname": "xyrdp-46",
+  "active": true,
+  "hostname": "xyrdp-47",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
@@ -8,26 +8,13 @@
   "rdp_user": "xyadmin",
   "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
   "rdp_denyts": true,
-  "started_at": "2026-10-03T18:50:20Z",
-  "expires_at": "2026-10-04T00:45:20Z",
+  "started_at": "2026-10-03T19:08:40Z",
+  "expires_at": "2026-10-04T01:03:40Z",
   "duration_menit": 355,
-  "run_id": "37145684746",
-  "run_number": "46",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37145684746",
+  "run_id": "37146812835",
+  "run_number": "47",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37146812835",
   "mode": "bersih+win10",
-  "akses": {
-    "tunnel": {
-      "status": "pending",
-      "host": "",
-      "port": 0,
-      "address": ""
-    },
-    "mode": "tunnel",
-    "rustdesk": {
-      "status": "pending",
-      "id": ""
-    }
-  },
   "win10": {
     "look": "ok",
     "badge": "ok",
@@ -52,5 +39,25 @@
     "akses": "(menyusul)",
     "note": "Host siap dipakai klien XyDesk Remote mode Koneksi RDP (Host+Port tunnel). Kunci WinStations\\RDP-Tcp sengaja TIDAK ditulis supaya listener 3389 tidak mati di runner GitHub."
   },
-  "stopped_at": "2026-10-03T19:08:07Z"
+  "akses": {
+    "mode": "tunnel",
+    "rustdesk": {
+      "status": "skip",
+      "service": null,
+      "id": "",
+      "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
+    },
+    "tunnel": {
+      "status": "ok",
+      "provider": "bore",
+      "host": "bore.pub",
+      "port": 41648,
+      "address": "bore.pub:41648",
+      "rdp_local": "127.0.0.1 -> terbuka",
+      "selftest": "ok",
+      "note2": "Tunnel sudah diuji end-to-end (handshake RDP X.224 lewat endpoint publik)",
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
+    }
+  }
 }

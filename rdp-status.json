@@ -1,19 +1,19 @@
 {
-  "active": false,
-  "hostname": "xyrdp-validasi-41",
+  "active": true,
+  "hostname": "xyrdp-validasi-42",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
   "rdp_port": 3389,
   "rdp_user": "xyadmin",
-  "rdp_listen": "ya (:::3389, pid 1112)",
+  "rdp_listen": "ya (:::3389, pid 1120)",
   "rdp_denyts": true,
-  "started_at": "2026-10-03T14:21:41Z",
-  "expires_at": "2026-10-03T14:36:41Z",
+  "started_at": "2026-10-03T14:34:05Z",
+  "expires_at": "2026-10-03T14:49:05Z",
   "duration_menit": 15,
-  "run_id": "37129309432",
-  "run_number": "41",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37129309432",
+  "run_id": "37130042488",
+  "run_number": "42",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37130042488",
   "mode": "bersih+win10",
   "win10": {
     "look": "ok",
@@ -40,22 +40,21 @@
   "akses": {
     "mode": "keduanya",
     "rustdesk": {
-      "status": "gagal",
-      "service": null,
+      "status": "ok",
+      "service": true,
+      "id": "85598323",
       "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
-      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password",
-      "id": ""
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
     },
     "tunnel": {
       "status": "ok",
       "provider": "bore",
-      "rdp_local": "tertutup",
+      "host": "bore.pub",
+      "port": 29287,
+      "address": "bore.pub:29287",
+      "rdp_local": "172.31.240.1 -> terbuka",
       "selftest": "gagal",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin",
-      "host": "",
-      "port": 0,
-      "address": ""
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
     }
-  },
-  "stopped_at": "2026-10-03T14:32:27Z"
+  }
 }

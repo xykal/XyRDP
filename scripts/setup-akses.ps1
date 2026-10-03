@@ -480,14 +480,33 @@ function Start-Tailscale {
   if ($sr.ok -and $sr.out) {
     try { $j = $sr.out | ConvertFrom-Json; $dns = "$($j.Self.DNSName)"; $stTxt = "$($j.BackendState)" } catch {}
   }
-  Log "  tailscale: IP=$ip4 magicdns=$dns state=$stTxt"
+  $capMap = ''
+  try { if ($j -and $j.Self -and $j.Self.CapMap) { $capMap = (@($j.Self.CapMap.PSObject.Properties.Name) -join ',') } } catch {}
+  Log "  tailscale: IP=$ip4 magicdns=$dns state=$stTxt capmap=[$capMap]"
 
-  # bonus: funnel (alamat publik tanpa app Tailscale di HP) - best effort
-  $funnel = 'tidak aktif'; $funnelAddr = ''
+  # bonus: funnel (alamat publik tanpa app Tailscale di HP) - best effort + diagnostik mentah
+  $funnel = 'tidak aktif'; $funnelAddr = ''; $fRaw = ''
   $f = Invoke-Cmd $tsExe @('funnel', '--bg', '--tcp', '10000', 'tcp://127.0.0.1:3389') 60
+  $fo = (("$($f.out)" + ' | ' + "$($f.err)") -replace '\s+', ' ').Trim()
+  $fRaw = 'funnel exit=' + $f.code + ' msg=' + $fo
   if ($f.code -ne 0) {
     $srv = Invoke-Cmd $tsExe @('serve', '--bg', '--tcp', '10000', 'tcp://127.0.0.1:3389') 60
-    if ($srv.code -eq 0) { $f = Invoke-Cmd $tsExe @('funnel', '--bg', '--tcp', '10000') 60 }
+    $so = (("$($srv.out)" + ' | ' + "$($srv.err)") -replace '\s+', ' ').Trim()
+    $fRaw = $fRaw + ' || serve exit=' + $srv.code + ' msg=' + $so
+    if ($srv.code -eq 0) {
+      $f = Invoke-Cmd $tsExe @('funnel', '--bg', '--tcp', '10000') 60
+      $fo2 = (("$($f.out)" + ' | ' + "$($f.err)") -replace '\s+', ' ').Trim()
+      $fRaw = $fRaw + ' || funnel2 exit=' + $f.code + ' msg=' + $fo2
+    }
+  }
+  $fsr = Invoke-Cmd $tsExe @('funnel', 'status', '--json') 45
+  if (-not $fsr.out) { $fsr = Invoke-Cmd $tsExe @('funnel', 'status') 45 }
+  $fso = (("$($fsr.out)" + ' | ' + "$($fsr.err)") -replace '\s+', ' ').Trim()
+  $fRaw = $fRaw + ' || status exit=' + $fsr.code + ' msg=' + $fso
+  if ($dns) {
+    $ct = Invoke-Cmd $tsExe @('cert', ($dns.TrimEnd('.'))) 180
+    $co = (("$($ct.out)" + ' | ' + "$($ct.err)") -replace '\s+', ' ').Trim()
+    $fRaw = $fRaw + ' || cert exit=' + $ct.code + ' msg=' + $co
   }
   if ($f.code -eq 0) {
     $funnel = 'ok'
@@ -497,7 +516,9 @@ function Start-Tailscale {
     $tail = (("$($f.err) $($f.out)") -replace '\s+', ' ').Trim()
     Log "  tailscale: funnel tidak aktif (exit=$($f.code)$(if ($tail) { ': ' + $tail.Substring(0, [Math]::Min(150, $tail.Length)) })) - jalur IP 100.x tetap jalan"
   }
-  return @{ exe = $tsExe; ip = $ip4; magicdns = $dns; host = $tsHost; funnel = $funnel; funnel_addr = $funnelAddr }
+  if ($fRaw.Length -gt 1200) { $fRaw = $fRaw.Substring(0, 1200) }
+  Log ('  tailscale: diagnostik-funnel -> ' + $fRaw)
+  return @{ exe = $tsExe; ip = $ip4; magicdns = $dns; host = $tsHost; funnel = $funnel; funnel_addr = $funnelAddr; raw = $fRaw }
 }
 
 $tunStatus = 'skip'; $tun = $null; $localOk = $false; $stOk = 'skip'; $reachOk = 'skip'; $reachTxt = ''
@@ -653,6 +674,7 @@ $aksesObj = [ordered]@{
     hostname    = if ($ts) { $ts.host } else { '' }
     funnel      = if ($ts) { $ts.funnel } else { '' }
     funnel_addr = if ($ts) { $ts.funnel_addr } else { '' }
+    funnel_raw  = if ($ts -and $ts.raw) { $ts.raw } else { '' }
     note        = if ($ts) { "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=$($ts.ip) Port=$localPort di XyDesk Remote (atau mstsc). Funnel: $(if ($ts.funnel_addr) { $ts.funnel_addr } else { 'tidak aktif' })" }
                   elseif ($useTs) { 'Tailscale gagal disiapkan (cek secret TAILSCALE_AUTH_KEY / log step Setup akses)' }
                   else { 'tidak dipakai di sesi ini' }

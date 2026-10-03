@@ -55,9 +55,10 @@
       "port": 51782,
       "address": "bore.pub:51782",
       "rdp_local": "127.0.0.1 -> terbuka",
-      "selftest": "ok",
       "note2": "Tunnel sudah diuji end-to-end (handshake RDP X.224 lewat endpoint publik)",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin",
+      "selftest": "gagal"
     }
-  }
+  },
+  "heartbeat_at": "2026-10-03T20:08:05Z"
 }

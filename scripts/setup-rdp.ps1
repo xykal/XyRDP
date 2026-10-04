@@ -19,7 +19,13 @@ if (-not $env:RDP_PASSWORD -or $env:RDP_PASSWORD.Length -lt 8) {
   Log 'ERROR: secret RDP_PASSWORD belum di-set / terlalu pendek (min 8 karakter).'; exit 1
 }
 $dur = [int]($env:DUR -replace '\D', ''); if ($dur -lt 10) { $dur = 360 }; if ($dur -gt 355) { $dur = 355 }
-$u = if ($env:RDP_USER) { $env:RDP_USER } else { 'xyadmin' }
+$u = if ($env:RDP_USER) { $env:RDP_USER.Trim() } else { 'xyadmin' }
+$reservedUsers = @('administrator','guest','defaultaccount','wdagutilityaccount','system','localservice','networkservice','con','prn','aux','nul')
+if ($u -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]{2,19}$' -or $reservedUsers -contains $u.ToLower()) {
+  Log 'ERROR: RDP_USER tidak valid. Gunakan 3–20 karakter (huruf/angka, _ atau -); hindari nama bawaan Windows.'
+  exit 1
+}
+$cfg = Get-Cfg
 $hostBase = ($env:HOSTNAME -replace '[^a-zA-Z0-9-]', '').ToLower().Trim('-'); if (-not $hostBase) { $hostBase = 'xyrdp' }
 if ($hostBase.Length -gt 30) { $hostBase = $hostBase.Substring(0, 30) }
 $hostName = "$hostBase-$env:GITHUB_RUN_NUMBER"
@@ -35,6 +41,22 @@ if (Get-LocalUser -Name $u -ErrorAction SilentlyContinue) { Remove-LocalUser -Na
 New-LocalUser -Name $u -Password $sp -FullName 'XyRDP Admin' -PasswordNeverExpires -AccountNeverExpires -Description 'XyRDP remote user' | Out-Null
 Add-LocalGroupMember -Group 'Administrators'         -Member $u -ErrorAction SilentlyContinue
 Add-LocalGroupMember -Group 'Remote Desktop Users'   -Member $u -ErrorAction SilentlyContinue
+
+# ---------- 1b. Profil ringan konservatif (non-esensial saja) --------------
+if ($cfg.lightweight_mode) {
+  foreach ($svcName in @('SysMain', 'DiagTrack')) {
+    try {
+      $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
+      if ($svc) {
+        if ($svc.Status -ne 'Stopped') { Stop-Service -Name $svcName -Force -ErrorAction SilentlyContinue }
+        Set-Service -Name $svcName -StartupType Manual -ErrorAction SilentlyContinue
+        Log "profil ringan: $svcName dihentikan/manual (jika tersedia)"
+      }
+    } catch { Log "profil ringan: $svcName dilewati" }
+  }
+  Log 'profil ringan aktif; Defender, Firewall, Windows Search, RDP, jaringan, dan runner tidak disentuh'
+} else { Log 'profil ringan dimatikan sesuai config' }
+
 # token admin penuh untuk login jaringan/RDP (bagian dari "akses admin", bukan tweak)
 reg add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /f | Out-Null
 Log "user '$u' siap: Administrators + Remote Desktop Users, password tidak expire"

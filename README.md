@@ -34,13 +34,24 @@ XyRDP menyiapkan desktop jarak jauh **Windows-style** pada runner GitHub-hosted.
    | `RDP_PASSWORD` | Kata sandi RDP unik, minimal 16 karakter ASCII dengan huruf besar/kecil, angka, dan simbol sederhana. Contoh format saja—jangan dipakai persis: `v7M!4qR-9Tz2-Lp6K8x`. Jangan gunakan ulang kata sandi akun lain. |
    | `TAILSCALE_AUTH_KEY` | Auth key Tailscale milikmu. Pilih reusable; ephemeral disarankan jika tersedia. |
 
-`RDP_PASSWORD` adalah sandi untuk user desktop `xyadmin`, **berbeda** dari sandi login admin dashboard. Hindari spasi di awal/akhir atau karakter yang sulit diketik di HP. Contoh di atas hanya format, bukan sandi untuk dipakai. Jika mengganti secret RDP, jalankan sesi baru agar nilainya diterapkan.
+`RDP_PASSWORD` adalah sandi user desktop RDP, **berbeda** dari sandi login admin dashboard. Username RDP awal `xyadmin`; ubah dan simpan default-nya di panel **Username RDP default** pada dashboard. Batas username: 3–20 karakter ASCII, huruf/angka di awal, lalu huruf, angka, `_` atau `-`. Jika mengubah `RDP_PASSWORD`, jalankan sesi baru agar nilainya diterapkan.
 
-4. Kembali ke dashboard, periksa repo sampai statusnya **siap**, pilih durasi/jalur, lalu tekan **NYALAKAN**.
-5. Setelah status **AKTIF**, buka Tailscale di HP dan login ke akun yang membuat key tadi. Di XyDesk Remote pilih **Koneksi RDP Penuh**: Host = IP `100.x` dari dashboard, Port = `3389`, user = `xyadmin`, sandi = nilai `RDP_PASSWORD`-mu.
+4. Di panel **Tampilan**, pilih editor opsional dan username default. Tekan **SIMPAN PENGATURAN** (atau langsung mulai; dashboard menyimpan perubahan sebelum dispatch), periksa repo sampai statusnya **siap**, pilih durasi/jalur, lalu tekan **NYALAKAN**.
+5. Setelah status **AKTIF**, buka Tailscale di HP dan login ke akun yang membuat key tadi. Di XyDesk Remote pilih **Koneksi RDP Penuh**: Host = IP `100.x` dari dashboard, Port = `3389`, user = username yang tampil pada panel Koneksi, sandi = nilai `RDP_PASSWORD`-mu.
 6. Simpan pekerjaan ke penyimpananmu sendiri. Tekan **MATIKAN** jika selesai; VM juga berhenti otomatis saat durasi habis.
 
 Secret opsional: `NGROK_AUTHTOKEN` (tunnel ngrok) dan `CLEANUP_TOKEN` (pembersihan run lama). Nilai secret dimasukkan langsung di GitHub—**jangan** dikirim lewat chat, issue, screenshot, atau commit.
+
+## 🧑‍💻 Coding, aplikasi, dan performa
+
+- Image `windows-2022` sudah membawa Git, Node.js, Python, 7-Zip, .NET, Java, CMake, GCC/GDB, dan Visual Studio 2022. Tidak perlu memasang ulang semuanya.
+- Dashboard menyediakan sakelar opsional untuk **Visual Studio Code** dan **Notepad++**. Keduanya default mati supaya setup lebih cepat dan aplikasi latar tetap sedikit; aktifkan yang diperlukan sebelum mulai sesi.
+- Tema Windows/aplikasi gelap, transparansi taskbar, dan profil ringan aktif secara default. Profil ringan hanya menargetkan layanan cache/telemetri non-esensial jika tersedia; Defender, Firewall, Windows Search, RDP, jaringan, dan runner GitHub tidak dimatikan.
+- Username RDP bisa disimpan sebagai default dari dashboard dan diterapkan ke sesi berikutnya. Sesi yang sudah berjalan tidak berubah.
+- RAM tidak bisa dinaikkan lewat script: spesifikasi standard GitHub-hosted bergantung visibilitas repo (lihat [spesifikasi runner](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)). Dashboard menampilkan snapshot RAM tersedia di akhir setup, bukan angka live.
+- Tidak ada GPU fisik. Mesa menyediakan render software berbasis CPU; aplikasi 2D dan sebagian game ringan mungkin berjalan, tetapi game 3D tidak dijamin dan debloat tidak dapat menggantikan GPU.
+
+Daftar software image Windows 2022 dapat berubah; cek [manifest resmi runner](https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md).
 
 ## 🔒 Pembatasan run Actions
 
@@ -60,11 +71,11 @@ Workflow utama memeriksa `github.actor == github.repository_owner` sebelum job r
 | Path | Peran |
 |---|---|
 | `.github/workflows/rdp-6h.yml` | Workflow Windows-hosted, batas 6 jam, pemilik repo saja |
-| `scripts/setup-rdp.ps1` | User lokal dan layanan RDP |
+| `scripts/setup-rdp.ps1` | Username RDP kustom, profil ringan konservatif, dan layanan RDP |
 | `scripts/setup-win10.ps1` | Tweak tampilan, wallpaper desktop dan latar login |
 | `scripts/setup-grafis.ps1` | Mesa llvmpipe + Vulkan lavapipe |
 | `scripts/setup-akses.ps1` | Tailscale, tunnel, dan RustDesk |
-| `scripts/setup-extras.ps1` | Wallpaper, Lightshot, dan taskbar |
+| `scripts/setup-extras.ps1` | Wallpaper, transparansi, Lightshot, VS Code/Notepad++ opsional |
 | `assets/wallpaper.jpg` | Wallpaper sesi default |
 | `assets/wallpaper-win10.jpg` | Wallpaper Windows-style dan latar login |
 | `assets/rdp-extras.json` | Pengaturan ekstra dashboard/workflow |

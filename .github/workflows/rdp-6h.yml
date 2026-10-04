@@ -42,6 +42,11 @@ on:
         required: false
         default: "xyrdp"
         type: string
+      rdp_user:
+        description: "Username login RDP (3–20 karakter, huruf/angka/_/-)"
+        required: false
+        default: "xyadmin"
+        type: string
       akses:
         description: "Jalur akses: tailscale (IP 100.x, paling andal), tunnel RDP, RustDesk, atau kombinasi"
         required: false
@@ -138,7 +143,7 @@ jobs:
       GRAFIS: ${{ inputs.grafis }}
       WALLPAPER_URL: ${{ inputs.wallpaper_url }}
       RD_SERVER: ${{ inputs.rd_server }}
-      RDP_USER: xyadmin
+      RDP_USER: ${{ inputs.rdp_user || 'xyadmin' }}
       RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
       # ngrok (opsional): akun gratis -> authtoken -> secret repo. Kosong = pakai bore.pub
       NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
@@ -189,9 +194,9 @@ jobs:
         shell: pwsh
         run: ./scripts/setup-grafis.ps1
 
-      - name: Setup ekstra (Lightshot + wallpaper + taskbar translucent)
+      - name: Setup tampilan, wallpaper, dan editor coding opsional
         if: ${{ inputs.ekstra != 'tidak' }}
-        timeout-minutes: 8
+        timeout-minutes: 20
         continue-on-error: true
         shell: pwsh
         run: ./scripts/setup-extras.ps1

@@ -33,7 +33,7 @@ if ($skip) {
   Update-Status @{ win10 = @{ look = 'skip' } } | Out-Null
   exit 0
 }
-Log "mulai tweak Windows 10 (badge=$($cfg.win10_badge) wallpaper=$($cfg.win10_wallpaper))"
+Log "mulai tweak Windows 10 (badge=$($cfg.win10_badge) wallpaper=$($cfg.win10_wallpaper) dark=$($cfg.dark_theme) ringan=$($cfg.lightweight_mode))"
 
 $os = try { Get-CimInstance Win32_OperatingSystem } catch { $null }
 Log "  OS terpasang: $($os.Caption) build $($os.Version) — UI-nya sama dengan Windows 10 21H2"
@@ -61,10 +61,12 @@ Set-RegBoth 'Control Panel\Desktop' 'PaintDesktopVersion' 0 'DWord' | Out-Null
 try { Disable-LocalUser -Name 'Administrator' -ErrorAction Stop; Log '  akun Administrator bawaan dinonaktifkan (layar login bersih)' } catch { Log "  nonaktifkan Administrator dilewati: $($_.Exception.Message)" }
 
 # ---------- 3. personalisasi ala Windows 10 ----------
-Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'EnableTransparency' 1 'DWord' | Out-Null
+$themeMode = if ($cfg.dark_theme) { 0 } else { 1 }
+$transparencyMode = if ($cfg.translucent) { 1 } else { 0 }
+Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'EnableTransparency' $transparencyMode 'DWord' | Out-Null
 Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'ColorPrevalence'   1 'DWord' | Out-Null   # warna aksen di taskbar (khas Win10)
-Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'SystemUsesLightTheme' 0 'DWord' | Out-Null
-Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'AppsUseLightTheme'   1 'DWord' | Out-Null
+Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'SystemUsesLightTheme' $themeMode 'DWord' | Out-Null
+Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'AppsUseLightTheme'   $themeMode 'DWord' | Out-Null
 # taskbar: jangan gabungkan tombol (default Win10), kotak pencarian, tombol Task View
 $adv = 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
 Set-RegBoth $adv 'TaskbarGlomLevel'      2 'DWord' | Out-Null
@@ -79,7 +81,7 @@ Set-RegBoth $dwm 'AccentColor'         0xffd77800 'DWord' | Out-Null   # ABGR
 Set-RegBoth $dwm 'ColorizationColor'   0xc40078d7 'DWord' | Out-Null
 Set-RegBoth $dwm 'ColorizationAfterglow' 0xc40078d7 'DWord' | Out-Null
 Set-RegBoth $dwm 'EnableWindowColorization' 1 'DWord' | Out-Null
-Log '  personalisasi Windows 10 diterapkan (transparansi, aksen, taskbar, search)'
+Log "  personalisasi diterapkan (tema=$(if ($cfg.dark_theme) { 'gelap' } else { 'terang' }), transparansi=$($cfg.translucent), aksen, taskbar)"
 
 # ---------- 4. Windows Search diaktifkan (Start menu bisa mencari) ----------
 try {

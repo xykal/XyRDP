@@ -28,14 +28,22 @@ if ($env:EXTRAS) {
 }
 if (-not $master) {
   Log "EXTRAS='$env:EXTRAS' — semua langkah ekstra dilewati."
-  Update-Status @{ extras = @{ lightshot = 'skip'; translucent = 'skip'; wallpaper = 'skip'; wallpaper_file = ''; admin = $true } } | Out-Null
+  Update-Status @{ extras = @{ lightshot = 'skip'; translucent = 'skip'; wallpaper = 'skip'; wallpaper_file = ''; vscode = 'skip'; notepadpp = 'skip'; admin = $true } } | Out-Null
   exit 0
 }
 
 # ---------- 1. Konfigurasi ----------
 $cfg = Get-Cfg
 if ($env:WALLPAPER_URL) { Log 'WALLPAPER_URL diisi dari input workflow — override file di repo' }
-Log "lightshot=$($cfg.lightshot) | translucent=$($cfg.translucent) ($($cfg.translucent_mode)) | wallpaper=$($cfg.wallpaper) | win10_look=$($cfg.win10_look)"
+Log "lightshot=$($cfg.lightshot) | translucent=$($cfg.translucent) ($($cfg.translucent_mode)) | wallpaper=$($cfg.wallpaper) | win10_look=$($cfg.win10_look) | VSCode=$($cfg.vscode) | Notepad++=$($cfg.notepadpp)"
+
+# Terapkan tema juga bila pengguna mematikan langkah visual Win10.
+$themeMode = if ($cfg.dark_theme) { 0 } else { 1 }
+$transparencyMode = if ($cfg.translucent) { 1 } else { 0 }
+Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'SystemUsesLightTheme' $themeMode 'DWord' | Out-Null
+Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'AppsUseLightTheme' $themeMode 'DWord' | Out-Null
+Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'EnableTransparency' $transparencyMode 'DWord' | Out-Null
+Log "  tema $(if ($cfg.dark_theme) { 'gelap' } else { 'terang' }) + transparency=$($cfg.translucent) diterapkan ke profil Default"
 
 # ---------- 2. LIGHTSHOT ----------
 function Find-Lightshot {
@@ -166,6 +174,64 @@ if ($cfg.translucent) {
   }
 }
 
+# ---------- 3b. EDITOR CODING OPSIONAL -------------------------------------
+# Git/Node/Python/7-Zip/Visual Studio sudah ada pada image windows-2022.
+# Hanya VS Code dan Notepad++ yang ditambahkan bila dipilih di dashboard.
+function Find-VSCode {
+  foreach ($c in @(
+    (Join-Path $env:ProgramFiles 'Microsoft VS Code\Code.exe'),
+    "${env:ProgramFiles(x86)}\Microsoft VS Code\Code.exe",
+    (Join-Path $env:LOCALAPPDATA 'Programs\Microsoft VS Code\Code.exe')
+  )) { if ($c -and (Test-Path $c)) { return $c } }
+  $cmd = Get-Command code.cmd -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Source }
+  return $null
+}
+function Find-NotepadPP {
+  foreach ($c in @(
+    (Join-Path $env:ProgramFiles 'Notepad++\notepad++.exe'),
+    "${env:ProgramFiles(x86)}\Notepad++\notepad++.exe"
+  )) { if ($c -and (Test-Path $c)) { return $c } }
+  $cmd = Get-Command notepad++.exe -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Source }
+  return $null
+}
+function Install-ChocoCodingTool([string]$Label, [string]$Package) {
+  $choco = Get-Command choco.exe -ErrorAction SilentlyContinue
+  if (-not $choco) { Log "  $Label dilewati: Chocolatey tidak tersedia"; return $false }
+  try {
+    Log "  memasang $Label dari Chocolatey ($Package)..."
+    $out = & $choco.Source install $Package -y --no-progress 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    if ($out) { Log "  Chocolatey $Label (exit $code): $(Log-Tail $out 2)" }
+    return ($code -eq 0)
+  } catch { Log "  pemasangan $Label gagal: $($_.Exception.Message)"; return $false }
+}
+
+$resVSCode = 'skip'
+if ($cfg.vscode) {
+  Log 'VS CODE: cek / pasang...'
+  if (Find-VSCode) { $resVSCode = 'sudah ada'; Log '  VS Code sudah tersedia' }
+  else {
+    Install-ChocoCodingTool 'VS Code' 'vscode.install' | Out-Null
+    Start-Sleep -Seconds 2
+    $resVSCode = if (Find-VSCode) { 'ok' } else { 'gagal' }
+    Log "  VS Code: $resVSCode"
+  }
+}
+
+$resNotepadPP = 'skip'
+if ($cfg.notepadpp) {
+  Log 'NOTEPAD++: cek / pasang...'
+  if (Find-NotepadPP) { $resNotepadPP = 'sudah ada'; Log '  Notepad++ sudah tersedia' }
+  else {
+    Install-ChocoCodingTool 'Notepad++' 'notepadplusplus.install' | Out-Null
+    Start-Sleep -Seconds 2
+    $resNotepadPP = if (Find-NotepadPP) { 'ok' } else { 'gagal' }
+    Log "  Notepad++: $resNotepadPP"
+  }
+}
+
 # ---------- 4. WALLPAPER ----------
 function Set-WallpaperLive([string]$imgPath) {
   try {
@@ -256,9 +322,10 @@ Update-Status @{ extras = [ordered]@{
     translucent    = $resTrans
     wallpaper      = $resWall
     wallpaper_file = $wallName
+    vscode         = $resVSCode
+    notepadpp      = $resNotepadPP
     admin          = $adminOk
 } } | Out-Null
-
 Close-DefaultHive
 
 $adminTxt = $(if ($adminOk) { 'YA' } else { 'TIDAK' })

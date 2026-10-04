@@ -105,7 +105,7 @@ function Get-Reg([string]$Path, [string]$Name) {
 
 # ---------- konfigurasi (assets/rdp-extras.json) ----------
 $script:XyCfgDefaults = [ordered]@{
-  lightshot        = $true
+  lightshot        = $false           # jangan jalankan app latar jika tidak diminta
   translucent      = $true
   translucent_mode = 'clear'          # normal | opaque | clear | blur | acrylic
   wallpaper        = $true
@@ -114,6 +114,11 @@ $script:XyCfgDefaults = [ordered]@{
   win10_badge      = $true            # label "Windows 10 Pro" di registry (kosmetik)
   win10_wallpaper  = $true            # pakai wallpaper gaya Windows 10
   xydesk_host      = $true            # host setup untuk klien XyDesk Remote (AVC444/ClearType/audio)
+  dark_theme       = $true            # tema aplikasi dan sistem gelap
+  lightweight_mode = $true            # matikan hanya layanan latar non-esensial
+  vscode           = $false           # IDE tambahan opsional
+  notepadpp        = $false           # editor ringan opsional
+  rdp_user         = 'xyadmin'        # username RDP default tersimpan per-repo
 }
 
 function Get-CfgBool([object]$o, [string]$n, [bool]$d) {
@@ -143,11 +148,12 @@ function Get-Cfg {
     $c | Add-Member -NotePropertyName $k -NotePropertyValue $script:XyCfgDefaults[$k] -Force
   }
   if ($j) {
-    foreach ($k in @('lightshot','translucent','wallpaper','win10_look','win10_badge','win10_wallpaper','xydesk_host')) {
+    foreach ($k in @('lightshot','translucent','wallpaper','win10_look','win10_badge','win10_wallpaper','xydesk_host','dark_theme','lightweight_mode','vscode','notepadpp')) {
       $c.$k = Get-CfgBool $j $k $c.$k
     }
     $c.translucent_mode = (Get-CfgStr $j 'translucent_mode' $c.translucent_mode).ToLower()
     $c.wallpaper_file   = (Get-CfgStr $j 'wallpaper_file'   $c.wallpaper_file).ToLower()
+    $c.rdp_user         = Get-CfgStr $j 'rdp_user' $c.rdp_user
   }
   return $c
 }

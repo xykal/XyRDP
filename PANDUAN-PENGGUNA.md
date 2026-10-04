@@ -19,7 +19,7 @@ Tekan **BUKA SECRETS** untuk membuka pengaturan repo. Masuk ke `Settings → Sec
 
 | Nama secret | Nilai |
 |---|---|
-| `RDP_PASSWORD` | Kata sandi unik untuk login desktop RDP. Jangan gunakan sandi GitHub/email. |
+| `RDP_PASSWORD` | Kata sandi unik untuk login desktop RDP. Disarankan minimal 16 karakter ASCII, campuran huruf besar/kecil, angka, dan simbol sederhana. Jangan gunakan sandi GitHub/email. |
 | `TAILSCALE_AUTH_KEY` | Auth key dari akun Tailscale-mu. Buat lewat **Admin Console → Settings → Keys**; reusable diperlukan untuk alur ini dan ephemeral disarankan jika tersedia. |
 
 Secret opsional:
@@ -34,26 +34,32 @@ Secret opsional:
 ## 3. Nyalakan sesi
 
 1. Kembali ke dashboard dan tekan **PERIKSA / RAPIKKAN LAGI** sampai repo berstatus **siap**.
-2. Pilih durasi dan jalur. Untuk HP, gunakan **Tailscale**.
-3. Tekan **NYALAKAN** sekali. Tunggu beberapa menit sampai status dashboard berubah menjadi **AKTIF**.
-4. Di HP, buka Tailscale dan login ke akun yang membuat auth key.
-5. Buka **XyDesk Remote → Koneksi RDP Penuh**:
+2. Di panel **Tampilan**, atur username RDP default dan editor opsional. Username disimpan di repo dan berlaku untuk sesi baru (3–20 karakter ASCII; huruf/angka di awal, lalu huruf, angka, `_` atau `-`).
+3. Pilih durasi dan jalur. Untuk HP, gunakan **Tailscale**.
+4. Tekan **NYALAKAN** sekali. Tunggu beberapa menit sampai status dashboard berubah menjadi **AKTIF**.
+5. Di HP, buka Tailscale dan login ke akun yang membuat auth key.
+6. Buka **XyDesk Remote → Koneksi RDP Penuh**:
    - Host: IP `100.x` terbaru dari dashboard.
    - Port: `3389`.
-   - User: `xyadmin`.
+   - User: username yang tampil di dashboard (default `xyadmin`).
    - Password: nilai secret `RDP_PASSWORD` yang kamu masukkan sendiri.
 
 Jangan gunakan IP dari sesi lama: alamat berubah saat sesi baru dimulai.
 
 ## 4. Wallpaper dan tampilan
 
-Wallpaper bawaan XyCloud sudah tertanam di repo template (`assets/wallpaper.jpg` dan `assets/wallpaper-win10.jpg`). Workflow menerapkannya ke desktop sesi serta latar login. Perubahan wallpaper melalui panel **Tampilan** dashboard berlaku pada sesi berikutnya.
+Wallpaper bawaan XyCloud sudah tertanam di repo template (`assets/wallpaper.jpg` dan `assets/wallpaper-win10.jpg`). Workflow menerapkannya ke desktop sesi serta latar login. Perubahan wallpaper melalui panel **Tampilan** dashboard berlaku pada sesi berikutnya. Tema gelap dan transparansi taskbar aktif secara default; opsi profil ringan hanya menonaktifkan layanan cache/telemetri non-esensial jika tersedia.
 
-## 5. Batasan dan keamanan
+## 5. Coding dan aplikasi opsional
+
+Image `windows-2022` sudah menyediakan Git, Node.js, Python, 7-Zip, .NET, Java, Visual Studio 2022, CMake, GCC/GDB. VS Code dan Notepad++ dapat dipilih di dashboard sebelum sesi berjalan; keduanya default tidak dipasang agar startup tetap ringan. Pengaturan berlaku pada sesi baru.
+
+## 6. Batasan dan keamanan
 
 - Ini **Windows Server 2022 dengan tampilan Windows 10-style**, bukan Windows 10 desktop asli.
 - Runner GitHub-hosted bersifat sementara; file lokal dapat hilang ketika sesi selesai. Simpan file penting di penyimpanan milikmu sendiri.
-- GPU software (Mesa llvmpipe/lavapipe) memakai CPU; tidak ada GPU fisik dan aplikasi 3D berat tetap lambat.
+- RAM standar runner ditentukan GitHub dan tidak bisa dinaikkan lewat script; dashboard menampilkan snapshot RAM akhir setup, bukan angka live. Lihat [spesifikasi runner GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+- GPU software (Mesa llvmpipe/lavapipe) memakai CPU; tidak ada GPU fisik. Aplikasi 2D/sebagian game ringan mungkin berjalan, tetapi game 3D tidak dijamin.
 - Satu sesi dapat berjalan maksimal 6 jam dan berhenti otomatis. Gunakan **MATIKAN** setelah selesai.
 - Workflow memeriksa bahwa pemicu adalah pemilik repo sebelum job runner dijalankan. Kolaborator non-pemilik tidak dapat memulai job RDP.
 - Kuota dan penggunaan gratis mengikuti plan/kebijakan GitHub dan layanan terkait. Periksa ketentuan akunmu.

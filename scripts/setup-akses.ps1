@@ -697,6 +697,16 @@ $aksesObj = [ordered]@{
   }
 }
 Update-Status @{ akses = $aksesObj } | Out-Null
+try {
+  $osMemory = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+  $mem = [ordered]@{
+    total_mb = [int][math]::Round($osMemory.TotalVisibleMemorySize / 1024)
+    available_mb = [int][math]::Round($osMemory.FreePhysicalMemory / 1024)
+    measured = 'akhir setup'
+  }
+  Update-Status @{ memory = $mem } | Out-Null
+  Log "RAM akhir setup: $($mem.available_mb) MB tersedia dari $($mem.total_mb) MB (snapshot; bukan angka live)"
+} catch { Log 'RAM snapshot tidak tersedia' }
 $aksesObj | ConvertTo-Json -Depth 8 | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
 
 Log "SELESAI — tailscale=$tsStatus$(if ($ts) { " ($($ts.ip))" }) rustdesk=$rdStatus$(if ($rdId) { " ($rdId)" }) tunnel=$tunStatus$(if ($tun) { " ($($tun.provider) $($tun.host):$($tun.port), selftest=$stOk, luar=$reachOk)" })"

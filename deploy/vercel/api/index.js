@@ -49,7 +49,13 @@ const ENV = {
 
 const STATUS_BRANCH = 'status';        // branch tempat workflow menulis rdp-status.json
 const EXTRAS_PATH = 'assets/rdp-extras.json';
-const EXTRAS_DEFAULTS = { lightshot: true, translucent: true, translucent_mode: 'clear', wallpaper: true, wallpaper_file: 'wallpaper.jpg', win10_look: true, win10_badge: true, win10_wallpaper: true, xydesk_host: true };
+const EXTRAS_DEFAULTS = { lightshot: false, translucent: true, translucent_mode: 'clear', wallpaper: true, wallpaper_file: 'wallpaper.jpg', win10_look: true, win10_badge: true, win10_wallpaper: true, xydesk_host: true, dark_theme: true, lightweight_mode: true, vscode: false, notepadpp: false, rdp_user: 'xyadmin' };
+const RDP_USERNAME_RESERVED = new Set(['administrator', 'guest', 'defaultaccount', 'wdagutilityaccount', 'system', 'localservice', 'networkservice', 'con', 'prn', 'aux', 'nul']);
+function normalizeRdpUser(value) {
+  const name = String(value || '').trim();
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{2,19}$/.test(name) || RDP_USERNAME_RESERVED.has(name.toLowerCase())) return '';
+  return name;
+}
 const WALLPAPER_RE = /^wallpaper\.(jpg|jpeg|png|bmp)$/i;
 const SECRETS_REQUIRED = ['RDP_PASSWORD', 'TAILSCALE_AUTH_KEY'];
 const SECRETS_OPTIONAL = ['NGROK_AUTHTOKEN', 'CLEANUP_TOKEN'];
@@ -635,9 +641,12 @@ module.exports = async (req, res) => {
         if (st.missing_required.length) return send(400, { error: `Secret repo kamu belum lengkap: ${st.missing_required.join(', ')}. Isi dulu di ${ctx.owner}/${ctx.repo} → Settings → Secrets and variables → Actions.` });
       }
       const body = await readBody(req);
+      const rdpUser = normalizeRdpUser(body.rdp_user || 'xyadmin');
+      if (!rdpUser) return send(400, { error: 'Username RDP harus 3–20 karakter: huruf/angka, lalu huruf, angka, _ atau -. Hindari nama akun bawaan Windows.' });
       const inputs = {
         durasi_menit: String(body.durasi || '360'),
         hostname: String(body.hostname || 'xyrdp').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 30) || 'xyrdp',
+        rdp_user: rdpUser,
         akses: ['keduanya', 'tailscale', 'semua', 'rustdesk', 'tunnel'].includes(String(body.akses)) ? String(body.akses) : 'tailscale',
         tunnel_provider: ['otomatis', 'bore', 'ngrok'].includes(String(body.tunnel_provider)) ? String(body.tunnel_provider) : 'otomatis',
         win10: (body.win10 === 'tidak' ? 'tidak' : 'ya'),
@@ -683,8 +692,13 @@ module.exports = async (req, res) => {
       const body = await readBody(req);
       const { json: cur, sha } = await readRepoFile(ctx, EXTRAS_PATH);
       const next = Object.assign({}, EXTRAS_DEFAULTS, cur || {});
-      for (const k of ['lightshot', 'translucent', 'wallpaper', 'xydesk_host', 'win10_look', 'win10_badge', 'win10_wallpaper']) {
+      for (const k of ['lightshot', 'translucent', 'wallpaper', 'xydesk_host', 'win10_look', 'win10_badge', 'win10_wallpaper', 'dark_theme', 'lightweight_mode', 'vscode', 'notepadpp']) {
         if (k in body) next[k] = !!body[k];
+      }
+      if ('rdp_user' in body) {
+        const rdpUser = normalizeRdpUser(body.rdp_user || 'xyadmin');
+        if (!rdpUser) return send(400, { error: 'Username RDP harus 3–20 karakter: huruf/angka, lalu huruf, angka, _ atau -. Hindari nama akun bawaan Windows.' });
+        next.rdp_user = rdpUser;
       }
       if (body.translucent_mode) {
         const m = String(body.translucent_mode).toLowerCase();

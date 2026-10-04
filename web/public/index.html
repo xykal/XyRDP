@@ -193,6 +193,7 @@
       <div class="row"><span class="k">Berakhir otomatis</span><span class="v" id="stEnd">-</span></div>
       <div class="row"><span class="k">Sisa waktu</span><span class="v big" id="stLeft">-</span></div>
       <div class="row"><span class="k">Ekstra sesi ini</span><span class="v" id="stExtras">-</span></div>
+      <div class="row"><span class="k">RAM tersedia <small>(snapshot akhir setup)</small></span><span class="v" id="stRam">-</span></div>
       <div class="bar"><i id="stBar"></i></div>
     </div>
 
@@ -223,7 +224,7 @@
         <span class="v"><span id="cRdId">-</span> <button class="mini" data-copy="cRdId">SALIN</button></span></div>
       <div class="hint"><b>Dari HP (XyDesk Remote):</b> buka <b>Koneksi RDP Penuh</b> → kolom <b>Host</b> = bagian
         sebelum tanda <code>:</code>, kolom <b>Port</b> = bagian setelahnya (bisa juga tempel
-        <code>host:port</code> di kolom host). Login <b>xyadmin</b> + kata sandi di atas. AVC444, ClearType,
+        <code>host:port</code> di kolom host). Login <b id="cUserInline">xyadmin</b> + kata sandi di atas. AVC444, ClearType,
         clipboard, keyboard, dan <b>audio</b> jalan lewat jalur ini; kalau sertifikat RDP ditanya, terima
         (sertifikat VM sekali-pakai). <b>RustDesk</b> cuma jalur cadangan kalau tunnel mati.
         Catatan: audio bridge QUIC XyDesk (UDP 4433) tidak lewat tunnel TCP — klien otomatis
@@ -262,10 +263,9 @@
       </div>
       <div class="row" style="margin-top:6px"><span class="k">Tampilan Windows 10</span>
         <span class="v"><label class="switch"><input type="checkbox" id="fWin10" checked><i></i></label></span></div>
-      <div class="row" style="margin-top:6px"><span class="k">GPU software (Mesa: OpenGL 4.6 core + Vulkan)</span>
+      <div class="row" style="margin-top:6px"><span class="k">Kompatibilitas grafis software <small>(Mesa CPU, bukan GPU fisik)</small></span>
         <span class="v"><label class="switch"><input type="checkbox" id="fGrafis" checked><i></i></label></span></div>
-      <div class="hint" style="margin-top:4px">Runner = Windows Server 2022 (UI/kernel = Windows 10 21H2) + tweak Windows 10.
-        Runner GitHub tidak punya image Windows 10 desktop.</div>
+      <div class="hint" style="margin-top:4px">Runner = Windows Server 2022 bergaya Windows 10. Grafis software dapat membantu aplikasi 2D/ringan; game 3D tidak dijamin. RAM runner ditetapkan GitHub—profil ringan hanya mengurangi sebagian beban latar.</div>
       <div class="btns">
         <button class="primary" id="bStart" style="flex:2">NYALAKAN</button>
         <button class="danger" id="bStop" style="flex:1">MATIKAN</button>
@@ -288,10 +288,14 @@
       </div>
       <div class="note" id="wpNote"></div>
 
-      <label style="margin-top:16px">Taskbar</label>
-      <div class="row"><span class="k">Translucent</span>
+      <label style="margin-top:16px">Tampilan &amp; profil ringan</label>
+      <div class="row"><span class="k">Tema gelap Windows + aplikasi</span>
+        <span class="v"><label class="switch"><input type="checkbox" id="exDark"><i></i></label></span></div>
+      <div class="row"><span class="k">Profil ringan <small>(SysMain/telemetri non-esensial)</small></span>
+        <span class="v"><label class="switch"><input type="checkbox" id="exLean"><i></i></label></span></div>
+      <div class="row"><span class="k">Transparansi taskbar</span>
         <span class="v"><label class="switch"><input type="checkbox" id="exTrans"><i></i></label></span></div>
-      <div class="row"><span class="k">Mode</span>
+      <div class="row"><span class="k">Mode transparansi</span>
         <span class="v"><select id="exMode" class="compact">
           <option value="clear">Clear</option>
           <option value="blur">Blur</option>
@@ -304,14 +308,23 @@
         <span class="v"><label class="switch"><input type="checkbox" id="exWin10"><i></i></label></span></div>
       <div class="row"><span class="k">Label "Windows 10 Pro"</span>
         <span class="v"><label class="switch"><input type="checkbox" id="exBadge"><i></i></label></span></div>
+      <label style="margin-top:16px">Editor tambahan (opsional)</label>
+      <div class="row"><span class="k">Visual Studio Code</span>
+        <span class="v"><label class="switch"><input type="checkbox" id="exVscode"><i></i></label></span></div>
+      <div class="row"><span class="k">Notepad++</span>
+        <span class="v"><label class="switch"><input type="checkbox" id="exNpp"><i></i></label></span></div>
+      <div class="hint">Git, Node.js, Python, 7-Zip, Visual Studio 2022, .NET, Java, CMake, GCC/GDB sudah tersedia di runner windows-2022. VS Code dan Notepad++ hanya diunduh jika dipilih; biarkan mati untuk setup lebih cepat.</div>
+      <label style="margin-top:16px">Username RDP default</label>
+      <input id="exRdpUser" type="text" value="xyadmin" maxlength="20" autocomplete="off" autocapitalize="none" spellcheck="false">
+      <div class="hint">3–20 karakter: huruf/angka di awal, lalu huruf, angka, underscore atau tanda hubung. Default disimpan di repo dan dipakai sesi baru; sandi tetap di secret GitHub.</div>
       <label style="margin-top:16px">Host &amp; aplikasi</label>
       <div class="row"><span class="k">XyDesk host <small>(AVC444 + ClearType + audio)</small></span>
         <span class="v"><label class="switch"><input type="checkbox" id="exXy"><i></i></label></span></div>
-      <div class="row"><span class="k">Lightshot</span>
+      <div class="row"><span class="k">Lightshot <small>(nonaktif default, hemat app latar)</small></span>
         <span class="v"><label class="switch"><input type="checkbox" id="exLs"><i></i></label></span></div>
-      <div class="btns"><button id="exSave" style="flex:1">SIMPAN</button></div>
+      <div class="btns"><button id="exSave" style="flex:1">SIMPAN PENGATURAN</button></div>
       <div class="note" id="exNote"></div>
-      <div class="hint">Berlaku otomatis pada sesi <b>berikutnya</b>. Gambar &amp; pengaturan disimpan di repo (<code>assets/</code>).</div>
+      <div class="hint">Berlaku otomatis pada sesi <b>berikutnya</b>. Pengaturan disimpan di repo (<code>assets/rdp-extras.json</code>); username yang diubah ikut tersimpan saat klik Simpan atau mulai sesi.</div>
     </div>
 
     <div class="panel" style="grid-column:1/-1">
@@ -348,7 +361,7 @@
       // membuat baris tunnel & sisa render tidak pernah jalan)
       setTxt=function(id,txt){var el=$(id);if(el)el.textContent=txt;if(el)el.title=txt||'';},
       cfg={}, authed=false, lastRun=null, passShown=false, stopArmed=0, t0=null, t1=null, wpData=null, cTunRaw='', cTsRaw='',
-      authInfo={}, me=null, turnstileToken='', turnstileWidgetId=null, turnstileScriptLoading=false;
+      authInfo={}, me=null, turnstileToken='', turnstileWidgetId=null, turnstileScriptLoading=false, savedExtras=null;
 
   function flash(msg){var f=$('flash');f.textContent=msg;f.classList.add('show');
     clearTimeout(f._t);f._t=setTimeout(function(){f.classList.remove('show')},2400)}
@@ -491,6 +504,8 @@
     var s=[];
     if(e.lightshot)s.push('lightshot:'+(lbl[e.lightshot]||e.lightshot));
     if(e.translucent)s.push('translucent:'+(lbl[e.translucent]||e.translucent));
+    if(e.vscode)s.push('VS Code:'+(lbl[e.vscode]||e.vscode));
+    if(e.notepadpp)s.push('Notepad++:'+(lbl[e.notepadpp]||e.notepadpp));
     if(e.wallpaper)s.push('wallpaper:'+(lbl[e.wallpaper]||e.wallpaper)+(e.wallpaper_file?(' '+e.wallpaper_file):''));
     if(g.win10&&g.win10.look)s.push('win10:'+(lbl[g.win10.look]||g.win10.look)+(g.win10.badge==='ok'?'+label':''));
     if(g.xydesk&&g.xydesk.host)s.push('xydesk:'+(lbl[g.xydesk.host]||g.xydesk.host)+(g.xydesk.avc444==='ok'?'+avc444':''));
@@ -516,6 +531,10 @@
       setTxt('stOs',(g&&g.os)?(g.os.replace(/^Microsoft /,'')+(g.os_style?(' · '+g.os_style):'')):'-');
       $('stStart').textContent=fmt(st); $('stEnd').textContent=fmt(en);
       setTxt('stExtras',extrasText(g));
+      var memory=g&&g.memory?g.memory:null;
+      setTxt('stRam',memory&&Number.isFinite(Number(memory.available_mb))
+        ?(memory.available_mb+' MB / '+memory.total_mb+' MB tersedia'):'-');
+      if(g&&g.rdp_user){setTxt('cUser',g.rdp_user);setTxt('cUserInline',g.rdp_user)}
       // --- akses: RustDesk + tunnel ---
       var a=g&&g.akses?g.akses:null;
       var modeTxt={keduanya:'Tunnel (XyDesk/mstsc) + RustDesk',rustdesk:'RustDesk saja',tunnel:'Tunnel RDP saja',tailscale:'Tailscale (IP 100.x)',semua:'Tailscale + Tunnel + RustDesk'};
@@ -570,11 +589,13 @@
       note(me.repo_exists?('Belum bisa: isi secret '+(me.missing_required||[]).join(', ')+' di repo kamu (tombol BUKA SECRETS).')
         :'Belum bisa: buat repo kamu dulu di panel "Repo kamu".','bad');
       refreshMe();return}
-    var b=$('bStart');b.disabled=true;note('Mengirim permintaan...');
-    api('/start','POST',{durasi:$('fDur').value,hostname:$('fHost').value.trim(),
-      akses:$('fAkses').value,tunnel_provider:$('fProv').value,
-      win10:$('fWin10').checked?'ya':'tidak',grafis:$('fGrafis').checked?'software':'tidak'})
-    .then(function(){note('Permintaan terkirim. VM siap dalam ±3–5 menit (VM + RustDesk + tunnel).','ok');
+    var rdpUser=$('exRdpUser').value.trim();
+    if(!validRdpUser(rdpUser)){note('Username RDP harus 3–20 karakter (huruf/angka, _ atau -); jangan gunakan nama bawaan Windows.','bad');return}
+    var b=$('bStart');b.disabled=true;note('Menyimpan pengaturan lalu mengirim permintaan...');
+    saveExtrasIfChanged().then(function(){return api('/start','POST',{durasi:$('fDur').value,hostname:$('fHost').value.trim(),
+      rdp_user:rdpUser,akses:$('fAkses').value,tunnel_provider:$('fProv').value,
+      win10:$('fWin10').checked?'ya':'tidak',grafis:$('fGrafis').checked?'software':'tidak'})})
+    .then(function(){note('Permintaan terkirim. VM siap dalam ±3–5 menit; instalasi editor opsional dapat menambah waktu.','ok');
       flash('Permintaan start terkirim');setTimeout(pullLogs,30000)})
     .catch(function(e){note('Gagal: '+e.message,'bad')})
     .finally(function(){b.disabled=false;poll()})
@@ -625,6 +646,21 @@
   setInterval(function(){if($('logAuto').checked)pullLogs(false)},30000);
   setInterval(function(){if(authed)poll()},10000);
 
+  // ---------- tampilan, tools, username, wallpaper ----------
+  function extrasPayload(){
+    return {translucent:$('exTrans').checked,translucent_mode:$('exMode').value,
+      lightshot:$('exLs').checked,win10_look:$('exWin10').checked,win10_badge:$('exBadge').checked,
+      xydesk_host:$('exXy').checked,dark_theme:$('exDark').checked,lightweight_mode:$('exLean').checked,
+      vscode:$('exVscode').checked,notepadpp:$('exNpp').checked,rdp_user:$('exRdpUser').value.trim()};
+  }
+  function saveExtrasIfChanged(){
+    var payload=extrasPayload(),json=JSON.stringify(payload);
+    if(savedExtras&&JSON.stringify(savedExtras)===json)return Promise.resolve({unchanged:true});
+    return api('/extras','POST',payload).then(function(r){savedExtras=payload;return r});
+  }
+  function validRdpUser(name){
+    return /^[A-Za-z0-9][A-Za-z0-9_-]{2,19}$/.test(name)&&!['administrator','guest','defaultaccount','wdagutilityaccount','system','localservice','networkservice','con','prn','aux','nul'].includes(name.toLowerCase());
+  }
   // ---------- tampilan (wallpaper + ekstra) ----------
   function loadExtras(){
     api('/extras').then(function(c){
@@ -634,6 +670,13 @@
       $('exWin10').checked=c.config.win10_look!==false;
       $('exBadge').checked=c.config.win10_badge!==false;
       $('exXy').checked=c.config.xydesk_host!==false;
+      $('exDark').checked=c.config.dark_theme!==false;
+      $('exLean').checked=c.config.lightweight_mode!==false;
+      $('exVscode').checked=!!c.config.vscode;
+      $('exNpp').checked=!!c.config.notepadpp;
+      $('exRdpUser').value=c.config.rdp_user||'xyadmin';
+      $('cUser').textContent=$('exRdpUser').value;$('cUserInline').textContent=$('exRdpUser').value;
+      savedExtras=extrasPayload();
       if(c.config.wallpaper){
         var im=$('wpPrev');im.src=c.wallpaper_url;im.classList.remove('hidden');$('wpDropTxt').classList.add('hidden');
         $('exPill').textContent='wallpaper aktif';$('exPill').className='pill';
@@ -692,10 +735,8 @@
 
   $('exSave').addEventListener('click',function(){
     var b=this;b.disabled=true;exNote('Menyimpan...');
-    api('/extras','POST',{translucent:$('exTrans').checked,translucent_mode:$('exMode').value,
-      lightshot:$('exLs').checked,win10_look:$('exWin10').checked,win10_badge:$('exBadge').checked,
-      xydesk_host:$('exXy').checked})
-      .then(function(){exNote('Tersimpan — berlaku otomatis di sesi berikutnya','ok');flash('Pengaturan tersimpan');loadExtras()})
+    saveExtrasIfChanged()
+      .then(function(){exNote('Tersimpan — username, tema, profil ringan, dan pilihan aplikasi berlaku pada sesi berikutnya.','ok');flash('Pengaturan tersimpan');loadExtras()})
       .catch(function(e){exNote('Gagal: '+e.message,'bad')})
       .finally(function(){b.disabled=false})
   });

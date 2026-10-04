@@ -4,7 +4,7 @@
 #  Runner GitHub tidak punya GPU: satu-satunya adapter = Microsoft Basic Render
 #  Driver (WARP / Direct3D software). Script ini memasang renderer SOFTWARE
 #  supaya aplikasi yang mewajibkan OpenGL/Vulkan/DirectX tetap bisa jalan:
-#    - Mesa3D llvmpipe  -> OpenGL 4.5 software (dipasang sistem-wide)
+#    - Mesa3D llvmpipe  -> OpenGL 4.5+/4.6 core software (dipasang sistem-wide)
 #    - Mesa3D lavapipe  -> Vulkan (CPU) lewat VK_DRIVER_FILES
 #    - WARP (D3D11/D3D12) sudah bawaan Windows
 #  Semuanya CPU-based: cukup untuk aplikasi 2D/ringan & tool yang butuh konteks
@@ -138,6 +138,43 @@ if ($lvpDll -and $lvpIcd) {
   Log '  lavapipe tidak ada di arsip (Vulkan dilewati)'
 }
 
+# ---- 5b) loader Vulkan (vulkan-1.dll): runner tanpa driver GPU belum punya -
+# Tanpa loader, aplikasi Vulkan tidak bisa memakai lavapipe. LunarG menyediakan
+# paket "Vulkan Runtime Components" (zip kecil, berisi x64/vulkan-1.dll).
+$gVkLoader = ''
+$loaderDst = "$sys32\vulkan-1.dll"
+if (Test-Path $loaderDst) {
+  $gVkLoader = 'sudah ada'
+  Log "  loader Vulkan sudah ada: $loaderDst"
+} else {
+  $vkrt = Join-Path $root 'vulkan-runtime.zip'
+  if (Get-File 'https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-runtime-components.zip' $vkrt 300) {
+    $zvk = Join-Path $root 'vkrt'
+    Remove-Item $zvk -Recurse -Force -ErrorAction SilentlyContinue
+    try {
+      if ($sevenZip) { & $sevenZip x $vkrt "-o$zvk" -y 2>&1 | Out-Null }
+      else { Expand-Archive -Path $vkrt -DestinationPath $zvk -Force }
+      $dll = @(Get-ChildItem $zvk -Recurse -File -Filter 'vulkan-1.dll' -ErrorAction SilentlyContinue |
+               Where-Object { $_.FullName -match '\\x64\\' })
+      if ($dll.Count -eq 0) { $dll = @(Get-ChildItem $zvk -Recurse -File -Filter 'vulkan-1.dll' -ErrorAction SilentlyContinue) }
+      if ($dll.Count -gt 0) {
+        Copy-Item $dll[0].FullName $loaderDst -Force -ErrorAction Stop
+        $vi = (Get-Item $loaderDst).VersionInfo
+        $gVkLoader = "vulkan-1.dll $($vi.FileVersion) (LunarG)".Trim()
+        $files += 'vulkan-1.dll'
+        Log "  loader Vulkan dipasang: $loaderDst -> $gVkLoader"
+      } else {
+        Log '  vulkan-1.dll tidak ada di paket runtime LunarG'
+      }
+      $vex = @(Get-ChildItem $zvk -Recurse -File -Filter 'vulkaninfo.exe' -ErrorAction SilentlyContinue |
+               Where-Object { $_.FullName -match '\\x64\\' })
+      if ($vex.Count -gt 0) { Copy-Item $vex[0].FullName (Join-Path $root 'vulkaninfo.exe') -Force -ErrorAction SilentlyContinue }
+    } catch { Log "  pasang loader Vulkan gagal: $($_.Exception.Message)" }
+  } else {
+    Log '  unduh runtime Vulkan (LunarG) gagal - loader dilewati'
+  }
+}
+
 # ---- 6) uji nyata: versi OpenGL/Vulkan yang benar-benar didapat ------------
 $py = Get-Command python.exe -ErrorAction SilentlyContinue
 if (-not $py) { $py = Get-Command py.exe -ErrorAction SilentlyContinue }
@@ -153,8 +190,24 @@ if ($py -and $opengl) {
   } catch { Log "  uji OpenGL gagal: $($_.Exception.Message)" }
 }
 
-# Vulkan: buka instance + baca nama device lewat loader (ctypes, tanpa unduhan)
-if ($py) {
+# Vulkan: minta vulkaninfo (paling otoritatif), lalu fallback ctypes ke loader
+$vkOk = $false
+$vkinfo = Join-Path $root 'vulkaninfo.exe'
+if (Test-Path $vkinfo) {
+  try {
+    $vo = ((& $vkinfo --summary 2>&1) | Out-String)
+    $dn = [regex]::Match($vo, 'deviceName\s*=\s*(.+)').Groups[1].Value.Trim()
+    $dt = [regex]::Match($vo, 'deviceType\s*=\s*(.+)').Groups[1].Value.Trim()
+    if ($dn) {
+      $gVulkan = "$dn $(if ($dt) { "($dt)" })".TrimEnd() -replace '^\s+|\s+$', ''
+      $vkOk = $true
+      Log "  uji Vulkan: $gVulkan"
+    } else {
+      Log "  vulkaninfo tanpa device: $(($vo -split "`n" | Select-Object -Last 1))"
+    }
+  } catch { Log "  vulkaninfo gagal: $($_.Exception.Message)" }
+}
+if ($py -and -not $vkOk) {
   $vkCode = @'
 import ctypes
 try:
@@ -205,17 +258,19 @@ print(buf.raw[20:276].split(b"\x00")[0].decode("utf-8", "replace"))
 }
 
 if (-not $gOpenGL) { $gOpenGL = "llvmpipe (Mesa $gMesa) - belum terverifikasi" }
+$glVer = [regex]::Match($gOpenGL, '^(\d+\.\d+)').Groups[1].Value
+if (-not $glVer) { $glVer = '4.5+' }
 if ($gGLInstall -like 'mesa*') {
-  $gNote = 'GPU software (CPU): OpenGL 4.5 (llvmpipe) + Vulkan (lavapipe) + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat.'
+  $gNote = "GPU software (CPU): OpenGL $glVer (llvmpipe) + Vulkan lavapipe + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat."
 } else {
   $gNote = "Pasang OpenGL software ke System32 gagal ($gGLInstall). Vulkan lavapipe & WARP tetap aktif; DLL Mesa tersedia di $root\gl untuk pemakaian per-aplikasi."
 }
-Log "  selesai: OpenGL=$gOpenGL | Vulkan=$(if ($gVulkan) { $gVulkan } else { '-' }) | install=$gGLInstall | adapter=$gAdapters"
+Log "  selesai: OpenGL=$gOpenGL | Vulkan=$(if ($gVulkan) { $gVulkan } else { '-' }) | loader=$(if ($gVkLoader) { $gVkLoader } else { '-' }) | install=$gGLInstall"
 
 try {
   Update-Status @{ grafis = @{
     mode = $gMode; mesa = $gMesa; opengl = $gOpenGL; vulkan = $gVulkan; install = $gGLInstall
-    adapters = $gAdapters; files = ($files -join ','); dir = $root; note = $gNote
+    loader = $gVkLoader; adapters = $gAdapters; files = ($files -join ','); dir = $root; note = $gNote
   } } | Out-Null
   Log '  status grafis ditulis (grafis.*)'
 } catch { Log "  tulis status grafis gagal: $($_.Exception.Message)" }

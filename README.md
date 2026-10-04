@@ -131,7 +131,7 @@ Hasil penelusuran repo `xykal/XyDesk-Remote` (v0.5.34) yang dipakai di sini:
 | `scripts/setup-rdp.ps1` | User admin + RDP 3389 + tulis status awal |
 | `scripts/setup-win10.ps1` | **Tweak "Windows 10 look"** (Server Manager, personalisasi, wallpaper, label) |
 | `scripts/setup-xydesk.ps1` | **Host setup XyDesk Remote** (AVC444 + ClearType + multi-session + audio/mic + UDP 4433) |
-| `scripts/setup-grafis.ps1` | **GPU software**: Mesa3D llvmpipe (OpenGL 4.5, sistem-wide) + lavapipe (Vulkan CPU) + lapor `grafis.*` ke status |
+| `scripts/setup-grafis.ps1` | **GPU software**: Mesa3D llvmpipe (OpenGL 4.5+/4.6 core, sistem-wide) + lavapipe (Vulkan CPU) + lapor `grafis.*` ke status |
 | `scripts/setup-akses.ps1` | **Tailscale (IP 100.x, default) + funnel (opsional) + RustDesk + tunnel RDP** |
 | `scripts/setup-extras.ps1` | Lightshot + TranslucentTB + wallpaper (dari `assets/`) |
 | `scripts/keepalive.ps1` | Penahan sesi + heartbeat tiap 5 menit + publish status tiap 30 menit |
@@ -202,7 +202,7 @@ Input workflow (`Run workflow`):
 | Input | Isi |
 |---|---|
 | `durasi_menit` | 15 … 360 (batas keras job GitHub) |
-| `grafis` | `software` (default) = pasang Mesa3D llvmpipe (OpenGL 4.5) + lavapipe (Vulkan) supaya aplikasi yang butuh OpenGL/Vulkan bisa jalan; `tidak` = lewati. Runner GitHub **tidak punya GPU fisik** (adapter = Microsoft Basic Render Driver/WARP), jadi ini renderer CPU — 3D berat tetap lambat, tanpa NVENC |
+| `grafis` | `software` (default) = pasang Mesa3D llvmpipe (OpenGL 4.5+/4.6 core) + lavapipe (Vulkan) + loader LunarG supaya aplikasi yang butuh OpenGL/Vulkan bisa jalan; `tidak` = lewati. Runner GitHub **tidak punya GPU fisik** (adapter = Microsoft Basic Render Driver/WARP), jadi ini renderer CPU — 3D berat tetap lambat, tanpa NVENC |
 | `hostname` | nama sesi (dapat suffix nomor run, mis. `xyrdp-42`) |
 | `akses` | `tunnel` (default — jalur XyDesk/mstsc) · `keduanya` · `rustdesk` |
 | `tunnel_provider` | `otomatis` · `bore` · `ngrok` |

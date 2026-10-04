@@ -88,7 +88,7 @@ on:
           - "ya"
           - "tidak"
       grafis:
-        description: "GPU software: Mesa3D llvmpipe (OpenGL 4.5) + lavapipe (Vulkan). Runner GitHub tidak punya GPU fisik"
+        description: "GPU software: Mesa3D llvmpipe (OpenGL 4.5+/4.6 core) + lavapipe Vulkan + loader LunarG. Runner GitHub tidak punya GPU fisik"
         required: false
         default: "software"
         type: choice

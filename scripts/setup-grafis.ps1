@@ -175,11 +175,26 @@ if (Test-Path $loaderDst) {
   }
 }
 
+# 5c) daftarkan ICD lavapipe ke registry (cara resmi driver GPU) supaya loader
+#     dan aplikasi apa pun menemukannya, tanpa bergantung pada env var saja.
+if ($icd) {
+  try {
+    $vkKey = 'HKLM:\SOFTWARE\Khronos\Vulkan\Drivers'
+    New-Item -Path $vkKey -Force -ErrorAction SilentlyContinue | Out-Null
+    New-ItemProperty -Path $vkKey -Name $icd -PropertyType DWord -Value 0 -Force | Out-Null
+    Log "  ICD lavapipe terdaftar di registry: $vkKey"
+  } catch { Log "  daftar ICD ke registry gagal: $($_.Exception.Message)" }
+}
+
 # ---- 6) uji nyata: versi OpenGL/Vulkan yang benar-benar didapat ------------
 $py = Get-Command python.exe -ErrorAction SilentlyContinue
 if (-not $py) { $py = Get-Command py.exe -ErrorAction SilentlyContinue }
 $env:GALLIUM_DRIVER = 'llvmpipe'; $env:LIBGL_ALWAYS_SOFTWARE = '1'
-if ($icd) { $env:VK_DRIVER_FILES = $icd; $env:VK_ADD_DRIVER_FILES = $icd }
+$gVkDbg = ''
+if ($icd) {
+  $env:VK_DRIVER_FILES = $icd; $env:VK_ADD_DRIVER_FILES = $icd; $env:VK_ICD_FILENAMES = $icd
+  $env:VK_LOADER_DEBUG = 'error,warn,driver'
+}
 
 if ($py -and $opengl) {
   try { & $py.Source -m pip install --quiet --disable-pip-version-check moderngl 2>&1 | Out-Null } catch {}
@@ -203,7 +218,8 @@ if (Test-Path $vkinfo) {
       $vkOk = $true
       Log "  uji Vulkan: $gVulkan"
     } else {
-      Log "  vulkaninfo tanpa device: $(($vo -split "`n" | Select-Object -Last 1))"
+      $gVkDbg = (($vo -split "`n" | Where-Object { $_ -match '\S' } | Select-Object -First 20) -join ' ; ')
+      Log "  vulkaninfo tanpa device; debug: $gVkDbg"
     }
   } catch { Log "  vulkaninfo gagal: $($_.Exception.Message)" }
 }
@@ -251,8 +267,9 @@ print(buf.raw[20:276].split(b"\x00")[0].decode("utf-8", "replace"))
   Set-Content -Path $vkf -Value $vkCode -Encoding UTF8
   try {
     $vout = ((& $py.Source $vkf 2>&1) | Out-String).Trim()
+    if (-not $gVkDbg -and $vout) { $gVkDbg = (($vout -split "`n" | Where-Object { $_ -match '\S' } | Select-Object -First 20) -join ' ; ') }
     if ($vout -eq 'loader-tidak-ada') { $gVulkan = "$gVulkan / loader vulkan-1.dll tidak ada" }
-    elseif ($vout -match '^(create-instance-error|tanpa-device)') { $gVulkan = "$gVulkan / uji: $vout" }
+    elseif ($vout -match 'create-instance-error|tanpa-device') { $gVulkan = "$gVulkan / uji: $([regex]::Match($vout, 'create-instance-error-\d+|tanpa-device').Value)" }
     elseif ($vout) { $gVulkan = $vout; Log "  uji Vulkan: device = $vout" }
   } catch { Log "  uji Vulkan gagal: $($_.Exception.Message)" }
 }
@@ -270,7 +287,7 @@ Log "  selesai: OpenGL=$gOpenGL | Vulkan=$(if ($gVulkan) { $gVulkan } else { '-'
 try {
   Update-Status @{ grafis = @{
     mode = $gMode; mesa = $gMesa; opengl = $gOpenGL; vulkan = $gVulkan; install = $gGLInstall
-    loader = $gVkLoader; adapters = $gAdapters; files = ($files -join ','); dir = $root; note = $gNote
+    loader = $gVkLoader; debug = $gVkDbg; adapters = $gAdapters; files = ($files -join ','); dir = $root; note = $gNote
   } } | Out-Null
   Log '  status grafis ditulis (grafis.*)'
 } catch { Log "  tulis status grafis gagal: $($_.Exception.Message)" }

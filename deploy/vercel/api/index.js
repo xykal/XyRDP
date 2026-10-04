@@ -452,10 +452,16 @@ module.exports = async (req, res) => {
           });
         }
         notes.push(`Repo dibuat: ${ctx.login}/${name} (dari template ${ENV.template})`);
-      } else if (st.repo_recreated) { notes.push('Repo sudah ada'); }
-      if (name !== ctx.repo) {
-        // repo sudah ada dengan nama lain: pakai repo yang ada supaya sesi tetap nyambung
-        notes.push(`Memakai repo yang sudah ada: ${ctx.owner}/${ctx.repo}`);
+        if (name !== ctx.repo) {
+          // nama repo beda dari default → sesi ikut pindah supaya nyambung
+          ctx.repo = name;
+          const payload = {
+            t: ctx.token, l: ctx.login, n: ctx.name || '', a: ctx.avatar || '',
+            r: `${ctx.login}/${name}`, e: Date.now() + SESSION_TTL_DAYS * 24 * 3600 * 1000,
+          };
+          res.setHeader('Set-Cookie', cookieHeader('ghs', seal(payload), SESSION_TTL_DAYS * 24 * 3600));
+          notes.push(`Sesi dipindah ke ${ctx.login}/${name}`);
+        }
       }
       const cfgNotes = await configureRepo(ctx);
       const fresh = await repoState(ctx);

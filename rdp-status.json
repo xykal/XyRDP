@@ -82,5 +82,6 @@
       "note2": "",
       "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
     }
-  }
+  },
+  "heartbeat_at": "2026-10-04T06:00:07Z"
 }

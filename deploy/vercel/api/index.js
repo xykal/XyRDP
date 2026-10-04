@@ -19,6 +19,13 @@ const zlib = require('zlib');
 const crypto = require('crypto');
 
 const API = 'https://api.github.com';
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-Frame-Options': 'DENY',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: https://avatars.githubusercontent.com https://raw.githubusercontent.com https://challenges.cloudflare.com; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self' https://github.com; worker-src 'self' blob:;",
+};
 
 const ENV = {
   // --- mode admin (perilaku lama) ---
@@ -367,11 +374,11 @@ async function configureRepo(ctx) {
 module.exports = async (req, res) => {
   const send = (code, obj, type = 'application/json', headers = {}) => {
     const body = type === 'application/json' ? JSON.stringify(obj) : obj;
-    res.writeHead(code, Object.assign({ 'Content-Type': type + '; charset=utf-8', 'Cache-Control': 'no-store' }, headers));
+    res.writeHead(code, Object.assign({ 'Content-Type': type + '; charset=utf-8', 'Cache-Control': 'no-store' }, SECURITY_HEADERS, headers));
     res.end(body);
   };
   const redirect = (loc, cookies) => {
-    const h = { Location: loc, 'Cache-Control': 'no-store' };
+    const h = Object.assign({ Location: loc, 'Cache-Control': 'no-store' }, SECURITY_HEADERS);
     if (cookies && cookies.length) h['Set-Cookie'] = cookies;
     res.writeHead(302, h);
     res.end();
@@ -452,7 +459,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST' && p === '/auth/logout') {
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': [cookieHeader('ghs', '', 0), cookieHeader('sid', '', 0)] });
+      res.writeHead(200, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': [cookieHeader('ghs', '', 0), cookieHeader('sid', '', 0)] }, SECURITY_HEADERS));
       return res.end(JSON.stringify({ ok: true }));
     }
 
@@ -472,7 +479,7 @@ module.exports = async (req, res) => {
       }
       loginRate(req, false, true);
       const sid = seal({ k: 'admin', v: adminCredVersion(), e: Date.now() + ADMIN_TTL_SECONDS * 1000 });
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookieHeader('sid', sid, ADMIN_TTL_SECONDS) });
+      res.writeHead(200, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookieHeader('sid', sid, ADMIN_TTL_SECONDS) }, SECURITY_HEADERS));
       return res.end(JSON.stringify({ ok: true }));
     }
 

@@ -51,6 +51,7 @@ Workflow utama memeriksa `github.actor == github.repository_owner` sebelum job r
 - Mesa menyediakan API OpenGL/Vulkan lewat CPU; grafis 3D berat dan render video akan lambat.
 - Durasi maksimum job pada workflow ini 360 menit. Kuota/biaya mengikuti plan dan kebijakan terbaru platform masing-masing.
 - Satu sesi per repo. Jangan gunakan VM untuk data rahasia atau pekerjaan yang melanggar kebijakan penyedia layanan.
+- Repo yang dibuat dari template adalah salinan mandiri; perubahan template tidak otomatis disinkronkan ke repo pengguna yang sudah ada.
 
 ## 🧭 Komponen repo
 

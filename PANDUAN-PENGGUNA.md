@@ -57,6 +57,7 @@ Wallpaper bawaan XyCloud sudah tertanam di repo template (`assets/wallpaper.jpg`
 - Satu sesi dapat berjalan maksimal 6 jam dan berhenti otomatis. Gunakan **MATIKAN** setelah selesai.
 - Workflow memeriksa bahwa pemicu adalah pemilik repo sebelum job runner dijalankan. Kolaborator non-pemilik tidak dapat memulai job RDP.
 - Kuota dan penggunaan gratis mengikuti plan/kebijakan GitHub dan layanan terkait. Periksa ketentuan akunmu.
+- Repo dari template adalah salinan mandiri; update baru di template tidak otomatis muncul di repo yang sudah dibuat.
 - Hindari menyimpan data rahasia di VM sementara dan gunakan sandi RDP khusus, bukan sandi yang dipakai di layanan lain.
 
 ## Komunitas

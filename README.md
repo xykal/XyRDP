@@ -141,7 +141,7 @@ Hasil penelusuran repo `xykal/XyDesk-Remote` (v0.5.34) yang dipakai di sini:
 | `assets/rdp-extras.json` | Konfigurasi ekstra (diubah dari dashboard) |
 | `assets/wallpaper-win10.jpg` | Wallpaper default gaya Windows 10 (+ latar layar login) |
 | `web/` | Dashboard lokal (Node ≥ 18, tanpa dependency, tanpa install apa pun) |
-| `deploy/vercel/` | Dashboard versi hosting (catch-all function + login cookie) |
+| `deploy/vercel/` | Dashboard versi hosting (catch-all function + login cookie admin **dan** login GitHub multi-user) |
 
 **Tailscale dipakai lagi** (sejak 3 Okt) sebagai jalur utama: auth key dari secret
 `TAILSCALE_AUTH_KEY` — pakai kunci **ephemeral** supaya node otomatis terhapus saat
@@ -238,6 +238,43 @@ Redeploy setelah ubah kode:
 ```bash
 cd deploy/vercel && npx vercel deploy --prod --yes --token <VercelToken>
 ```
+
+### Mode multi-user: "Masuk dengan GitHub" (orang lain pakai repo mereka sendiri)
+
+Dashboard yang di-hosting bisa dipakai banyak orang **tanpa mereka menyentuh
+repo/secret punyamu**: tiap pengunjung login GitHub, dashboard membuatkan
+**repo kerja milik mereka sendiri** (kopi dari template `xykal/XyRDP`), lalu
+semua sesi RDP mereka jalan di repo itu — kuota Actions, token, dan Tailscale
+mereka sendiri. Token/secret mereka **tidak disimpan di server**: sesi hanya
+ada di cookie browser terenkripsi (AES-256-GCM), dan `RDP_PASSWORD` /
+`TAILSCALE_AUTH_KEY` hanya di repo mereka.
+
+Sekali saja (pemilik dashboard):
+1. GitHub → **Settings → Developer settings → OAuth Apps → New OAuth App**.
+   *Application name* bebas, *Homepage URL* = URL dashboard
+   (`https://<dashboard-mu>`), *Authorization callback URL* =
+   `https://<dashboard-mu>/api/auth/callback` (wajib persis).
+2. Isi `GITHUB_OAUTH_CLIENT_ID` + `GITHUB_OAUTH_CLIENT_SECRET` (dari OAuth App)
+   dan `SESSION_SECRET` (string acak panjang) di env Vercel. Opsional:
+   `TEMPLATE_REPO` (default `GH_OWNER/GH_REPO`) dan `OWNER_LOGIN`.
+3. Repo template harus publik + ditandai template (Settings → centang
+   **Template repository**, atau `PATCH /repos/{owner}/{repo}` `is_template=true`).
+
+Alur pengguna lain:
+1. Buka dashboard → **Masuk dengan GitHub** (approve scope `repo`) → panel
+   **Repo kamu** muncul: klik **BUAT REPO DARI TEMPLATE** (repo `XyRDP` di akun
+   mereka dibuat + izin Actions dirapikan otomatis).
+2. Isi 2 secret wajib di repo mereka — `RDP_PASSWORD` (sandi login RDP) dan
+   `TAILSCALE_AUTH_KEY` (auth key *reusable* dari akun Tailscale mereka) —
+   lewat tombol **BUKA SECRETS** di panel. `NGROK_AUTHTOKEN`/`CLEANUP_TOKEN`
+   opsional.
+3. Klik **PERIKSA / RAPIKKAN LAGI** → tombol **NYALAKAN** aktif. Kata sandi RDP
+   disimpan **di browser mereka** (localStorage) supaya tombol SALIN berfungsi;
+   server tidak pernah tahu.
+
+Catatan jujur: mode ini memberi pengunjung kendali atas **repo mereka sendiri**
+(termasuk membuat repo + membaca secret-list lewat token mereka). Server hanya
+memegang cookie sesi terenkripsi; jangan bagikan `SESSION_SECRET`.
 
 Panel **Tampilan** di dashboard: upload wallpaper (drag & drop, otomatis
 dikecilkan maks 1920px), toggle **TranslucentTB** (+mode), **Lightshot**,

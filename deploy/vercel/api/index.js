@@ -1,44 +1,179 @@
 /* ============================================================================
  * XyRDP Dashboard — Vercel catch-all function (Node, tanpa dependency)
- * Route: /api/*  (config, status, start, stop, logs)
- * Auth : Basic Auth via env AUTH_USER / AUTH_PASS (401 = browser minta login)
- * Config dibaca dari env vars Vercel, BUKAN file:
- *   GITHUB_TOKEN, GH_OWNER, GH_REPO, GH_WORKFLOW, GH_BRANCH, RDP_USER, RDP_PASSWORD
+ *
+ * DUA MODE AKSES
+ *  1) ADMIN — pemilik dashboard. Login pakai AUTH_USER/AUTH_PASS (atau tanpa
+ *             auth kalau AUTH_PASS kosong = perilaku lama). Semua perintah
+ *             dijalankan di repo env GH_OWNER/GH_REPO dengan GITHUB_TOKEN.
+ *  2) USER  — pengunjung yang login "Masuk dengan GitHub" (OAuth App). Semua
+ *             perintah dijalankan di repo MILIK MEREKA (hasil kopi template),
+ *             dengan token OAuth mereka sendiri. Server tidak menyimpan
+ *             token/secret mereka: sesi hanya di cookie terenkripsi (AES-GCM).
+ *
+ * Endpoint: /auth/{status,login,callback,logout}, /me, /setup,
+ *           /config, /status, /start, /stop, /logs, /extras, /wallpaper
  * ==========================================================================*/
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const crypto = require('crypto');
 
-const CFG = {
+const API = 'https://api.github.com';
+
+const ENV = {
+  // --- mode admin (perilaku lama) ---
   token: process.env.GITHUB_TOKEN || '',
   owner: process.env.GH_OWNER || 'xykal',
   repo: process.env.GH_REPO || 'XyRDP',
   workflow: process.env.GH_WORKFLOW || 'rdp-6h.yml',
   branch: process.env.GH_BRANCH || 'main',
   rdp_user: process.env.RDP_USER || 'xyadmin',
-  rdp_password: process.env.RDP_PASSWORD || '(set env RDP_PASSWORD di Vercel)',
+  rdp_password: process.env.RDP_PASSWORD || '',
+  // --- multi-user (OAuth App) ---
+  oauth_id: process.env.GITHUB_OAUTH_CLIENT_ID || '',
+  oauth_secret: process.env.GITHUB_OAUTH_CLIENT_SECRET || '',
+  session_secret: process.env.SESSION_SECRET || 'xyrdp-dev-session-secret',
+  template: process.env.TEMPLATE_REPO || `${process.env.GH_OWNER || 'xykal'}/${process.env.GH_REPO || 'XyRDP'}`,
+  owner_login: (process.env.OWNER_LOGIN || process.env.GH_OWNER || 'xykal').toLowerCase(),
 };
-const STATUS_RAW = `https://raw.githubusercontent.com/${CFG.owner}/${CFG.repo}/status/rdp-status.json`;
-const API = 'https://api.github.com';
 
-// ---- konfigurasi ekstra (assets/rdp-extras.json di repo) + wallpaper ----
+const STATUS_BRANCH = 'status';        // branch tempat workflow menulis rdp-status.json
 const EXTRAS_PATH = 'assets/rdp-extras.json';
 const EXTRAS_DEFAULTS = { lightshot: true, translucent: true, translucent_mode: 'clear', wallpaper: true, wallpaper_file: 'wallpaper.jpg', win10_look: true, win10_badge: true, win10_wallpaper: true, xydesk_host: true };
 const WALLPAPER_RE = /^wallpaper\.(jpg|jpeg|png|bmp)$/i;
+const SECRETS_REQUIRED = ['RDP_PASSWORD', 'TAILSCALE_AUTH_KEY'];
+const SECRETS_OPTIONAL = ['NGROK_AUTHTOKEN', 'CLEANUP_TOKEN'];
+const SESSION_TTL_DAYS = 7;
 
-async function readRepoFile(path) {
+/* ---------------------------------------------------------------- session -- */
+function b64u(buf) { return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function unb64u(str) { return Buffer.from(String(str).replace(/-/g, '+').replace(/_/g, '/'), 'base64'); }
+function sessionKey() { return crypto.createHash('sha256').update(ENV.session_secret + '|xyrdp-session').digest(); }
+
+function seal(obj) {
+  const iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv('aes-256-gcm', sessionKey(), iv);
+  const ct = Buffer.concat([c.update(JSON.stringify(obj), 'utf8'), c.final()]);
+  return b64u(Buffer.concat([iv, c.getAuthTag(), ct]));
+}
+function unseal(str) {
   try {
-    const c = await gh('GET', `/repos/${CFG.owner}/${CFG.repo}/contents/${path}?ref=${CFG.branch}`);
+    const raw = unb64u(str);
+    if (raw.length < 29) return null;
+    const d = crypto.createDecipheriv('aes-256-gcm', sessionKey(), raw.subarray(0, 12));
+    d.setAuthTag(raw.subarray(12, 28));
+    const out = Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString('utf8');
+    return JSON.parse(out);
+  } catch { return null; }
+}
+
+function cookieHeader(name, value, maxAge) {
+  const secure = process.env.VERCEL_ENV === 'production' ? '; Secure' : '';
+  return `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+}
+function readCookies(req) {
+  const out = {};
+  (req.headers.cookie || '').split(';').forEach(part => {
+    const i = part.indexOf('=');
+    if (i > 0) out[part.slice(0, i).trim()] = part.slice(i + 1).trim();
+  });
+  return out;
+}
+
+// cookie login admin (perilaku lama, dipertahankan)
+function adminSessionId() {
+  return crypto.createHash('sha256')
+    .update(((process.env.AUTH_USER) || '') + '|' + (process.env.AUTH_PASS || '') + '|xyrdp-sid')
+    .digest('hex').slice(0, 48);
+}
+function credsOk(u, p) {
+  return !!process.env.AUTH_PASS && u === (process.env.AUTH_USER || '') && p === (process.env.AUTH_PASS || '');
+}
+function adminOk(req) {
+  if (!process.env.AUTH_PASS) return true;   // tanpa AUTH_PASS = terbuka (perilaku lama)
+  const c = readCookies(req);
+  if (c.sid && c.sid === adminSessionId()) return true;
+  const h = req.headers.authorization || '';
+  if (h.startsWith('Basic ')) {
+    const [u, ...ps] = Buffer.from(h.slice(6), 'base64').toString('utf8').split(':');
+    return credsOk(u, ps.join(':'));
+  }
+  return false;
+}
+function ghUser(req) {
+  const c = readCookies(req);
+  if (!c.ghs) return null;
+  const s = unseal(c.ghs);
+  if (!s || !s.t || !s.r) return null;
+  if (s.e && Date.now() > s.e) return null;
+  const [o, r] = String(s.r).split('/');
+  if (!o || !r) return null;
+  return { token: s.t, login: s.l || '', name: s.n || '', avatar: s.a || '', owner: o, repo: r, is_owner: (s.l || '').toLowerCase() === ENV.owner_login };
+}
+
+/* ------------------------------------------------------------------ ctx ---- */
+// ctx = { kind:'admin'|'user', token, owner, repo, login, rdp_user, rdp_password }
+function makeCtx(req) {
+  if (adminOk(req)) {
+    return {
+      kind: 'admin', login: ENV.owner_login, token: ENV.token,
+      owner: ENV.owner, repo: ENV.repo, display: `${ENV.owner}/${ENV.repo}`,
+      rdp_user: ENV.rdp_user, rdp_password: ENV.rdp_password, has_admin_token: !!ENV.token,
+    };
+  }
+  const u = ghUser(req);
+  if (u) {
+    return {
+      kind: 'user', login: u.login, token: u.token,
+      owner: u.owner, repo: u.repo, display: `${u.owner}/${u.repo}`,
+      rdp_user: ENV.rdp_user, rdp_password: '', avatar: u.avatar, name: u.name,
+      is_owner: u.is_owner, has_admin_token: false,
+    };
+  }
+  return null;
+}
+
+/* ------------------------------------------------------- GitHub REST API --- */
+async function gh(token, method, apiPath, body) {
+  const res = await fetch(API + apiPath, {
+    method,
+    headers: {
+      'User-Agent': 'XyRDP-vc', 'Authorization': `Bearer ${token || ''}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    redirect: 'follow',
+  });
+  if (res.status === 204) return null;
+  const text = await res.text();
+  if (!res.ok) {
+    const err = new Error(`GitHub API ${res.status} ${apiPath}: ${text.slice(0, 300)}`);
+    err.status = res.status;
+    try { err.detail = JSON.parse(text).message; } catch { /* teks biasa */ }
+    throw err;
+  }
+  return text ? JSON.parse(text) : null;
+}
+async function ghSoft(token, method, apiPath, body) {
+  try { return { ok: true, data: await gh(token, method, apiPath, body) }; }
+  catch (e) { return { ok: false, status: e.status || 0, error: e.message }; }
+}
+
+/* ------------------------------------------------------------ repo helper -- */
+async function readRepoFile(ctx, filePath) {
+  try {
+    const c = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/${filePath}?ref=${ctx.branch || ENV.branch}`);
     if (c && c.content) return { json: JSON.parse(Buffer.from(c.content, 'base64').toString('utf8')), sha: c.sha };
   } catch { /* belum ada */ }
   return { json: null, sha: null };
 }
-function extrasResponse(cfg, fileExists) {
+function extrasResponse(ctx, cfg, fileExists) {
   const wf = String(cfg.wallpaper_file || 'wallpaper.jpg').replace(/[^a-zA-Z0-9._-]/g, '');
   return {
     config: cfg,
     wallpaper_exists: fileExists,
-    wallpaper_url: `https://raw.githubusercontent.com/${CFG.owner}/${CFG.repo}/${CFG.branch}/assets/${wf}?t=${Date.now()}`,
+    wallpaper_url: `https://raw.githubusercontent.com/${ctx.owner}/${ctx.repo}/${ctx.branch || ENV.branch}/assets/${wf}?t=${Date.now()}`,
   };
 }
 function imageInfo(buf) {
@@ -48,40 +183,25 @@ function imageInfo(buf) {
   return null;
 }
 
-async function gh(method, apiPath, body) {
-  const res = await fetch(API + apiPath, {
-    method,
-    headers: {
-      'User-Agent': 'XyRDP-vc', 'Authorization': `Bearer ${CFG.token}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    redirect: 'follow',
-  });
-  if (res.status === 204) return null;
-  const text = await res.text();
-  if (!res.ok) throw new Error(`GitHub API ${res.status} ${apiPath}: ${text.slice(0, 300)}`);
-  return text ? JSON.parse(text) : null;
-}
-
-let statusCache = { at: 0, data: null };
-async function fetchStatusFile() {
-  if (Date.now() - statusCache.at < 5000) return statusCache.data;
+const statusCache = new Map();   // key: owner/repo -> {at, data}
+async function fetchStatusFile(ctx) {
+  const key = `${ctx.owner}/${ctx.repo}`;
+  const hit = statusCache.get(key);
+  if (hit && Date.now() - hit.at < 5000) return hit.data;
   let data = null;
   // Contents API dulu = selalu segar (alamat tunnel berganti tiap sesi; alamat
   // lama bikin klien HP kena "koneksi ditolak/ditutup").
   try {
-    const c = await gh('GET', `/repos/${CFG.owner}/${CFG.repo}/contents/rdp-status.json?ref=status&t=${Date.now()}`);
+    const c = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/rdp-status.json?ref=${STATUS_BRANCH}&t=${Date.now()}`);
     if (c && c.content) data = JSON.parse(Buffer.from(c.content, 'base64').toString('utf8'));
-  } catch {}
+  } catch { /* belum ada status */ }
   if (!data) {
     try {
-      const r = await fetch(STATUS_RAW + `?t=${Date.now()}`, { cache: 'no-store' });
+      const r = await fetch(`https://raw.githubusercontent.com/${ctx.owner}/${ctx.repo}/${STATUS_BRANCH}/rdp-status.json?t=${Date.now()}`, { cache: 'no-store' });
       if (r.ok) data = JSON.parse(await r.text());
-    } catch {}
+    } catch { /* diabaikan */ }
   }
-  statusCache = { at: Date.now(), data };
+  statusCache.set(key, { at: Date.now(), data });
   return data;
 }
 
@@ -97,7 +217,7 @@ function unzipEntries(buf) {
         const csize = buf.readUInt32LE(off + 20);
         const nlen = buf.readUInt16LE(off + 28);
         const elen = buf.readUInt16LE(off + 30);
-        const clen = buf.readUInt16LE(off + 32);
+        const clen = buf.readUInt32LE(off + 32);
         const name = buf.toString('utf8', off + 46, off + 46 + nlen);
         const lhdr = buf.readUInt32LE(off + 42);
         const lnlen = buf.readUInt16LE(lhdr + 26), lelen = buf.readUInt16LE(lhdr + 28);
@@ -115,18 +235,18 @@ function unzipEntries(buf) {
   return [{ name: 'raw', txt: buf.toString('utf8') }];
 }
 
-async function activeRun() {
-  const runs = await gh('GET', `/repos/${CFG.owner}/${CFG.repo}/actions/workflows/${CFG.workflow}/runs?per_page=5`);
+async function activeRun(ctx) {
+  const runs = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/actions/workflows/${ENV.workflow}/runs?per_page=5`);
   const list = runs && runs.workflow_runs ? runs.workflow_runs : [];
   return list[0] || null;
 }
 
-async function readLog(runId) {
-  const jobs = await gh('GET', `/repos/${CFG.owner}/${CFG.repo}/actions/runs/${runId}/jobs`);
+async function readLog(ctx, runId) {
+  const jobs = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/actions/runs/${runId}/jobs`);
   const job = jobs && jobs.jobs ? jobs.jobs[0] : null;
   if (!job) return '';
-  const res = await fetch(`${API}/repos/${CFG.owner}/${CFG.repo}/actions/jobs/${job.id}/logs`, {
-    headers: { 'User-Agent': 'XyRDP-vc', 'Authorization': `Bearer ${CFG.token}` }, redirect: 'follow',
+  const res = await fetch(`${API}/repos/${ctx.owner}/${ctx.repo}/actions/jobs/${job.id}/logs`, {
+    headers: { 'User-Agent': 'XyRDP-vc', 'Authorization': `Bearer ${ctx.token}` }, redirect: 'follow',
   });
   if (!res.ok) throw new Error('log ' + res.status);
   const buf = Buffer.from(await res.arrayBuffer());
@@ -145,74 +265,240 @@ function readBody(req) {
   });
 }
 
-// ---- auth: cookie login (form custom, tanpa popup browser) + fallback header Basic ----
-const crypto = require('crypto');
-function sessionCookie() {
-  return crypto.createHash('sha256')
-    .update(((process.env.AUTH_USER) || '') + '|' + (process.env.AUTH_PASS || '') + '|xyrdp-sid')
-    .digest('hex').slice(0, 48);
-}
-function credsOk(u, p) {
-  return u === (process.env.AUTH_USER || '') && p === (process.env.AUTH_PASS || '');
-}
-function authOk(req) {
-  if (!process.env.AUTH_PASS) return true;
-  const m = (req.headers.cookie || '').match(/sid=([a-f0-9]{48})/);
-  if (m && m[1] === sessionCookie()) return true;
-  const h = req.headers.authorization || '';
-  if (h.startsWith('Basic ')) {
-    const [u, ...ps] = Buffer.from(h.slice(6), 'base64').toString('utf8').split(':');
-    return credsOk(u, ps.join(':'));
+/* --------------------------------------------- status repo user (setup) ---- */
+async function repoState(ctx) {
+  const spec = { owner: ctx.owner, repo: ctx.repo, exists: false, private: null, default_branch: null, secrets: [], missing_required: SECRETS_REQUIRED.slice(), missing_optional: SECRETS_OPTIONAL.slice(), actions_enabled: null, workflow_permissions: null, error: '' };
+  const info = await ghSoft(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}`);
+  if (!info.ok) {
+    if (info.status === 401) { spec.error = 'token'; return spec; }
+    if (info.status === 404) return spec;                 // belum dibuat
+    spec.error = info.error;
+    return spec;
   }
-  return false;
+  spec.exists = true;
+  spec.private = !!info.data.private;
+  spec.default_branch = info.data.default_branch || 'main';
+  spec.html_url = info.data.html_url;
+  const sec = await ghSoft(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/actions/secrets?per_page=100`);
+  if (sec.ok && sec.data && Array.isArray(sec.data.secrets)) {
+    spec.secrets = sec.data.secrets.map(s => s.name);
+    spec.missing_required = SECRETS_REQUIRED.filter(n => !spec.secrets.includes(n));
+    spec.missing_optional = SECRETS_OPTIONAL.filter(n => !spec.secrets.includes(n));
+  } else if (sec.status === 401) { spec.error = 'token'; return spec; }
+  const perms = await ghSoft(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/actions/permissions`);
+  if (perms.ok && perms.data) spec.actions_enabled = !!perms.data.enabled;
+  const wfperms = await ghSoft(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/actions/permissions/workflow`);
+  if (wfperms.ok && wfperms.data) spec.workflow_permissions = wfperms.data.default_workflow_permissions || null;
+  spec.ready = spec.exists && spec.missing_required.length === 0;
+  return spec;
 }
 
+async function configureRepo(ctx) {
+  const notes = [];
+  const a = await ghSoft(ctx.token, 'PUT', `/repos/${ctx.owner}/${ctx.repo}/actions/permissions`, { enabled: true, allowed_actions: 'all' });
+  notes.push(a.ok ? 'Actions diaktifkan' : `Actions: gagal (${a.status})`);
+  const w = await ghSoft(ctx.token, 'PUT', `/repos/${ctx.owner}/${ctx.repo}/actions/permissions/workflow`, { default_workflow_permissions: 'write', can_approve_pull_request_reviews: false });
+  notes.push(w.ok ? 'izin tulis GITHUB_TOKEN diset' : `izin tulis: gagal (${w.status})`);
+  return notes;
+}
+
+/* ------------------------------------------------------------- handler ----- */
 module.exports = async (req, res) => {
   const send = (code, obj, type = 'application/json') => {
     const body = type === 'application/json' ? JSON.stringify(obj) : obj;
     res.writeHead(code, { 'Content-Type': type + '; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(body);
   };
+  const redirect = (loc, cookies) => {
+    const h = { Location: loc, 'Cache-Control': 'no-store' };
+    if (cookies && cookies.length) h['Set-Cookie'] = cookies;
+    res.writeHead(302, h);
+    res.end();
+  };
+  const origin = (() => {
+    const proto = (req.headers['x-forwarded-proto'] || 'https').split(',')[0];
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
+    return `${proto}://${host}`;
+  })();
+
   try {
     const url = new URL(req.url, 'http://x');
     const p = url.pathname.replace(/^\/api\/?/, '/');
 
-    // halaman (berisi form login; tanpa data sensitif) selalu boleh diakses
+    // ---- halaman: selalu boleh (berisi layar login tanpa data sensitif) ----
     if (p === '/' || p === '/index.html') {
       try {
         return send(200, fs.readFileSync(path.join(__dirname, '..', 'assets', 'index.html')), 'text/html');
       } catch { return send(200, '<h1>XyRDP</h1>', 'text/html'); }
     }
 
-    // endpoint login: verifikasi kredensial lalu set cookie
+    /* ============================ AUTH ==================================== */
+    if (req.method === 'GET' && p === '/auth/status') {
+      const ctx = makeCtx(req);
+      return send(200, {
+        oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret),
+        admin_login: !!process.env.AUTH_PASS,
+        open_admin: !process.env.AUTH_PASS,
+        template: ENV.template,
+        mode: ctx ? ctx.kind : null,
+        login: ctx && ctx.kind === 'user' ? ctx.login : (ctx ? ENV.owner_login : null),
+        repo: ctx ? `${ctx.owner}/${ctx.repo}` : null,
+      });
+    }
+
+    if (req.method === 'GET' && p === '/auth/login') {
+      if (!ENV.oauth_id || !ENV.oauth_secret) return redirect('/?err=oauth_belum_dikonfigurasi');
+      const state = b64u(crypto.randomBytes(16));
+      const cb = `${origin}/api/auth/callback`;
+      const loc = 'https://github.com/login/oauth/authorize'
+        + `?client_id=${encodeURIComponent(ENV.oauth_id)}`
+        + `&redirect_uri=${encodeURIComponent(cb)}`
+        + `&scope=${encodeURIComponent('repo')}`
+        + `&state=${state}&allow_signup=0`;
+      return redirect(loc, [cookieHeader('ost', state, 900)]);
+    }
+
+    if (req.method === 'GET' && p === '/auth/callback') {
+      const code = url.searchParams.get('code');
+      const state = url.searchParams.get('state') || '';
+      const cookies = readCookies(req);
+      if (!code) return redirect('/?err=github_batal');
+      if (!cookies.ost || cookies.ost !== state) return redirect('/?err=state_tidak_cocok');
+      const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'XyRDP-vc' },
+        body: JSON.stringify({ client_id: ENV.oauth_id, client_secret: ENV.oauth_secret, code, redirect_uri: `${origin}/api/auth/callback` }),
+      });
+      const tok = await tokenRes.json().catch(() => ({}));
+      if (!tok.access_token) return redirect('/?err=' + encodeURIComponent(tok.error || 'token_github_gagal'));
+      const meRes = await fetch(API + '/user', { headers: { 'User-Agent': 'XyRDP-vc', 'Authorization': `Bearer ${tok.access_token}`, 'X-GitHub-Api-Version': '2022-11-28' } });
+      if (!meRes.ok) return redirect('/?err=profil_github_gagal');
+      const me = await meRes.json();
+      const payload = {
+        t: tok.access_token, l: me.login, n: me.name || '', a: me.avatar_url || '',
+        r: `${me.login}/${ENV.repo}`,
+        e: Date.now() + SESSION_TTL_DAYS * 24 * 3600 * 1000,
+      };
+      return redirect('/', [cookieHeader('ghs', seal(payload), SESSION_TTL_DAYS * 24 * 3600), cookieHeader('ost', '', 0)]);
+    }
+
+    if (req.method === 'POST' && p === '/auth/logout') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': [cookieHeader('ghs', '', 0), cookieHeader('sid', '', 0)] });
+      return res.end(JSON.stringify({ ok: true }));
+    }
+
+    // login admin (form lama: user + kata sandi)
     if (req.method === 'POST' && p === '/login') {
       if (!process.env.AUTH_PASS) return send(200, { ok: true, note: 'auth tidak aktif' });
       const body = await readBody(req);
-      if (!credsOk(String(body.user || ''), String(body.pass || '')))
-        return send(403, { error: 'Kredensial salah' });
-      res.setHeader('Set-Cookie',
-        `sid=${sessionCookie()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 3600}${process.env.VERCEL_ENV === 'production' ? '; Secure' : ''}`);
-      return send(200, { ok: true });
+      if (!credsOk(String(body.user || ''), String(body.pass || ''))) return send(403, { error: 'Kredensial salah' });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookieHeader('sid', adminSessionId(), SESSION_TTL_DAYS * 24 * 3600) });
+      return res.end(JSON.stringify({ ok: true }));
     }
 
-    if (!authOk(req)) return send(403, { error: 'unauthorized' });
+    /* ============================ GATE ==================================== */
+    const ctx = makeCtx(req);
+    if (!ctx) return send(403, { error: 'unauthorized', need_login: true });
 
+    /* ============================ /me ===================================== */
+    if (req.method === 'GET' && p === '/me') {
+      if (ctx.kind === 'admin') {
+        const st = await ghSoft(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}`);
+        return send(200, {
+          mode: 'admin', login: ENV.owner_login, owner: ctx.owner, repo: ctx.repo,
+          repo_url: `https://github.com/${ctx.owner}/${ctx.repo}`,
+          repo_exists: st.ok, private: st.ok ? !!st.data.private : null,
+          ready: st.ok, template: ENV.template, oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret),
+          secrets_url: `https://github.com/${ctx.owner}/${ctx.repo}/settings/secrets/actions`,
+        });
+      }
+      const st = await repoState(ctx);
+      if (st.error === 'token') return send(401, { error: 'Token GitHub kamu sudah tidak berlaku — silakan login lagi.', need_login: true });
+      return send(200, {
+        mode: 'user', login: ctx.login, name: ctx.name, avatar: ctx.avatar,
+        owner: ctx.owner, repo: ctx.repo, repo_url: `https://github.com/${ctx.owner}/${ctx.repo}`,
+        repo_exists: st.exists, private: st.private, default_branch: st.default_branch,
+        secrets: st.secrets, missing_required: st.missing_required, missing_optional: st.missing_optional,
+        actions_enabled: st.actions_enabled, workflow_permissions: st.workflow_permissions,
+        ready: !!st.ready, is_owner: !!ctx.is_owner,
+        template: ENV.template,
+        template_url: `https://github.com/${ENV.template}`,
+        secrets_url: `https://github.com/${ctx.owner}/${ctx.repo}/settings/secrets/actions`,
+        setup_note: st.error || '',
+      });
+    }
+
+    /* ============================ /setup ================================== */
+    // Buat repo user dari template (kalau belum ada) + rapikan izin Actions.
+    if (req.method === 'POST' && p === '/setup') {
+      if (ctx.kind === 'admin') return send(400, { error: 'Mode admin: repo sudah diatur lewat env Vercel.' });
+      const body = await readBody(req);
+      const name = String(body.name || ENV.repo).replace(/[^A-Za-z0-9._-]/g, '').slice(0, 90) || ENV.repo;
+      const isPrivate = !!body.private;
+      const notes = [];
+      let st = await repoState(ctx);
+      if (st.error === 'token') return send(401, { error: 'Token GitHub kamu sudah tidak berlaku — login lagi.', need_login: true });
+      if (!st.exists) {
+        const [tplOwner, tplRepo] = ENV.template.split('/');
+        const gen = await ghSoft(ctx.token, 'POST', `/repos/${tplOwner}/${tplRepo}/generate`, {
+          owner: ctx.login, name, description: 'Sesi RDP Windows (XyRDP) — otomatis dari template',
+          include_all_branches: false, private: isPrivate,
+        });
+        if (!gen.ok) {
+          return send(gen.status === 422 ? 422 : 500, {
+            error: gen.status === 422
+              ? `Tidak bisa membuat repo "${ctx.login}/${name}" — kemungkinan nama itu sudah dipakai di akunmu (atau invalid). Ganti nama lalu coba lagi.`
+              : `Gagal membuat repo dari template: ${gen.error}`,
+          });
+        }
+        notes.push(`Repo dibuat: ${ctx.login}/${name} (dari template ${ENV.template})`);
+      } else if (st.repo_recreated) { notes.push('Repo sudah ada'); }
+      if (name !== ctx.repo) {
+        // repo sudah ada dengan nama lain: pakai repo yang ada supaya sesi tetap nyambung
+        notes.push(`Memakai repo yang sudah ada: ${ctx.owner}/${ctx.repo}`);
+      }
+      const cfgNotes = await configureRepo(ctx);
+      const fresh = await repoState(ctx);
+      return send(200, { ok: true, notes: notes.concat(cfgNotes), me: {
+        owner: ctx.owner, repo: ctx.repo, repo_exists: fresh.exists, ready: !!fresh.ready,
+        missing_required: fresh.missing_required, secrets: fresh.secrets,
+        actions_enabled: fresh.actions_enabled, workflow_permissions: fresh.workflow_permissions,
+      } });
+    }
+
+    /* ============================ /config ================================= */
     if (req.method === 'GET' && p === '/config') {
-      return send(200, { owner: CFG.owner, repo: CFG.repo, workflow: CFG.workflow, rdp_user: CFG.rdp_user, rdp_password: CFG.rdp_password, rdp_port: 3389 });
+      const base = {
+        owner: ctx.owner, repo: ctx.repo, workflow: ENV.workflow, rdp_user: ctx.rdp_user, rdp_port: 3389,
+        mode: ctx.kind, login: ctx.login, template: ENV.template,
+        repo_url: `https://github.com/${ctx.owner}/${ctx.repo}`,
+        oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret),
+        password_from_secret: ctx.kind === 'user',
+      };
+      if (ctx.kind === 'admin') return send(200, Object.assign(base, { rdp_password: ctx.rdp_password }));
+      const st = await repoState(ctx);
+      base.secrets_url = `https://github.com/${ctx.owner}/${ctx.repo}/settings/secrets/actions`;
+      base.rdp_password = '';
+      base.repo_exists = st.exists;
+      base.missing_required = st.missing_required;
+      base.ready = !!st.ready;
+      return send(200, base);
     }
+
+    /* ============================ /status ================================= */
     if (req.method === 'GET' && p === '/status') {
-      const [file, run] = await Promise.all([fetchStatusFile(), activeRun()]);
+      const [file, run] = await Promise.all([fetchStatusFile(ctx), activeRun(ctx).catch(() => null)]);
       let session = file;
       if ((!session || !session.active) && run && (run.status === 'in_progress' || run.status === 'queued')) {
         try {
-          const txt = await readLog(run.id);
+          const txt = await readLog(ctx, run.id);
           const mRd = txt.match(/RUSTDESK ID\s*:\s*([0-9][0-9\s]{5,14})/);
           const mTun = txt.match(/TUNNEL\s*:\s*([A-Za-z0-9.\-]+):(\d+)/);
           if (mRd || mTun) {
             const rdId = mRd ? mRd[1].replace(/\s+/g, '') : '';
             session = {
               active: true,
-              rdp_port: 3389, rdp_user: CFG.rdp_user,
+              rdp_port: 3389, rdp_user: ctx.rdp_user,
               started_at: run.run_started_at || run.created_at,
               expires_at: new Date(Date.parse(run.run_started_at || run.created_at) + 360 * 60000).toISOString(),
               akses: {
@@ -226,11 +512,23 @@ module.exports = async (req, res) => {
               source: 'log',
             };
           }
-        } catch {}
+        } catch { /* log belum siap */ }
       }
-      return send(200, { session, run: run ? { id: run.id, status: run.status, conclusion: run.conclusion, created_at: run.run_started_at || run.created_at, html_url: run.html_url } : null });
+      return send(200, {
+        session,
+        repo: `${ctx.owner}/${ctx.repo}`,
+        run: run ? { id: run.id, status: run.status, conclusion: run.conclusion, created_at: run.run_started_at || run.created_at, html_url: run.html_url } : null,
+      });
     }
+
+    /* ============================ /start ================================== */
     if (req.method === 'POST' && p === '/start') {
+      if (ctx.kind === 'user') {
+        const st = await repoState(ctx);
+        if (st.error === 'token') return send(401, { error: 'Token GitHub kamu sudah tidak berlaku — login lagi.', need_login: true });
+        if (!st.exists) return send(400, { error: `Repo ${ctx.owner}/${ctx.repo} belum ada. Buka panel "Repo kamu" → Tombol "BUAT REPO DARI TEMPLATE".` });
+        if (st.missing_required.length) return send(400, { error: `Secret repo kamu belum lengkap: ${st.missing_required.join(', ')}. Isi dulu di ${ctx.owner}/${ctx.repo} → Settings → Secrets and variables → Actions.` });
+      }
       const body = await readBody(req);
       const inputs = {
         durasi_menit: String(body.durasi || '360'),
@@ -240,39 +538,45 @@ module.exports = async (req, res) => {
         win10: (body.win10 === 'tidak' ? 'tidak' : 'ya'),
         grafis: (body.grafis === 'tidak' ? 'tidak' : 'software'),
       };
-      await gh('POST', `/repos/${CFG.owner}/${CFG.repo}/actions/workflows/${CFG.workflow}/dispatches`, { ref: CFG.branch, inputs });
-      return send(200, { ok: true, inputs });
+      await gh(ctx.token, 'POST', `/repos/${ctx.owner}/${ctx.repo}/actions/workflows/${ENV.workflow}/dispatches`, { ref: ctx.branch || ENV.branch, inputs });
+      return send(200, { ok: true, inputs, repo: `${ctx.owner}/${ctx.repo}` });
     }
+
+    /* ============================ /stop =================================== */
     if (req.method === 'POST' && p === '/stop') {
       const body = await readBody(req);
       let runId = body.run_id;
       if (!runId) {
-        const run = await activeRun();
+        const run = await activeRun(ctx);
         if (!run) return send(400, { error: 'tidak ada run untuk di-stop' });
         runId = run.id;
       }
-      await gh('POST', `/repos/${CFG.owner}/${CFG.repo}/actions/runs/${runId}/cancel`, {});
+      await gh(ctx.token, 'POST', `/repos/${ctx.owner}/${ctx.repo}/actions/runs/${runId}/cancel`, {});
       return send(200, { ok: true, run_id: runId });
     }
+
+    /* ============================ /logs =================================== */
     if (req.method === 'GET' && p === '/logs') {
       let runId = url.searchParams.get('run_id');
       if (!runId) {
-        const run = await activeRun();
+        const run = await activeRun(ctx);
         if (!run) return send(400, { error: 'belum ada run' });
         runId = run.id;
       }
-      const txt = await readLog(Number(runId));
+      const txt = await readLog(ctx, Number(runId));
       const lines = txt.split('\n');
       return send(200, { run_id: runId, total_lines: lines.length, log: lines.slice(-600).join('\n') });
     }
+
+    /* ============================ /extras ================================= */
     if (req.method === 'GET' && p === '/extras') {
-      const { json } = await readRepoFile(EXTRAS_PATH);
+      const { json } = await readRepoFile(ctx, EXTRAS_PATH);
       const cfg = Object.assign({}, EXTRAS_DEFAULTS, json || {});
-      return send(200, extrasResponse(cfg, !!(json && json.wallpaper_file)));
+      return send(200, extrasResponse(ctx, cfg, !!(json && json.wallpaper_file)));
     }
     if (req.method === 'POST' && p === '/extras') {
       const body = await readBody(req);
-      const { json: cur, sha } = await readRepoFile(EXTRAS_PATH);
+      const { json: cur, sha } = await readRepoFile(ctx, EXTRAS_PATH);
       const next = Object.assign({}, EXTRAS_DEFAULTS, cur || {});
       for (const k of ['lightshot', 'translucent', 'wallpaper', 'xydesk_host', 'win10_look', 'win10_badge', 'win10_wallpaper']) {
         if (k in body) next[k] = !!body[k];
@@ -282,10 +586,12 @@ module.exports = async (req, res) => {
         if (['normal', 'opaque', 'clear', 'blur', 'acrylic'].includes(m)) next.translucent_mode = m;
       }
       const content = Buffer.from(JSON.stringify(next, null, 2) + '\n', 'utf8').toString('base64');
-      await gh('PUT', `/repos/${CFG.owner}/${CFG.repo}/contents/${EXTRAS_PATH}`,
-        { message: 'XyRDP: update konfigurasi ekstra (via dashboard)', content, branch: CFG.branch, ...(sha ? { sha } : {}) });
+      await gh(ctx.token, 'PUT', `/repos/${ctx.owner}/${ctx.repo}/contents/${EXTRAS_PATH}`,
+        { message: 'XyRDP: update konfigurasi ekstra (via dashboard)', content, branch: ctx.branch || ENV.branch, ...(sha ? { sha } : {}) });
       return send(200, { ok: true, config: next });
     }
+
+    /* ============================ /wallpaper ============================== */
     if (req.method === 'POST' && p === '/wallpaper') {
       const body = await readBody(req);
       const m = /^data:image\/(png|jpe?g|bmp);base64,([A-Za-z0-9+/=\s]+)$/.exec(String(body.image || ''));
@@ -294,35 +600,38 @@ module.exports = async (req, res) => {
       if (buf.length > 3 * 1024 * 1024) return send(400, { error: 'Ukuran gambar maksimal 3 MB (dashboard mengecilkan otomatis)' });
       const ext = imageInfo(buf);
       if (!ext) return send(400, { error: 'File bukan gambar jpg/png/bmp yang valid' });
+      const br = ctx.branch || ENV.branch;
       const target = `assets/wallpaper.${ext}`;
       // hapus wallpaper lama dengan ekstensi berbeda supaya tidak dobel
       try {
-        const list = await gh('GET', `/repos/${CFG.owner}/${CFG.repo}/contents/assets?ref=${CFG.branch}`);
+        const list = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/assets?ref=${br}`);
         if (Array.isArray(list)) {
           for (const f of list) {
             if (WALLPAPER_RE.test(f.name) && f.name !== `wallpaper.${ext}`) {
-              await gh('DELETE', `/repos/${CFG.owner}/${CFG.repo}/contents/${f.path}`,
-                { message: `XyRDP: hapus ${f.name} (diganti wallpaper baru)`, sha: f.sha, branch: CFG.branch });
+              await gh(ctx.token, 'DELETE', `/repos/${ctx.owner}/${ctx.repo}/contents/${f.path}`,
+                { message: `XyRDP: hapus ${f.name} (diganti wallpaper baru)`, sha: f.sha, branch: br });
             }
           }
         }
       } catch { /* abaikan */ }
       let curSha = null;
-      try { const cur = await gh('GET', `/repos/${CFG.owner}/${CFG.repo}/contents/${target}?ref=${CFG.branch}`); curSha = cur && cur.sha; } catch { /* file baru */ }
-      await gh('PUT', `/repos/${CFG.owner}/${CFG.repo}/contents/${target}`, {
+      try { const cur = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/${target}?ref=${br}`); curSha = cur && cur.sha; } catch { /* file baru */ }
+      await gh(ctx.token, 'PUT', `/repos/${ctx.owner}/${ctx.repo}/contents/${target}`, {
         message: `XyRDP: wallpaper baru (${Math.round(buf.length / 1024)} KB, via dashboard)`,
-        content: buf.toString('base64'), branch: CFG.branch, ...(curSha ? { sha: curSha } : {}),
+        content: buf.toString('base64'), branch: br, ...(curSha ? { sha: curSha } : {}),
       });
-      const { json: cfgJson, sha: cfgSha } = await readRepoFile(EXTRAS_PATH);
+      const { json: cfgJson, sha: cfgSha } = await readRepoFile(ctx, EXTRAS_PATH);
       const next = Object.assign({}, EXTRAS_DEFAULTS, cfgJson || {}, { wallpaper: true, wallpaper_file: `wallpaper.${ext}` });
-      await gh('PUT', `/repos/${CFG.owner}/${CFG.repo}/contents/${EXTRAS_PATH}`, {
+      await gh(ctx.token, 'PUT', `/repos/${ctx.owner}/${ctx.repo}/contents/${EXTRAS_PATH}`, {
         message: 'XyRDP: aktifkan wallpaper baru (via dashboard)',
-        content: Buffer.from(JSON.stringify(next, null, 2) + '\n', 'utf8').toString('base64'), branch: CFG.branch, ...(cfgSha ? { sha: cfgSha } : {}),
+        content: Buffer.from(JSON.stringify(next, null, 2) + '\n', 'utf8').toString('base64'), branch: br, ...(cfgSha ? { sha: cfgSha } : {}),
       });
       return send(200, { ok: true, file: `wallpaper.${ext}`, size_kb: Math.round(buf.length / 1024) });
     }
+
     return send(404, { error: 'not found' });
   } catch (e) {
-    return send(500, { error: String(e.message || e) });
+    if (e && e.status === 401) return send(401, { error: 'Token GitHub tidak valid / kedaluwarsa — silakan login lagi.', need_login: true });
+    return send(500, { error: String((e && e.message) || e) });
   }
 };

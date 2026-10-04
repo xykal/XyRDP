@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "hostname": "xyrdp-fun4-59",
+  "active": true,
+  "hostname": "xyrdp-gpu-60",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
@@ -8,12 +8,12 @@
   "rdp_user": "xyadmin",
   "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
   "rdp_denyts": true,
-  "started_at": "2026-10-04T00:48:33Z",
-  "expires_at": "2026-10-04T06:43:33Z",
-  "duration_menit": 355,
-  "run_id": "37166065076",
-  "run_number": "59",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37166065076",
+  "started_at": "2026-10-04T01:33:30Z",
+  "expires_at": "2026-10-04T01:48:30Z",
+  "duration_menit": 15,
+  "run_id": "37168365463",
+  "run_number": "60",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37168365463",
   "mode": "bersih+win10",
   "win10": {
     "look": "ok",
@@ -39,37 +39,46 @@
     "akses": "(menyusul)",
     "note": "Host siap dipakai klien XyDesk Remote mode Koneksi RDP (Host+Port tunnel). Kunci WinStations\\RDP-Tcp sengaja TIDAK ditulis supaya listener 3389 tidak mati di runner GitHub."
   },
+  "grafis": {
+    "opengl": "llvmpipe (Mesa 26.2.3)",
+    "vulkan": "lavapipe (CPU)",
+    "files": "opengl32.dll,libgallium_wgl.dll,vulkan_lvp.dll",
+    "mesa": "26.2.3",
+    "mode": "software",
+    "note": "GPU software (CPU): OpenGL 4.5 (llvmpipe) + Vulkan (lavapipe) + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat.",
+    "adapters": "Microsoft Hyper-V Video",
+    "dir": "C:\\XyRDP\\grafis"
+  },
   "akses": {
     "mode": "tailscale",
     "rustdesk": {
       "status": "skip",
       "service": null,
+      "id": "",
       "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
-      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password",
-      "id": ""
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
     },
     "tailscale": {
       "status": "ok",
-      "ip": "100.121.142.91",
-      "magicdns": "xyrdp-fun4-59.tail01cd7c.ts.net.",
-      "hostname": "xyrdp-fun4-59",
+      "ip": "100.98.172.58",
+      "magicdns": "xyrdp-gpu-60.tail01cd7c.ts.net.",
+      "hostname": "xyrdp-gpu-60",
       "funnel": "ok",
-      "funnel_addr": "xyrdp-fun4-59.tail01cd7c.ts.net:10000",
-      "funnel_raw": "funnel exit=0 msg=Available on the internet: |-- tcp://xyrdp-fun4-59.tail01cd7c.ts.net:10000 |-- tcp://100.121.142.91:10000 |-- tcp://[fd7a:115c:a1e0::ce39:8e5c]:10000 |--> tcp://127.0.0.1:3389 Funnel started and running in the background. To disable the proxy, run: tailscale funnel --tcp=10000 off | || status exit=0 msg={ \"TCP\": { \"10000\": { \"TCPForward\": \"127.0.0.1:3389\" } }, \"AllowFunnel\": { \"xyrdp-fun4-59.tail01cd7c.ts.net:10000\": true } } | || cert exit=0 msg=Wrote public cert to xyrdp-fun4-59.tail01cd7c.ts.net.crt Wrote private key to xyrdp-fun4-59.tail01cd7c.ts.net.key |",
-      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.121.142.91 Port=3389 di XyDesk Remote (atau mstsc). Funnel: xyrdp-fun4-59.tail01cd7c.ts.net:10000"
+      "funnel_addr": "xyrdp-gpu-60.tail01cd7c.ts.net:10000",
+      "funnel_raw": "funnel exit=0 msg=Available on the internet: |-- tcp://xyrdp-gpu-60.tail01cd7c.ts.net:10000 |-- tcp://100.98.172.58:10000 |-- tcp://[fd7a:115c:a1e0::f939:ac3b]:10000 |--> tcp://127.0.0.1:3389 Funnel started and running in the background. To disable the proxy, run: tailscale funnel --tcp=10000 off | || status exit=0 msg={ \"TCP\": { \"10000\": { \"TCPForward\": \"127.0.0.1:3389\" } }, \"AllowFunnel\": { \"xyrdp-gpu-60.tail01cd7c.ts.net:10000\": true } } | || cert exit=0 msg=Wrote public cert to xyrdp-gpu-60.tail01cd7c.ts.net.crt Wrote private key to xyrdp-gpu-60.tail01cd7c.ts.net.key |",
+      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.98.172.58 Port=3389 di XyDesk Remote (atau mstsc). Funnel: xyrdp-gpu-60.tail01cd7c.ts.net:10000"
     },
     "tunnel": {
       "status": "skip",
       "provider": "",
+      "host": "",
+      "port": 0,
+      "address": "",
       "rdp_local": "",
       "selftest": "",
       "outside": "",
       "note2": "",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin",
-      "host": "",
-      "port": 0,
-      "address": ""
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
     }
-  },
-  "stopped_at": "2026-10-04T01:19:05Z"
+  }
 }

@@ -10,6 +10,19 @@
 $XyTag = 'XyRDP:alive'
 . "$PSScriptRoot/lib-common.ps1"
 
+# jalankan exe dengan batas waktu keras (menggantung = musuh utama di runner)
+function Invoke-Ts([string]$exe, [string[]]$args, [int]$sec = 60) {
+  $res = @{ code = $null; out = '' }
+  $o = Join-Path $env:TEMP ("ts-" + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.txt')
+  try {
+    $p = Start-Process -FilePath $exe -ArgumentList $args -PassThru -NoNewWindow -RedirectStandardOutput $o -RedirectStandardError $o -ErrorAction Stop
+    try { $p | Wait-Process -Timeout $sec -ErrorAction Stop; $res.code = $p.ExitCode }
+    catch { $res.code = -1; try { $p | Stop-Process -Force -ErrorAction SilentlyContinue } catch {} }
+  } catch {}
+  if (Test-Path $o) { $res.out = (Get-Content $o -Raw -ErrorAction SilentlyContinue) }
+  return $res
+}
+
 $dur = [int]($env:DUR -replace '\D', ''); if ($dur -lt 10) { $dur = 360 }; if ($dur -gt 355) { $dur = 355 }
 $buffer = if ($dur -ge 15) { 6 } else { 2 }
 $stop = (Get-Date).AddMinutes($dur - $buffer)
@@ -29,7 +42,7 @@ while ((Get-Date) -lt $stop) {
   $left = ($stop - (Get-Date)).ToString('hh\:mm')
 
   # info akses dari status file (sudah diisi setup-akses.ps1)
-  $rdId = '?'; $tun = '?'; $tsIp = ''
+  $rdId = '?'; $tun = '?'; $tsIp = ''; $tsFunnel = ''; $tsDnsPub = ''
   $st = Read-Status
   if ($st -and $st.akses) {
     if ($st.akses.rustdesk -and $st.akses.rustdesk.id) { $rdId = $st.akses.rustdesk.id }
@@ -48,6 +61,37 @@ while ((Get-Date) -lt $stop) {
         Log "tailscale: state=$($stt.BackendState) - percobaan naik ulang"
         try { & $tsExe up --timeout=60s 2>&1 | Out-Null } catch {}
       }
+      # funnel: dipasang ulang tiap siklus (idempoten) supaya ingress tetap terbit,
+      # lalu dicek dari node: apakah <node>.<tailnet>.ts.net sudah ada di DNS publik.
+      try {
+        $fx = Invoke-Ts $tsExe @('funnel', '--bg', '--tcp', '10000', 'tcp://127.0.0.1:3389') 60
+        $tsFunnel = if ($fx.code -eq 0) { 'ok' } else { "gagal($($fx.code))" }
+        $dnsName = "$($stt.Self.DNSName)".TrimEnd('.')
+        if ($dnsName) {
+          $cur = Get-Command curl.exe -ErrorAction SilentlyContinue
+          $jx = Join-Path $env:TEMP 'xyrdp-dns.json'
+          if ($cur) { & $cur.Source -sS -m 20 -o $jx "https://dns.google/resolve?name=$dnsName&type=A" 2>&1 | Out-Null }
+          $ips = @()
+          try {
+            $dj = Get-Content $jx -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
+            $ips = @($dj.Answer | Where-Object { $_.type -eq 1 } | ForEach-Object { $_.data })
+          } catch {}
+          $tsDnsPub = if ($ips.Count -gt 0) { ($ips -join ',') } else { 'belum' }
+          $stNow = Read-Status
+          $oldPub = ''
+          if ($stNow -and $stNow.akses -and $stNow.akses.tailscale) { $oldPub = "$($stNow.akses.tailscale.dns_publik)" }
+          if ($stNow -and $stNow.akses -and $stNow.akses.tailscale) {
+            $stNow.akses.tailscale.funnel = $tsFunnel
+            $stNow.akses.tailscale.dns_publik = $tsDnsPub
+            $stNow.akses.tailscale.dns_check_at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            try { Update-Status @{ akses = $stNow.akses } | Out-Null } catch {}
+            if ($tsDnsPub -ne 'belum' -and $oldPub -ne $tsDnsPub) {
+              try { & "$PSScriptRoot/publish-status.ps1" -Active $true | Out-Null } catch {}
+              Log "FUNNEL TERBIT di DNS publik: $dnsName -> $tsDnsPub"
+            }
+          }
+        }
+      } catch { Log "cek funnel gagal (tidak kritis): $($_.Exception.Message)" }
     }
   }
 
@@ -78,7 +122,7 @@ while ((Get-Date) -lt $stop) {
     }
   }
 
-  Log "hidup • Tailscale=$tsIp • RustDesk=$rdId • tunnel=$tun$(if ($tunHealth) { " ($tunHealth)" }) • sesi RDP=$sess • proses RD=$rdProc • sisa=$left"
+  Log "hidup • Tailscale=$tsIp • funnel=$(if ($tsFunnel) { $tsFunnel } else { '?' }) dns=$(if ($tsDnsPub) { $tsDnsPub } else { '?' }) • RustDesk=$rdId • tunnel=$tun$(if ($tunHealth) { " ($tunHealth)" }) • sesi RDP=$sess • proses RD=$rdProc • sisa=$left"
 
   # perpanjang tunnel pinggy sebelum kedaluwarsa (60 menit)
   if ((Get-Date) -ge $pinggyRenew) {

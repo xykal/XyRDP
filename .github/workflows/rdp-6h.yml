@@ -1,22 +1,10 @@
-name: XyRDP - Windows 10 Style RDP 6 Jam (RustDesk / Tunnel)
+name: XyRDP VALIDASI — RDP baru dijeda
 run-name: "VALIDASI XyRDP ${{ inputs.hostname || 'xyrdp' }} • ${{ inputs.durasi_menit || '15' }} mnt"
 
 # ============================================================================
-#  XyRDP v2 — Windows "gaya 10" di runner GitHub, akses TANPA Tailscale dan
-#  TANPA apa pun yang di-self-host:
-#
-#   - runs-on: windows-2022  = Windows Server 2022 (build 10.0.20348) yang
-#     UI/kernel-nya SAMA dengan Windows 10 21H2, lalu di-tweak
-#     (setup-win10.ps1) supaya terasa Windows 10, bukan Server.
-#     CATATAN: runner GitHub tidak menyediakan image Windows 10 desktop;
-#     windows-2022 adalah yang paling dekat + tweak.
-#   - Akses 1: RustDesk (relay publik rs-*.rustdesk.com, gratis, tanpa VPN)
-#   - Akses 2: tunnel TCP ke port 3389 -> Remote Desktop Connection (mstsc)
-#     provider: bore.pub (tanpa akun) atau ngrok (butuh NGROK_AUTHTOKEN)
-#   - Tidak ada port publik di VM; 3389 hanya ditembus lewat tunnel/RustDesk
-#   - Sesi ditahan sampai durasi (maks 360 menit = batas keras GitHub)
-#   - Status sesi ditulis ke branch `status` -> dibaca dashboard web
-#   - Password TIDAK PERNAH masuk log/commit/file status
+#  PAUSE DARURAT (2026-10-04): sesi RDP validasi dinonaktifkan.
+#  Job selalu dilewati sebelum GitHub-hosted runner dialokasikan.
+#  Run yang telah berjalan tidak dibatalkan oleh perubahan ini.
 # ============================================================================
 
 on:
@@ -122,10 +110,8 @@ concurrency:
 
 jobs:
   rdp:
-    # Hanya pemilik repo yang boleh menjalankan job RDP. Ini juga berlaku
-    # pada repo hasil template: tiap pengguna hanya dapat menyalakan repo sendiri.
-    # Kondisi di level job dievaluasi sebelum runner Windows-hosted dialokasikan.
-    if: ${{ github.actor == github.repository_owner }}
+    # PAUSE: jangan alokasikan runner atau memulai sesi baru.
+    if: ${{ false }}
     # windows-2022 = Server 2022 (UI/kernel Windows 10 21H2). Jangan pakai
     # windows-latest: sejak Juni 2026 label itu = Windows Server 2025 (UI Win11).
     runs-on: windows-2022

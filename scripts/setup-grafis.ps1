@@ -84,12 +84,39 @@ if ($galium) { $files += 'libgallium_wgl.dll' }
 if ($lvpDll) { $files += 'vulkan_lvp.dll' }
 
 # ---- 4) pasang llvmpipe (OpenGL) sistem-wide -------------------------------
+# DLL di System32 dimiliki TrustedInstaller -> harus takeown + icacls dulu,
+# kalau tidak: "Access to the path 'C:\Windows\System32\opengl32.dll' is denied".
+function Install-SysFile([string]$src, [string]$dst) {
+  if (-not $src) { return $false }
+  if (-not (Test-Path $dst)) { Copy-Item $src $dst -Force -ErrorAction Stop; return $true }
+  $company = ''
+  try { $company = (Get-Item $dst).VersionInfo.CompanyName } catch {}
+  if ($company -like 'Mesa*') { Copy-Item $src $dst -Force -ErrorAction Stop; return $true }
+  & takeown.exe /f $dst /a 2>&1 | Out-Null
+  & icacls.exe $dst /grant '*S-1-5-32-544:F' 2>&1 | Out-Null
+  Copy-Item $src $dst -Force -ErrorAction Stop
+  & icacls.exe $dst /setowner 'NT SERVICE\TrustedInstaller' 2>&1 | Out-Null
+  return $true
+}
+
+$gGLInstall = 'belum'
 if ($opengl) {
   Copy-Item "$sys32\opengl32.dll" (Join-Path $bkp 'opengl32.dll') -Force -ErrorAction SilentlyContinue
-  Copy-Item $opengl "$sys32\opengl32.dll" -Force
-  if ($galium) { Copy-Item $galium "$sys32\libgallium_wgl.dll" -Force }
-  if ($dxil)   { Copy-Item $dxil   "$sys32\dxil.dll" -Force }
-  Log "  llvmpipe terpasang: $sys32\opengl32.dll (asli di-backup ke $bkp)"
+  try {
+    Install-SysFile $opengl "$sys32\opengl32.dll" | Out-Null
+    Install-SysFile $galium "$sys32\libgallium_wgl.dll" | Out-Null
+    Install-SysFile $dxil   "$sys32\dxil.dll" | Out-Null
+    $vi = (Get-Item "$sys32\opengl32.dll").VersionInfo
+    $gGLInstall = "mesa $($vi.FileVersion) [$($vi.CompanyName)]"
+    Log "  llvmpipe terpasang: $sys32\opengl32.dll -> $gGLInstall (asli di-backup ke $bkp)"
+  } catch {
+    $gGLInstall = 'gagal: ' + $_.Exception.Message
+    Log "  GAGAL pasang Mesa ke System32: $($_.Exception.Message)"
+    $glDir = Join-Path $root 'gl'
+    New-Item -ItemType Directory -Force -Path $glDir | Out-Null
+    foreach ($f in @($opengl, $galium, $dxil)) { if ($f) { Copy-Item $f $glDir -Force -ErrorAction SilentlyContinue } }
+    Log "  fallback: DLL Mesa disalin ke $glDir (perlu disalin ke folder aplikasi)"
+  }
 } else {
   Log '  opengl32.dll Mesa tidak ketemu di arsip (OpenGL dilewati)'
 }
@@ -111,25 +138,83 @@ if ($lvpDll -and $lvpIcd) {
   Log '  lavapipe tidak ada di arsip (Vulkan dilewati)'
 }
 
-# ---- 6) uji cepat: minta versi OpenGL yang benar-benar didapat -------------
+# ---- 6) uji nyata: versi OpenGL/Vulkan yang benar-benar didapat ------------
 $py = Get-Command python.exe -ErrorAction SilentlyContinue
+if (-not $py) { $py = Get-Command py.exe -ErrorAction SilentlyContinue }
+$env:GALLIUM_DRIVER = 'llvmpipe'; $env:LIBGL_ALWAYS_SOFTWARE = '1'
+if ($icd) { $env:VK_DRIVER_FILES = $icd; $env:VK_ADD_DRIVER_FILES = $icd }
+
 if ($py -and $opengl) {
-  $env:GALLIUM_DRIVER = 'llvmpipe'; $env:LIBGL_ALWAYS_SOFTWARE = '1'
   try { & $py.Source -m pip install --quiet --disable-pip-version-check moderngl 2>&1 | Out-Null } catch {}
   $code = 'import moderngl;c=moderngl.create_standalone_context();i=c.info;print(i.get("GL_VERSION",""),"|",i.get("GL_RENDERER",""),"|",i.get("GL_VENDOR",""))'
   try {
     $out = ((& $py.Source -c $code 2>&1) | Out-String).Trim()
-    if ($out -match '\|') { $gOpenGL = ($out -replace '\s+', ' ') } else { Log "  uji OpenGL: $out" }
+    if ($out -match '\|') { $gOpenGL = ($out -replace '\s+', ' ') } else { Log "  uji OpenGL: $(($out -split "`n" | Select-Object -Last 1))" }
   } catch { Log "  uji OpenGL gagal: $($_.Exception.Message)" }
 }
 
-if (-not $gOpenGL) { $gOpenGL = 'llvmpipe (Mesa ' + $gMesa + ')' }
-$gNote = 'GPU software (CPU): OpenGL 4.5 (llvmpipe) + Vulkan (lavapipe) + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat.'
-Log "  selesai: OpenGL=$gOpenGL | Vulkan=$(if ($gVulkan) { $gVulkan } else { '-' }) | adapter=$gAdapters"
+# Vulkan: buka instance + baca nama device lewat loader (ctypes, tanpa unduhan)
+if ($py) {
+  $vkCode = @'
+import ctypes
+try:
+    vk = ctypes.CDLL("vulkan-1.dll")
+except OSError:
+    print("loader-tidak-ada")
+    raise SystemExit
+class App(ctypes.Structure):
+    _fields_ = [("sType", ctypes.c_uint32), ("pNext", ctypes.c_void_p),
+                ("pApplicationName", ctypes.c_char_p), ("applicationVersion", ctypes.c_uint32),
+                ("pEngineName", ctypes.c_char_p), ("engineVersion", ctypes.c_uint32),
+                ("apiVersion", ctypes.c_uint32)]
+class ICI(ctypes.Structure):
+    _fields_ = [("sType", ctypes.c_uint32), ("pNext", ctypes.c_void_p), ("flags", ctypes.c_uint32),
+                ("pApplicationInfo", ctypes.c_void_p), ("enabledLayerCount", ctypes.c_uint32),
+                ("ppEnabledLayerNames", ctypes.c_void_p), ("enabledExtensionCount", ctypes.c_uint32),
+                ("ppEnabledExtensionNames", ctypes.c_void_p)]
+vk.vkCreateInstance.argtypes = [ctypes.POINTER(ICI), ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+vk.vkCreateInstance.restype = ctypes.c_int
+vk.vkEnumeratePhysicalDevices.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_void_p)]
+vk.vkGetPhysicalDeviceProperties.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+app = App(0, None, b"xyrdp", 1, b"xyrdp", 1, (1 << 22))
+ici = ICI(1, None, 0, ctypes.cast(ctypes.pointer(app), ctypes.c_void_p), 0, None, 0, None)
+inst = ctypes.c_void_p()
+rc = vk.vkCreateInstance(ctypes.byref(ici), None, ctypes.byref(inst))
+if rc != 0:
+    print("create-instance-error-%d" % rc)
+    raise SystemExit
+n = ctypes.c_uint32()
+vk.vkEnumeratePhysicalDevices(inst, ctypes.byref(n), None)
+if n.value == 0:
+    print("tanpa-device")
+    raise SystemExit
+arr = (ctypes.c_void_p * n.value)()
+vk.vkEnumeratePhysicalDevices(inst, ctypes.byref(n), arr)
+buf = ctypes.create_string_buffer(2048)
+vk.vkGetPhysicalDeviceProperties(arr[0], buf)
+print(buf.raw[20:276].split(b"\x00")[0].decode("utf-8", "replace"))
+'@
+  $vkf = Join-Path $root 'vk-probe.py'
+  Set-Content -Path $vkf -Value $vkCode -Encoding UTF8
+  try {
+    $vout = ((& $py.Source $vkf 2>&1) | Out-String).Trim()
+    if ($vout -eq 'loader-tidak-ada') { $gVulkan = "$gVulkan / loader vulkan-1.dll tidak ada" }
+    elseif ($vout -match '^(create-instance-error|tanpa-device)') { $gVulkan = "$gVulkan / uji: $vout" }
+    elseif ($vout) { $gVulkan = $vout; Log "  uji Vulkan: device = $vout" }
+  } catch { Log "  uji Vulkan gagal: $($_.Exception.Message)" }
+}
+
+if (-not $gOpenGL) { $gOpenGL = "llvmpipe (Mesa $gMesa) - belum terverifikasi" }
+if ($gGLInstall -like 'mesa*') {
+  $gNote = 'GPU software (CPU): OpenGL 4.5 (llvmpipe) + Vulkan (lavapipe) + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat.'
+} else {
+  $gNote = "Pasang OpenGL software ke System32 gagal ($gGLInstall). Vulkan lavapipe & WARP tetap aktif; DLL Mesa tersedia di $root\gl untuk pemakaian per-aplikasi."
+}
+Log "  selesai: OpenGL=$gOpenGL | Vulkan=$(if ($gVulkan) { $gVulkan } else { '-' }) | install=$gGLInstall | adapter=$gAdapters"
 
 try {
   Update-Status @{ grafis = @{
-    mode = $gMode; mesa = $gMesa; opengl = $gOpenGL; vulkan = $gVulkan
+    mode = $gMode; mesa = $gMesa; opengl = $gOpenGL; vulkan = $gVulkan; install = $gGLInstall
     adapters = $gAdapters; files = ($files -join ','); dir = $root; note = $gNote
   } } | Out-Null
   Log '  status grafis ditulis (grafis.*)'

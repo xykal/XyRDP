@@ -1,5 +1,22 @@
 # XyRDP v2 — Windows "gaya 10" RDP 6 Jam via GitHub Actions
-### tanpa Tailscale · tanpa self-host · **diakses dari HP pakai klien XyDesk Remote**
+### tanpa self-host · **diakses dari HP pakai klien XyDesk Remote** · jalur utama **Tailscale** · **GPU software bawaan**
+
+> **Update 4 Okt 2026 — Tailscale dipakai lagi dan ini jalur yang TERBUKTI jalan.**
+> Input `akses` sekarang: **`tailscale` (default)**, `semua`, `keduanya`, `tunnel`, `rustdesk`.
+> Jalur Tailscale menghidupkan node di tailnet-mu (`<hostname>-<run>.<tailnet>.ts.net`):
+> dari HP pasang app **Tailscale** + login akun yang sama, lalu **XyDesk Remote →
+> Koneksi RDP Penuh** dengan **Host = IP `100.x`** dari dashboard, **Port `3389`**.
+> Jalur `tunnel` (bore/ngrok/pinggy) dan `rustdesk` tetap tersedia sebagai alternatif.
+>
+> **Funnel Tailscale (sudah dicoba 3–4 Okt): berhasil terbit, tapi tidak bisa dipakai klien RDP.**
+> Buktinya: `funnel --bg --tcp 10000 tcp://127.0.0.1:3389` → exit 0, `AllowFunnel: true`,
+> sertifikat HTTPS terbit, dan alamat `<node>.<tailnet>.ts.net` **muncul di DNS publik**
+> (relay `208.111.34.11` / `208.111.35.209`). Namun Tailscale hanya menerima koneksi
+> **TLS** di sisi publik ("Funnel only works over TLS-encrypted connections") — handshake
+> RDP mentah (X.224) selalu ditutup relay (0 byte). Jadi **mstsc / XyDesk Remote / FreeRDP
+> tidak bisa** memakai alamat funnel. Untuk "tanpa app Tailscale di HP" pakai **ngrok TCP**
+> (secret `NGROK_AUTHTOKEN`), karena itu TCP mentah.
+
 
 RDP Windows **gratis** pakai runner `windows-2022` GitHub Actions, diakses
 **tanpa VPN dan tanpa server sendiri** — jalur utama dari HP:
@@ -55,6 +72,7 @@ Semua tweak bisa dimatikan: input workflow **`win10: tidak`**, atau toggle
 
 | Jalur | Cara pakai di sisimu | Butuh akun? |
 |---|---|---|
+| **Tailscale** (default, terbukti) | Pasang app **Tailscale** di HP + login akun yang sama → **XyDesk Remote** → Host = **IP `100.x`** dari dashboard, Port `3389`. Funnel `<node>.<tailnet>.ts.net:10000` **tidak dipakai** (hanya klien TLS) | **Akun Tailscale** (yang punya tailnet) |
 | **Tunnel RDP** → **XyDesk Remote (HP)** / `mstsc` | Di app: mode **Koneksi RDP Penuh** → Host = `bore.pub` (atau `x.tcp.ngrok.io`), Port = angka dari dashboard → login `xyadmin` + password. Di PC: Remote Desktop Connection ke alamat yang sama | **Tidak** (bore.pub) · ngrok pakai token akun gratis |
 | **RustDesk** (cadangan) | Unduh klien gratis di [rustdesk.com/download](https://rustdesk.com/download) → masukkan **RustDesk ID** + **password** dari dashboard | **Tidak** — relay publik bawaan (`rs-ny/rs-sg.rustdesk.com`) |
 
@@ -113,7 +131,8 @@ Hasil penelusuran repo `xykal/XyDesk-Remote` (v0.5.34) yang dipakai di sini:
 | `scripts/setup-rdp.ps1` | User admin + RDP 3389 + tulis status awal |
 | `scripts/setup-win10.ps1` | **Tweak "Windows 10 look"** (Server Manager, personalisasi, wallpaper, label) |
 | `scripts/setup-xydesk.ps1` | **Host setup XyDesk Remote** (AVC444 + ClearType + multi-session + audio/mic + UDP 4433) |
-| `scripts/setup-akses.ps1` | **RustDesk + tunnel RDP** (pengganti Tailscale) |
+| `scripts/setup-grafis.ps1` | **GPU software**: Mesa3D llvmpipe (OpenGL 4.5, sistem-wide) + lavapipe (Vulkan CPU) + lapor `grafis.*` ke status |
+| `scripts/setup-akses.ps1` | **Tailscale (IP 100.x, default) + funnel (opsional) + RustDesk + tunnel RDP** |
 | `scripts/setup-extras.ps1` | Lightshot + TranslucentTB + wallpaper (dari `assets/`) |
 | `scripts/keepalive.ps1` | Penahan sesi + heartbeat tiap 5 menit + publish status tiap 30 menit |
 | `scripts/publish-status.ps1` | Tulis `rdp-status.json` ke branch `status` (dibaca web) |
@@ -124,8 +143,9 @@ Hasil penelusuran repo `xykal/XyDesk-Remote` (v0.5.34) yang dipakai di sini:
 | `web/` | Dashboard lokal (Node ≥ 18, tanpa dependency, tanpa install apa pun) |
 | `deploy/vercel/` | Dashboard versi hosting (catch-all function + login cookie) |
 
-Yang **dihapus** dari versi lama: seluruh integrasi Tailscale (auth key, MagicDNS,
-hapus node via API/OAuth) dan input `exit_node`.
+**Tailscale dipakai lagi** (sejak 3 Okt) sebagai jalur utama: auth key dari secret
+`TAILSCALE_AUTH_KEY` — pakai kunci **ephemeral** supaya node otomatis terhapus saat
+sesi mati. API/OAuth dan input `exit_node` tetap tidak dipakai.
 **XyDesk host dikembalikan** — bukan lagi dengan mengambil `host.ps1` dari
 internet, tapi **inline di repo** (`scripts/setup-xydesk.ps1`) supaya tidak
 bergantung pada domain luar. "XyDesk ID" (turunan IP) tetap dibuang karena mode
@@ -149,6 +169,11 @@ ID 10-digit masih Experimental dan tidak dipakai jalur tunnel.
    **Port** = angkanya (mis. `47321`) → login `xyadmin` + password.
    Dari PC: **Remote Desktop Connection** ke alamat tunnel yang sama.
    RustDesk (kalau dipilih) tinggal masukkan **ID** + password yang sama.
+4b. **Jalur Tailscale (default):** di HP buka app **Tailscale** (login akun yang sama
+   dengan tailnet), lalu **XyDesk Remote → Koneksi RDP Penuh** → **Host = IP `100.x`**
+   dari panel Koneksi (mis. `100.81.187.66`), **Port `3389`** → login `xyadmin` + password.
+   Alamat funnel `<node>.<tailnet>.ts.net:10000` **jangan dipakai** klien RDP: funnel
+   hanya menerima klien TLS.
 5. Sesi mati sendiri mendekati jam ke-6. Mau mati sekarang → tombol **MATIKAN**.
 
 ---
@@ -168,14 +193,16 @@ ID 10-digit masih Experimental dan tidak dipakai jalur tunnel.
 | `NGROK_AUTHTOKEN` | mengaktifkan provider ngrok (authtoken dari dashboard ngrok, gratis). Kosong = pakai bore.pub |
 | `CLEANUP_TOKEN` | PAT scope `repo` untuk hapus run Actions lama (tanpa ini run lama menumpuk) |
 
-Secret Tailscale lama (`TAILSCALE_AUTH_KEY`, `TAILSCALE_API_TOKEN`,
-`TAILSCALE_CLIENT_ID/SECRET`) **sudah tidak dipakai** — boleh dihapus.
+`TAILSCALE_AUTH_KEY` **dipakai lagi** untuk jalur `tailscale`/`semua` (isi dengan auth
+key tailnet; kunci ephemeral paling aman). `TAILSCALE_API_TOKEN`, `TAILSCALE_CLIENT_ID/SECRET`
+tetap tidak dipakai.
 
 Input workflow (`Run workflow`):
 
 | Input | Isi |
 |---|---|
 | `durasi_menit` | 15 … 360 (batas keras job GitHub) |
+| `grafis` | `software` (default) = pasang Mesa3D llvmpipe (OpenGL 4.5) + lavapipe (Vulkan) supaya aplikasi yang butuh OpenGL/Vulkan bisa jalan; `tidak` = lewati. Runner GitHub **tidak punya GPU fisik** (adapter = Microsoft Basic Render Driver/WARP), jadi ini renderer CPU — 3D berat tetap lambat, tanpa NVENC |
 | `hostname` | nama sesi (dapat suffix nomor run, mis. `xyrdp-42`) |
 | `akses` | `tunnel` (default — jalur XyDesk/mstsc) · `keduanya` · `rustdesk` |
 | `tunnel_provider` | `otomatis` · `bore` · `ngrok` |
@@ -292,7 +319,7 @@ tunnel dikosongkan** dari file publik (tidak ada endpoint nyangkut di branch
 | Taskbar tidak translucent | Efek native tetap aktif; TranslucentTB portable butuh Windows 10/11 — kalau gagal, ganti mode via tray icon |
 | Label "Windows 10 Pro" | Kosmetik (registry). `winver`/About bisa tetap menampilkan nama Server — branding Windows di folder `branding` milik TrustedInstaller, tidak diubah |
 | Log `butuh secret CLEANUP_TOKEN` | Tanpa PAT scope `repo`, run lama tidak bisa dihapus (GITHUB_TOKEN Actions cuma `actions:read`) |
-| Mencari "Tailscale" di repo | Sudah dihapus sepenuhnya di v2 — lihat §3 |
+| Funnel Tailscale, bisa dipakai mstsc/XyDesk? | **Tidak.** Sisi publik funnel selalu TLS; klien RDP mentah (X.224) langsung ditutup relay (0 byte). Pakai **IP `100.x`** (app Tailscale) atau **ngrok TCP** |
 | XyDesk: teks di sesi tampak pecah | Pastikan skala Windows **100%** (klien v0.5.30 default 100%) dan `xydesk=ya` (font smoothing aktif); cek log step "Host setup XyDesk" |
 | XyDesk: tidak ada suara dari PC | Lewat tunnel TCP, audio lewat kanal RDP biasa — pastikan `Audiosrv` jalan (dicek di setup-xydesk) dan audio tidak di-mute di klien. QUIC UDP 4433 hanya untuk LAN/jalur UDP |
 | XyDesk: "Direct QUIC" tidak aktif | Wajar di jalur tunnel (UDP 4433 tidak lewat relay TCP) — sesi tetap jalan lewat RDP; QUIC hanya untuk Koneksi PC (ID) yang masih Experimental |

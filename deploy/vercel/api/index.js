@@ -235,9 +235,10 @@ module.exports = async (req, res) => {
       const inputs = {
         durasi_menit: String(body.durasi || '360'),
         hostname: String(body.hostname || 'xyrdp').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 30) || 'xyrdp',
-        akses: ['keduanya', 'rustdesk', 'tunnel'].includes(String(body.akses)) ? String(body.akses) : 'keduanya',
+        akses: ['keduanya', 'tailscale', 'semua', 'rustdesk', 'tunnel'].includes(String(body.akses)) ? String(body.akses) : 'tailscale',
         tunnel_provider: ['otomatis', 'bore', 'ngrok'].includes(String(body.tunnel_provider)) ? String(body.tunnel_provider) : 'otomatis',
         win10: (body.win10 === 'tidak' ? 'tidak' : 'ya'),
+        grafis: (body.grafis === 'tidak' ? 'tidak' : 'software'),
       };
       await gh('POST', `/repos/${CFG.owner}/${CFG.repo}/actions/workflows/${CFG.workflow}/dispatches`, { ref: CFG.branch, inputs });
       return send(200, { ok: true, inputs });

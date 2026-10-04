@@ -87,6 +87,14 @@ on:
         options:
           - "ya"
           - "tidak"
+      grafis:
+        description: "GPU software: Mesa3D llvmpipe (OpenGL 4.5) + lavapipe (Vulkan). Runner GitHub tidak punya GPU fisik"
+        required: false
+        default: "software"
+        type: choice
+        options:
+          - "software"
+          - "tidak"
       wallpaper_url:
         description: "(OPSIONAL) URL wallpaper sendiri (jpg/png/bmp). Kosong = pakai assets/wallpaper*.jpg"
         required: false
@@ -123,6 +131,7 @@ jobs:
       WIN10: ${{ inputs.win10 }}
       XYDESK: ${{ inputs.xydesk }}
       EXTRAS: ${{ inputs.ekstra }}
+      GRAFIS: ${{ inputs.grafis }}
       WALLPAPER_URL: ${{ inputs.wallpaper_url }}
       RD_SERVER: ${{ inputs.rd_server }}
       RDP_USER: xyadmin
@@ -168,6 +177,13 @@ jobs:
         timeout-minutes: 10
         shell: pwsh
         run: ./scripts/setup-xydesk.ps1
+
+      - name: Setup grafis (GPU software - Mesa3D llvmpipe + lavapipe)
+        if: ${{ inputs.grafis != 'tidak' }}
+        timeout-minutes: 12
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/setup-grafis.ps1
 
       - name: Setup ekstra (Lightshot + wallpaper + taskbar translucent)
         if: ${{ inputs.ekstra != 'tidak' }}

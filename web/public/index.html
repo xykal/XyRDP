@@ -133,6 +133,7 @@
       <div class="hint" id="cWarn"></div>
       <div class="row"><span class="k">Tailscale (IP 100.x)</span>
         <span class="v"><span id="cTs">-</span> <button class="mini" data-copy="cTs">SALIN IP</button></span></div>
+      <div class="row"><span class="k">Grafis / GPU</span><span class="v" id="cGpu">-</span></div>
       <div class="row"><span class="k">Kesiapan RDP di VM</span><span class="v" id="cRdp">-</span></div>
       <div class="row"><span class="k">Server RustDesk</span><span class="v" id="cRdSrv">-</span></div>
       <div class="row"><span class="k">Pengguna</span>
@@ -170,9 +171,11 @@
       <div class="two">
         <div><label>Jalur akses</label>
           <select id="fAkses">
-            <option value="keduanya" selected>Keduanya (tunnel XyDesk + RustDesk) — paling aman</option>
-            <option value="tunnel">Tunnel RDP saja (XyDesk/mstsc) — tercepat</option>
-            <option value="rustdesk">RustDesk saja (cadangan)</option>
+            <option value="tailscale" selected>Tailscale (IP 100.x) — paling andal, dipakai XyDesk Remote</option>
+            <option value="keduanya">Tunnel (bore/pinggy/ngrok) + RustDesk</option>
+            <option value="semua">Semua: Tailscale + tunnel + RustDesk</option>
+            <option value="rustdesk">RustDesk saja</option>
+            <option value="tunnel">Tunnel RDP saja (bore/pinggy/ngrok)</option>
           </select></div>
         <div><label>Provider tunnel</label>
           <select id="fProv">
@@ -183,6 +186,8 @@
       </div>
       <div class="row" style="margin-top:6px"><span class="k">Tampilan Windows 10</span>
         <span class="v"><label class="switch"><input type="checkbox" id="fWin10" checked><i></i></label></span></div>
+      <div class="row" style="margin-top:6px"><span class="k">GPU software (Mesa: OpenGL 4.5 + Vulkan)</span>
+        <span class="v"><label class="switch"><input type="checkbox" id="fGrafis" checked><i></i></label></span></div>
       <div class="hint" style="margin-top:4px">Runner = Windows Server 2022 (UI/kernel = Windows 10 21H2) + tweak Windows 10.
         Runner GitHub tidak punya image Windows 10 desktop.</div>
       <div class="btns">
@@ -342,7 +347,9 @@
       setTxt('cTun',tunTxt);
       var ts=a&&a.tailscale?a.tailscale:null;
       cTsRaw=(ts&&ts.ip)?ts.ip:'';
-      setTxt('cTs',ts&&ts.status==='ok'?(ts.ip+(ts.funnel==='ok'&&ts.funnel_addr?(' · funnel '+ts.funnel_addr):'')):(ts&&ts.status==='gagal'?'gagal disiapkan':'tidak dipakai'));
+      setTxt('cTs',ts&&ts.status==='ok'?(ts.ip+(ts.funnel==='ok'&&ts.funnel_addr?(' · funnel '+ts.funnel_addr+' (hanya klien TLS)'):'')):(ts&&ts.status==='gagal'?'gagal disiapkan':'tidak dipakai'));
+      var gp=g&&g.grafis?g.grafis:null;
+      setTxt('cGpu',gp?(gp.mode==='software'?('software · '+(gp.opengl||'llvmpipe')+(gp.vulkan?(' · '+gp.vulkan):'')):(gp.mode||'-')):'-');
       var xd=g&&g.xydesk?g.xydesk:null;
       setTxt('cRdp',(xd&&xd.rdp_ready)?xd.rdp_ready:(g&&g.rdp_listen?String(g.rdp_listen):'-'));
       setTxt('cTunNote',(a&&a.tunnel&&a.tunnel.selftest!=='ok'&&a.tunnel.note2)?('Catatan tunnel: '+a.tunnel.note2):'');
@@ -378,7 +385,7 @@
     var b=$('bStart');b.disabled=true;note('Mengirim permintaan...');
     api('/start','POST',{durasi:$('fDur').value,hostname:$('fHost').value.trim(),
       akses:$('fAkses').value,tunnel_provider:$('fProv').value,
-      win10:$('fWin10').checked?'ya':'tidak'})
+      win10:$('fWin10').checked?'ya':'tidak',grafis:$('fGrafis').checked?'software':'tidak'})
     .then(function(){note('Permintaan terkirim. VM siap dalam ±3–5 menit (VM + RustDesk + tunnel).','ok');
       flash('Permintaan start terkirim');setTimeout(pullLogs,30000)})
     .catch(function(e){note('Gagal: '+e.message,'bad')})

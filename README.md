@@ -31,8 +31,10 @@ XyRDP menyiapkan desktop jarak jauh **Windows-style** pada runner GitHub-hosted.
 
    | Nama secret | Isi |
    |---|---|
-   | `RDP_PASSWORD` | Kata sandi unik untuk login ke desktop RDP. Jangan gunakan ulang kata sandi akun lain. |
+   | `RDP_PASSWORD` | Kata sandi RDP unik, minimal 16 karakter ASCII dengan huruf besar/kecil, angka, dan simbol sederhana. Contoh format saja—jangan dipakai persis: `v7M!4qR-9Tz2-Lp6K8x`. Jangan gunakan ulang kata sandi akun lain. |
    | `TAILSCALE_AUTH_KEY` | Auth key Tailscale milikmu. Pilih reusable; ephemeral disarankan jika tersedia. |
+
+`RDP_PASSWORD` adalah sandi untuk user desktop `xyadmin`, **berbeda** dari sandi login admin dashboard. Hindari spasi di awal/akhir atau karakter yang sulit diketik di HP. Contoh di atas hanya format, bukan sandi untuk dipakai. Jika mengganti secret RDP, jalankan sesi baru agar nilainya diterapkan.
 
 4. Kembali ke dashboard, periksa repo sampai statusnya **siap**, pilih durasi/jalur, lalu tekan **NYALAKAN**.
 5. Setelah status **AKTIF**, buka Tailscale di HP dan login ke akun yang membuat key tadi. Di XyDesk Remote pilih **Koneksi RDP Penuh**: Host = IP `100.x` dari dashboard, Port = `3389`, user = `xyadmin`, sandi = nilai `RDP_PASSWORD`-mu.

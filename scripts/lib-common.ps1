@@ -382,12 +382,22 @@ function Get-OutsideReach([string]$HostName, [int]$Port, [int]$TimeoutSec = 90) 
 }
 
 # ---------- unduhan ----------
-function Get-File([string]$Url, [string]$OutFile, [int]$TimeoutSec = 180) {
+function Get-File([string]$Url, [string]$OutFile, [int]$TimeoutSec = 120) {
+  # curl.exe (ada di runner Windows) -> batas waktu keras, tidak bisa menggantung
+  # (kejadian nyata: Invoke-WebRequest ke app.prntscr.com menggantung 20 menit
+  #  sampai step timeout & seluruh step sesudahnya ter-skip)
+  $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
   for ($i = 1; $i -le 3; $i++) {
     try {
-      Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -TimeoutSec $TimeoutSec
+      if ($curl) {
+        & $curl.Source -sS -L --connect-timeout 15 --max-time $TimeoutSec -o $OutFile $Url 2>&1 | Out-Null
+      } else {
+        Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -TimeoutSec $TimeoutSec
+      }
       if ((Test-Path $OutFile) -and ((Get-Item $OutFile).Length -gt 0)) { return $true }
-    } catch { Log "  unduh gagal (coba $i/3): $($_.Exception.Message)"; Start-Sleep -Seconds 3 }
+      Log "  unduh kosong (coba $i/3)"
+    } catch { Log "  unduh gagal (coba $i/3): $($_.Exception.Message)" }
+    Start-Sleep -Seconds 3
   }
   return $false
 }

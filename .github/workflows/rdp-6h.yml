@@ -171,7 +171,8 @@ jobs:
 
       - name: Setup ekstra (Lightshot + wallpaper + taskbar translucent)
         if: ${{ inputs.ekstra != 'tidak' }}
-        timeout-minutes: 20
+        timeout-minutes: 8
+        continue-on-error: true
         shell: pwsh
         run: ./scripts/setup-extras.ps1
 

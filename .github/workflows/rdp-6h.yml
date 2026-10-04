@@ -1,22 +1,9 @@
-name: XyRDP - Windows 10 Style RDP 6 Jam (RustDesk / Tunnel)
+name: XyRDP-TS — RDP baru dijeda
 run-name: "XyRDP-TS ${{ inputs.hostname || 'xyrdp' }} • ${{ inputs.durasi_menit || '360' }} mnt"
 
 # ============================================================================
-#  XyRDP v2 — Windows "gaya 10" di runner GitHub, akses TANPA Tailscale dan
-#  TANPA apa pun yang di-self-host:
-#
-#   - runs-on: windows-2022  = Windows Server 2022 (build 10.0.20348) yang
-#     UI/kernel-nya SAMA dengan Windows 10 21H2, lalu di-tweak
-#     (setup-win10.ps1) supaya terasa Windows 10, bukan Server.
-#     CATATAN: runner GitHub tidak menyediakan image Windows 10 desktop;
-#     windows-2022 adalah yang paling dekat + tweak.
-#   - Akses 1: RustDesk (relay publik rs-*.rustdesk.com, gratis, tanpa VPN)
-#   - Akses 2: tunnel TCP ke port 3389 -> Remote Desktop Connection (mstsc)
-#     provider: bore.pub (tanpa akun) atau ngrok (butuh NGROK_AUTHTOKEN)
-#   - Tidak ada port publik di VM; 3389 hanya ditembus lewat tunnel/RustDesk
-#   - Sesi ditahan sampai durasi (maks 360 menit = batas keras GitHub)
-#   - Status sesi ditulis ke branch `status` -> dibaca dashboard web
-#   - Password TIDAK PERNAH masuk log/commit/file status
+#  PAUSE DARURAT (2026-10-04): workflow TS juga dijeda sebelum runner dibuat.
+#  Job selalu dilewati; run yang telah berjalan tidak dibatalkan.
 # ============================================================================
 
 on:
@@ -109,6 +96,8 @@ concurrency:
 
 jobs:
   rdp:
+    # PAUSE: jangan alokasikan runner atau memulai sesi baru.
+    if: ${{ false }}
     # windows-2022 = Server 2022 (UI/kernel Windows 10 21H2). Jangan pakai
     # windows-latest: sejak Juni 2026 label itu = Windows Server 2025 (UI Win11).
     runs-on: windows-2022

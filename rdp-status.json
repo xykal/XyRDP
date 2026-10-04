@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "hostname": "xyrdp-fun2-57",
+  "active": true,
+  "hostname": "xyrdp-fun3-58",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
@@ -8,26 +8,13 @@
   "rdp_user": "xyadmin",
   "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
   "rdp_denyts": true,
-  "started_at": "2026-10-03T23:59:01Z",
-  "expires_at": "2026-10-04T00:14:01Z",
+  "started_at": "2026-10-04T00:35:37Z",
+  "expires_at": "2026-10-04T00:50:37Z",
   "duration_menit": 15,
-  "run_id": "37162748134",
-  "run_number": "57",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37162748134",
+  "run_id": "37165409565",
+  "run_number": "58",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37165409565",
   "mode": "bersih+win10",
-  "akses": {
-    "mode": "tailscale",
-    "rustdesk": {
-      "status": "pending",
-      "id": ""
-    },
-    "tunnel": {
-      "status": "pending",
-      "host": "",
-      "port": 0,
-      "address": ""
-    }
-  },
   "win10": {
     "look": "ok",
     "badge": "ok",
@@ -52,5 +39,36 @@
     "akses": "(menyusul)",
     "note": "Host siap dipakai klien XyDesk Remote mode Koneksi RDP (Host+Port tunnel). Kunci WinStations\\RDP-Tcp sengaja TIDAK ditulis supaya listener 3389 tidak mati di runner GitHub."
   },
-  "stopped_at": "2026-10-04T00:19:18Z"
+  "akses": {
+    "mode": "tailscale",
+    "rustdesk": {
+      "status": "skip",
+      "service": null,
+      "id": "",
+      "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
+    },
+    "tailscale": {
+      "status": "ok",
+      "ip": "100.102.86.70",
+      "magicdns": "xyrdp-fun3-58.tail01cd7c.ts.net.",
+      "hostname": "xyrdp-fun3-58",
+      "funnel": "ok",
+      "funnel_addr": "xyrdp-fun3-58.tail01cd7c.ts.net:10000",
+      "funnel_raw": "funnel exit=0 msg=Available on the internet: |-- tcp://xyrdp-fun3-58.tail01cd7c.ts.net:10000 |-- tcp://100.102.86.70:10000 |-- tcp://[fd7a:115c:a1e0::f439:5647]:10000 |--> tcp://127.0.0.1:3389 Funnel started and running in the background. To disable the proxy, run: tailscale funnel --tcp=10000 off | || status exit=0 msg={ \"TCP\": { \"10000\": { \"TCPForward\": \"127.0.0.1:3389\" } }, \"AllowFunnel\": { \"xyrdp-fun3-58.tail01cd7c.ts.net:10000\": true } } | || cert exit=0 msg=Wrote public cert to xyrdp-fun3-58.tail01cd7c.ts.net.crt Wrote private key to xyrdp-fun3-58.tail01cd7c.ts.net.key |",
+      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.102.86.70 Port=3389 di XyDesk Remote (atau mstsc). Funnel: xyrdp-fun3-58.tail01cd7c.ts.net:10000"
+    },
+    "tunnel": {
+      "status": "skip",
+      "provider": "",
+      "host": "",
+      "port": 0,
+      "address": "",
+      "rdp_local": "",
+      "selftest": "",
+      "outside": "",
+      "note2": "",
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
+    }
+  }
 }

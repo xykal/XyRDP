@@ -419,6 +419,7 @@
 
   function showLogin(st){
     $('app').classList.add('hidden');$('loginBox').classList.remove('hidden');
+    $('lerr').textContent='';$('lerr').className='note';
     authInfo=st||{};
     var oauth=!!(st&&st.oauth_ready);
     $('ghLogin').style.display=oauth?'':'none';
@@ -427,7 +428,7 @@
       :'Login GitHub belum aktif — admin perlu memasang OAuth App (env GITHUB_OAUTH_CLIENT_ID/SECRET) dulu.';
     var adminAvail=!!(st&&st.admin_login);
     $('adminToggleWrap').classList.toggle('hidden',!adminAvail);
-    if(adminAvail&&!st.admin_login_ready){$('lerr').textContent='Login admin sementara dikunci sampai email, sandi, SESSION_SECRET, dan Cloudflare Turnstile siap.'}
+    if(adminAvail&&!st.admin_login_ready){$('lerr').className='note bad';$('lerr').textContent='Login admin sementara dikunci sampai email, sandi, SESSION_SECRET, dan Cloudflare Turnstile siap.'}
     var q=new URLSearchParams(location.search);
     var err=q.get('err');
     if(err){
@@ -435,7 +436,7 @@
         github_batal:'Login GitHub dibatalkan.',state_tidak_cocok:'Sesi login tidak cocok — coba lagi.',
         token_github_gagal:'GitHub menolak permintaan token (cek client id/secret).',
         profil_github_gagal:'Gagal membaca profil GitHub.'};
-      $('lerr').textContent=map[err]||('Login gagal: '+err);
+      $('lerr').className='note bad';$('lerr').textContent=map[err]||('Login gagal: '+err);
       try{history.replaceState(null,'',location.pathname)}catch(e){}
     }
   }
@@ -466,14 +467,14 @@
 
   function doLogin(){
     var u=$('luser').value.trim(),p=$('lpass').value;
-    $('lerr').textContent='';
-    if(!authInfo.admin_login_ready){$('lerr').textContent='Login admin belum siap. Periksa konfigurasi Turnstile dan Vercel.';return}
-    if(!turnstileToken){$('lerr').textContent='Selesaikan verifikasi Cloudflare Turnstile dulu.';ensureTurnstile();return}
+    $('lerr').textContent='';$('lerr').className='note';
+    if(!authInfo.admin_login_ready){$('lerr').className='note bad';$('lerr').textContent='Login admin belum siap. Periksa konfigurasi Turnstile dan Vercel.';return}
+    if(!turnstileToken){$('lerr').className='note bad';$('lerr').textContent='Selesaikan verifikasi Cloudflare Turnstile dulu.';ensureTurnstile();return}
     $('lgo').disabled=true;$('lgo').textContent='MEMERIKSA...';
     fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p,turnstile:turnstileToken})})
     .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Login gagal');return j})})
     .then(function(){turnstileToken='';return refreshMe().then(function(){return api('/config')}).then(function(c){cfg=c;$('cUser').textContent=c.rdp_user;enterApp();flash('Masuk berhasil')})})
-    .catch(function(e){$('lerr').textContent=e.message;turnstileToken='';if(window.turnstile&&turnstileWidgetId!==null){try{window.turnstile.reset(turnstileWidgetId)}catch(x){}}})
+    .catch(function(e){$('lerr').className='note bad';$('lerr').textContent=e.message;turnstileToken='';if(window.turnstile&&turnstileWidgetId!==null){try{window.turnstile.reset(turnstileWidgetId);$('turnstileHint').textContent='Selesaikan verifikasi lagi sebelum mencoba.'}catch(x){}}})
     .finally(function(){$('lpass').value='';$('lgo').disabled=false;$('lgo').textContent='Masuk admin'})
   }
   $('lgo').addEventListener('click',doLogin);

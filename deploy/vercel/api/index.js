@@ -145,7 +145,8 @@ function loginRate(req, failed = false, reset = false) {
   return { locked, retry: locked ? Math.max(1, Math.ceil((ADMIN_LOGIN_WINDOW_MS - (now - bucket.at)) / 1000)) : 0 };
 }
 async function verifyTurnstile(token, req) {
-  if (!ENV.turnstile_site_key || !ENV.turnstile_secret || !sessionSecretReady() || !token) return false;
+  if (!sessionSecretReady() || !ENV.turnstile_site_key || !ENV.turnstile_secret) return { ok: false, reason: 'not_configured' };
+  if (!token) return { ok: false, reason: 'missing_token' };
   try {
     const body = new URLSearchParams({ secret: ENV.turnstile_secret, response: String(token) });
     const ip = clientAddress(req);
@@ -153,10 +154,15 @@ async function verifyTurnstile(token, req) {
     const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body,
     });
-    if (!r.ok) return false;
+    if (!r.ok) return { ok: false, reason: 'service_unavailable' };
     const result = await r.json();
-    return !!(result && result.success && String(result.hostname || '').toLowerCase() === ENV.turnstile_hostname && result.action === 'admin_login');
-  } catch { return false; }
+    if (!result || !result.success) return { ok: false, reason: 'challenge_failed' };
+    if (String(result.hostname || '').toLowerCase() !== ENV.turnstile_hostname) return { ok: false, reason: 'hostname_mismatch' };
+    // Cloudflare mengembalikan action bila disertakan pada render(); izinkan
+    // field kosong dari kompatibilitas provider, tapi tolak action yang berbeda.
+    if (result.action && result.action !== 'admin_login') return { ok: false, reason: 'action_mismatch' };
+    return { ok: true, reason: '' };
+  } catch { return { ok: false, reason: 'service_unavailable' }; }
 }
 function ghUser(req) {
   if (!sessionSecretReady()) return null;
@@ -471,11 +477,17 @@ module.exports = async (req, res) => {
       const body = await readBody(req, 16 * 1024);
       if (body.__too_large) return send(413, { error: 'Permintaan login terlalu besar.' });
       const human = await verifyTurnstile(String(body.turnstile || ''), req);
-      const valid = human && credsOk(String(body.user || ''), String(body.pass || ''));
-      if (!valid) {
+      if (!human.ok) {
+        console.warn('[XyRDP] Admin login ditolak Turnstile:', human.reason);
         const failed = loginRate(req, true);
         if (failed.locked) return send(429, { error: 'Terlalu banyak percobaan login. Coba lagi setelah beberapa menit.' }, 'application/json', { 'Retry-After': String(failed.retry) });
-        return send(403, { error: 'Verifikasi atau kredensial tidak cocok. Coba lagi.' });
+        return send(403, { error: 'Verifikasi Cloudflare gagal atau kedaluwarsa. Selesaikan widget lagi, lalu coba masuk.' });
+      }
+      if (!credsOk(String(body.user || ''), String(body.pass || ''))) {
+        console.warn('[XyRDP] Admin login ditolak: email/sandi tidak cocok.');
+        const failed = loginRate(req, true);
+        if (failed.locked) return send(429, { error: 'Terlalu banyak percobaan login. Coba lagi setelah beberapa menit.' }, 'application/json', { 'Retry-After': String(failed.retry) });
+        return send(403, { error: 'Email admin atau kata sandi salah. Pastikan memakai email admin yang diizinkan dan periksa Caps Lock.' });
       }
       loginRate(req, false, true);
       const sid = seal({ k: 'admin', v: adminCredVersion(), e: Date.now() + ADMIN_TTL_SECONDS * 1000 });

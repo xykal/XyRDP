@@ -260,6 +260,9 @@ Sekali saja (pemilik dashboard):
 3. Repo template harus publik + ditandai template (Settings → centang
    **Template repository**, atau `PATCH /repos/{owner}/{repo}` `is_template=true`).
 
+Panduan singkat untuk pengguna lain (bisa dibagikan apa adanya):
+[`PANDUAN-PENGGUNA.md`](PANDUAN-PENGGUNA.md).
+
 Alur pengguna lain:
 1. Buka dashboard → **Masuk dengan GitHub** (approve scope `repo`) → panel
    **Repo kamu** muncul: klik **BUAT REPO DARI TEMPLATE** (repo `XyRDP` di akun

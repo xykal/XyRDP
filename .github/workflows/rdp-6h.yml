@@ -117,6 +117,10 @@ concurrency:
 
 jobs:
   rdp:
+    # Hanya pemilik repo yang boleh menjalankan job RDP. Ini juga berlaku
+    # pada repo hasil template: tiap pengguna hanya dapat menyalakan repo sendiri.
+    # Kondisi di level job dievaluasi sebelum runner Windows-hosted dialokasikan.
+    if: ${{ github.actor == github.repository_owner }}
     # windows-2022 = Server 2022 (UI/kernel Windows 10 21H2). Jangan pakai
     # windows-latest: sejak Juni 2026 label itu = Windows Server 2025 (UI Win11).
     runs-on: windows-2022

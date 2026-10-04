@@ -101,16 +101,38 @@
   .badge-me img{width:16px;height:16px;border-radius:3px;vertical-align:-3px}
   .steps{counter-reset:st;font-size:11.5px;color:var(--dim);line-height:1.8}
   .steps b{color:#9a9aa2}
+  .header-guide{flex:none;margin-left:auto;color:#a989c7;border:1px solid #34273f;border-radius:5px;padding:5px 9px;font-size:10px;letter-spacing:.08em}
+  .header-guide:hover{color:#e4c5ff;border-color:#604479;text-decoration:none}
+  .turnstile-shell{margin-top:12px;padding:10px;background:#101012;border:1px solid var(--line);border-radius:5px;min-height:74px}
+  .turnstile-shell .hint{margin:4px 0 0}
+  .welcome-overlay{display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:18px;background:rgba(5,4,9,.82);backdrop-filter:blur(9px)}
+  .welcome-overlay.show{display:flex;animation:guideFade .24s ease-out}
+  .welcome-card{position:relative;width:min(100%,560px);overflow:hidden;padding:24px;border:1px solid #5c4070;border-radius:13px;background:radial-gradient(ellipse at 100% 0%,#773da32a,transparent 44%),linear-gradient(145deg,#19131f,#111012);box-shadow:0 24px 90px #000b}
+  .welcome-card:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#9d57d7,#d9a7ff,#7ec7ae)}
+  .welcome-eyebrow{color:#b88bd6;font-size:10px;letter-spacing:.16em;font-weight:700}
+  .welcome-card h2{margin:9px 0 7px;color:#ded2e9;font-size:18px;letter-spacing:.01em}
+  .welcome-card p{color:#88838f;font-size:12px;line-height:1.7;margin:0}
+  .welcome-points{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:17px 0}
+  .welcome-points span{border:1px solid #302536;background:#131116;border-radius:5px;padding:9px;color:#a9a0af;font-size:10px;text-align:center}
+  .welcome-points b{display:block;color:#d3b0e7;font-size:11px;margin-bottom:3px}
+  .welcome-actions{display:flex;gap:9px;margin-top:15px}
+  .welcome-actions>*{flex:1;text-align:center}
+  .welcome-actions a{display:block;font:600 11px var(--mono);letter-spacing:.03em;text-decoration:none;padding:10px 12px;border:1px solid #493459;border-radius:5px;background:#241a2d;color:#e3caF4}
+  .welcome-actions a:hover{background:#2d2039;border-color:#76518c}
+  .welcome-actions button{font-size:10px;padding:9px 11px}
+  @keyframes guideFade{from{opacity:0}to{opacity:1}}
+  @media(max-width:600px){.welcome-card{padding:20px}.welcome-points{grid-template-columns:1fr}.welcome-actions{flex-direction:column}.header-guide{padding:4px 6px;font-size:9px}}
 </style>
 </head>
 <body>
 <header>
   <div class="brand"><span class="dot" id="hdot"></span><span>DASBOR</span></div>
   <div class="repo" id="repoTop"></div>
+  <a class="header-guide" href="/panduan" id="guideHeader">PANDUAN ↗</a>
   <button class="mini hidden" id="bLogout" style="margin-left:10px">KELUAR</button>
 </header>
 
-<main>
+<main id="dashboard">
   <section class="panel center hidden" id="loginBox">
     <h2>Masuk</h2>
     <a class="ghbtn" id="ghLogin" href="/api/auth/login">
@@ -120,16 +142,18 @@
     <div class="note" id="ghNote"></div>
     <div class="btns hidden" id="adminToggleWrap"><button class="mini" id="adminToggle" style="width:100%">login admin (pemilik)</button></div>
     <div class="hidden" id="adminWrap">
-      <label>Pengguna (admin)</label>
-      <input id="luser" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <label>Email admin</label>
+      <input id="luser" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required>
       <label>Kata sandi</label>
-      <input id="lpass" type="password" autocomplete="current-password">
+      <input id="lpass" type="password" autocomplete="current-password" required>
+      <div class="turnstile-shell"><div id="turnstileWidget"></div><div class="hint" id="turnstileHint">Verifikasi anti-bot Cloudflare akan muncul di sini.</div></div>
       <div class="btns"><button class="primary" id="lgo" style="width:100%">Masuk admin</button></div>
     </div>
     <div class="note" id="lerr"></div>
     <div class="hint">Login GitHub → dashboard otomatis menyiapkan <b>repo kerja milikmu sendiri</b>
       (kopi dari template), lalu semua sesi RDP jalan di repo itu. Token &amp; secret kamu
       <b>tidak disimpan di server ini</b> — hanya di cookie sesi browser (terenkripsi) dan di repo kamu sendiri.</div>
+    <div class="hint"><a href="/panduan">Buka panduan lengkap sebelum menggunakan XyRDP ↗</a></div>
   </section>
 
   <div id="app" class="grid hidden">
@@ -142,8 +166,8 @@
       <div class="two" id="rpCreateWrap">
         <div><label>Nama repo (kalau belum ada)</label><input id="rpName" value="XyRDP" spellcheck="false"></div>
         <div><label>Visibilitas</label><select id="rpVis">
-          <option value="publik" selected>Publik (menit Actions gratis tanpa batas)</option>
-          <option value="privat">Privat (kuota 2000 menit/bulan)</option>
+          <option value="publik" selected>Publik (repo terbuka — cek ketentuan Actions)</option>
+          <option value="privat">Privat (kuota mengikuti plan GitHub)</option>
         </select></div>
       </div>
       <div class="btns">
@@ -247,9 +271,7 @@
         <button class="danger" id="bStop" style="flex:1">MATIKAN</button>
       </div>
       <div class="note" id="opNote"></div>
-      <div class="hint">Jalur utama dari HP = <b>tunnel</b> (dipakai app <b>XyDesk Remote</b> lewat Host+Port di panel
-        Koneksi, sekaligus untuk <code>mstsc</code>). RustDesk hanya cadangan. Satu sesi aktif; permintaan baru
-        otomatis mengantre. Saat sesi berakhir: jalur akses dimatikan, status dibersihkan, run lama dihapus otomatis.</div>
+      <div class="hint">Jalur utama dari HP = <b>Tailscale</b> + <b>XyDesk Remote</b>: login Tailscale di HP dengan akun yang sama, lalu isi IP <code>100.x</code> dari panel Koneksi dan port <code>3389</code>. Tunnel/RustDesk tetap opsi alternatif. Satu sesi aktif; permintaan baru otomatis mengantre. Saat sesi berakhir, VM dan jalur akses dimatikan.</div>
     </div>
 
     <div class="panel">
@@ -305,8 +327,18 @@
   </div>
 </main>
 
-<footer>Dasbor kontrol sesi</footer>
+<footer>Dasbor kontrol sesi · <a href="/panduan">Panduan langkah demi langkah</a> · <a href="https://whatsapp.com/channel/0029VbB7nwuJZg3ym6UQ4Z1L" target="_blank" rel="noopener">Join Saluran</a></footer>
 <div class="flash" id="flash"></div>
+<div class="welcome-overlay" id="guideWelcome" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" aria-describedby="welcomeDesc">
+  <div class="welcome-card" tabindex="-1">
+    <div class="welcome-eyebrow">XYRDP · PANDUAN SEBELUM MULAI</div>
+    <h2 id="welcomeTitle">Siapkan repo dan secret dengan aman.</h2>
+    <p id="welcomeDesc">Sebelum masuk, luangkan beberapa menit untuk melihat alur login GitHub, membuat repo milikmu, menambahkan dua secret, dan menghubungkan RDP dari HP. Sesi berjalan di VM sementara—bukan penyimpanan permanen.</p>
+    <div class="welcome-points"><span><b>01 · Repo sendiri</b>Login GitHub → template</span><span><b>02 · Dua secret</b>RDP + Tailscale</span><span><b>03 · Sambungkan</b>HP → XyDesk Remote</span></div>
+    <div class="welcome-actions"><a id="guideRead" href="/panduan">LIHAT PANDUAN LENGKAP ↗</a><button id="guideContinue" class="primary">SAYA PAHAM — LANJUT</button></div>
+    <button id="guideLater" class="mini" style="width:100%;margin-top:8px">Lihat nanti</button>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -316,7 +348,7 @@
       // membuat baris tunnel & sisa render tidak pernah jalan)
       setTxt=function(id,txt){var el=$(id);if(el)el.textContent=txt;if(el)el.title=txt||'';},
       cfg={}, authed=false, lastRun=null, passShown=false, stopArmed=0, t0=null, t1=null, wpData=null, cTunRaw='', cTsRaw='',
-      authInfo={}, me=null;
+      authInfo={}, me=null, turnstileToken='', turnstileWidgetId=null, turnstileScriptLoading=false;
 
   function flash(msg){var f=$('flash');f.textContent=msg;f.classList.add('show');
     clearTimeout(f._t);f._t=setTimeout(function(){f.classList.remove('show')},2400)}
@@ -345,7 +377,7 @@
     me=m;
     var isUser=(m.mode==='user');
     $('repoPanel').classList.toggle('hidden',!isUser);
-    $('bLogout').classList.remove('hidden');
+    $('bLogout').classList.toggle('hidden',!!m.local_mode);
     if(isUser){
       $('repoTop').innerHTML='<span class="badge-me">'+(m.avatar?('<img src="'+m.avatar+'" alt="">'):'')+
         '<b>'+m.login+'</b></span><br>'+m.owner+'/'+m.repo;
@@ -393,8 +425,9 @@
     $('ghNote').className='note'+(oauth?'':' bad');
     $('ghNote').textContent=oauth?'Sesi kamu berjalan di repo GitHub milikmu sendiri.'
       :'Login GitHub belum aktif — admin perlu memasang OAuth App (env GITHUB_OAUTH_CLIENT_ID/SECRET) dulu.';
-    var adminAvail=!!(st&&(st.admin_login||st.open_admin));
+    var adminAvail=!!(st&&st.admin_login);
     $('adminToggleWrap').classList.toggle('hidden',!adminAvail);
+    if(adminAvail&&!st.admin_login_ready){$('lerr').textContent='Login admin sementara dikunci sampai email, sandi, SESSION_SECRET, dan Cloudflare Turnstile siap.'}
     var q=new URLSearchParams(location.search);
     var err=q.get('err');
     if(err){
@@ -429,16 +462,19 @@
   $('bLogout').addEventListener('click',function(){
     fetch('/api/auth/logout',{method:'POST'}).finally(function(){location.href='/'})});
   $('adminToggle').addEventListener('click',function(){
-    $('adminWrap').classList.remove('hidden');$('adminToggleWrap').classList.add('hidden')});
+    $('adminWrap').classList.remove('hidden');$('adminToggleWrap').classList.add('hidden');ensureTurnstile()});
 
   function doLogin(){
     var u=$('luser').value.trim(),p=$('lpass').value;
-    $('lerr').textContent='';$('lgo').disabled=true;$('lgo').textContent='MEMERIKSA...';
-    fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p})})
-    .then(function(r){if(!r.ok)throw new Error('Kredensial ditolak server');return r.json()})
-    .then(function(){enterApp();flash('Masuk berhasil')})
-    .catch(function(e){$('lerr').textContent=e.message})
-    .finally(function(){$('lgo').disabled=false;$('lgo').textContent='Masuk'})
+    $('lerr').textContent='';
+    if(!authInfo.admin_login_ready){$('lerr').textContent='Login admin belum siap. Periksa konfigurasi Turnstile dan Vercel.';return}
+    if(!turnstileToken){$('lerr').textContent='Selesaikan verifikasi Cloudflare Turnstile dulu.';ensureTurnstile();return}
+    $('lgo').disabled=true;$('lgo').textContent='MEMERIKSA...';
+    fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p,turnstile:turnstileToken})})
+    .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Login gagal');return j})})
+    .then(function(){turnstileToken='';return refreshMe().then(function(){return api('/config')}).then(function(c){cfg=c;$('cUser').textContent=c.rdp_user;enterApp();flash('Masuk berhasil')})})
+    .catch(function(e){$('lerr').textContent=e.message;turnstileToken='';if(window.turnstile&&turnstileWidgetId!==null){try{window.turnstile.reset(turnstileWidgetId)}catch(x){}}})
+    .finally(function(){$('lpass').value='';$('lgo').disabled=false;$('lgo').textContent='Masuk admin'})
   }
   $('lgo').addEventListener('click',doLogin);
   $('lpass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
@@ -663,6 +699,34 @@
       .finally(function(){b.disabled=false})
   });
 
+  function ensureTurnstile(){
+    var siteKey=authInfo&&authInfo.turnstile_site_key;
+    if(!authInfo||!authInfo.turnstile_required){$('turnstileHint').textContent='Verifikasi anti-bot tidak dikonfigurasi.';return}
+    if(!siteKey){$('turnstileHint').textContent='Turnstile belum disiapkan di server. Login admin dikunci.';return}
+    $('turnstileHint').textContent='Memuat verifikasi Cloudflare Turnstile...';
+    function render(){
+      if(!window.turnstile){$('turnstileHint').textContent='Widget Turnstile belum tersedia. Periksa koneksi dan coba muat ulang.';return}
+      if(turnstileWidgetId!==null){try{window.turnstile.reset(turnstileWidgetId)}catch(e){};return}
+      try{turnstileWidgetId=window.turnstile.render('#turnstileWidget',{sitekey:siteKey,theme:'dark',action:'admin_login',appearance:'always',callback:function(token){turnstileToken=token;$('turnstileHint').textContent='Verifikasi selesai.'},'expired-callback':function(){turnstileToken='';$('turnstileHint').textContent='Verifikasi kedaluwarsa. Selesaikan lagi.'},'error-callback':function(){turnstileToken='';$('turnstileHint').textContent='Verifikasi gagal dimuat. Coba lagi.'}});$('turnstileHint').textContent='Selesaikan verifikasi sebelum login.'}
+      catch(e){$('turnstileHint').textContent='Widget gagal disiapkan. Muat ulang halaman.'}
+    }
+    if(window.turnstile){render();return}
+    if(turnstileScriptLoading)return;
+    turnstileScriptLoading=true;
+    var script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';script.async=true;script.defer=true;
+    script.onload=render;script.onerror=function(){$('turnstileHint').textContent='Cloudflare Turnstile tidak dapat dimuat. Coba periksa koneksi.'};document.head.appendChild(script)
+  }
+
+  function setupGuidePopup(){
+    var modal=$('guideWelcome'),seen=false;
+    try{seen=localStorage.getItem('xyrdp_guide_seen_v2')==='1'}catch(e){}
+    function dismiss(){modal.classList.remove('show');document.body.style.overflow='';try{localStorage.setItem('xyrdp_guide_seen_v2','1')}catch(e){}}
+    $('guideContinue').addEventListener('click',dismiss);$('guideLater').addEventListener('click',dismiss);
+    $('guideRead').addEventListener('click',function(){try{localStorage.setItem('xyrdp_guide_seen_v2','1')}catch(e){}});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.classList.contains('show'))dismiss()});
+    if(!seen){modal.classList.add('show');document.body.style.overflow='hidden';setTimeout(function(){$('guideContinue').focus()},50)}
+  }
+
   // ---------- boot: cek identitas dulu (admin / user GitHub) ----------
   function boot(){
     fetch('/api/auth/status',{headers:{'Content-Type':'application/json'}}).then(function(r){return r.json()})
@@ -678,6 +742,7 @@
       })
     }).catch(function(){showLogin({})})
   }
+  setupGuidePopup();
   boot()
 })();
 </script>

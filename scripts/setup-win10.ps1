@@ -92,15 +92,19 @@ try {
 # ---------- 5. wallpaper & latar login ----------
 function Get-Win10WallpaperFile {
   $names = @()
+  # Pilihan dashboard/current config harus didahulukan; wallpaper-win10.* hanya
+  # fallback. Kalau tidak, gambar bawaan lama akan menimpa wallpaper upload.
+  if ($cfg.wallpaper_file) { $names += @($cfg.wallpaper_file) }
   if ($cfg.win10_wallpaper) { $names += @('wallpaper-win10.jpg', 'wallpaper-win10.png') }
-  $names += @($cfg.wallpaper_file, 'wallpaper.jpg', 'wallpaper.jpeg', 'wallpaper.png', 'wallpaper.bmp')
+  $names += @('wallpaper.jpg', 'wallpaper.jpeg', 'wallpaper.png', 'wallpaper.bmp')
   foreach ($n in $names) {
     $p = Join-Path (Get-Workspace) "assets\$n"
     if (Test-Path $p) { return $p }
   }
-  if ($env:GITHUB_REPOSITORY) {
+  if ($env:GITHUB_REPOSITORY -and $cfg.wallpaper_file) {
     $tmp = Join-Path $env:RUNNER_TEMP 'wp-win10.jpg'
-    if (Get-File "https://raw.githubusercontent.com/$($env:GITHUB_REPOSITORY)/main/assets/wallpaper-win10.jpg" $tmp 120) { return $tmp }
+    $rawName = [IO.Path]::GetFileName($cfg.wallpaper_file)
+    if (Get-File "https://raw.githubusercontent.com/$($env:GITHUB_REPOSITORY)/main/assets/$rawName" $tmp 120) { return $tmp }
   }
   return $null
 }

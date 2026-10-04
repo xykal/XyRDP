@@ -2,15 +2,15 @@
  * XyRDP Dashboard — Vercel catch-all function (Node, tanpa dependency)
  *
  * DUA MODE AKSES
- *  1) ADMIN — pemilik dashboard. Login pakai AUTH_USER/AUTH_PASS (atau tanpa
- *             auth kalau AUTH_PASS kosong = perilaku lama). Semua perintah
- *             dijalankan di repo env GH_OWNER/GH_REPO dengan GITHUB_TOKEN.
+ *  1) ADMIN — login email AUTH_USER + AUTH_PASS, diverifikasi Cloudflare
+ *             Turnstile. Sesi cookie HttpOnly terenkripsi; tanpa konfigurasi
+ *             kredensial/Turnstile admin tertutup (fail-closed).
  *  2) USER  — pengunjung yang login "Masuk dengan GitHub" (OAuth App). Semua
  *             perintah dijalankan di repo MILIK MEREKA (hasil kopi template),
  *             dengan token OAuth mereka sendiri. Server tidak menyimpan
  *             token/secret mereka: sesi hanya di cookie terenkripsi (AES-GCM).
  *
- * Endpoint: /auth/{status,login,callback,logout}, /me, /setup,
+ * Endpoint: /panduan, /auth/{status,login,callback,logout}, /me, /setup,
  *           /config, /status, /start, /stop, /logs, /extras, /wallpaper
  * ==========================================================================*/
 const fs = require('fs');
@@ -32,9 +32,12 @@ const ENV = {
   // --- multi-user (OAuth App) ---
   oauth_id: process.env.GITHUB_OAUTH_CLIENT_ID || '',
   oauth_secret: process.env.GITHUB_OAUTH_CLIENT_SECRET || '',
-  session_secret: process.env.SESSION_SECRET || 'xyrdp-dev-session-secret',
+  session_secret: process.env.SESSION_SECRET || '',
   template: process.env.TEMPLATE_REPO || `${process.env.GH_OWNER || 'xykal'}/${process.env.GH_REPO || 'XyRDP'}`,
   owner_login: (process.env.OWNER_LOGIN || process.env.GH_OWNER || 'xykal').toLowerCase(),
+  turnstile_site_key: process.env.TURNSTILE_SITE_KEY || '',
+  turnstile_secret: process.env.TURNSTILE_SECRET_KEY || '',
+  turnstile_hostname: (process.env.TURNSTILE_HOSTNAME || 'xyrdp-dash.vercel.app').toLowerCase(),
 };
 
 const STATUS_BRANCH = 'status';        // branch tempat workflow menulis rdp-status.json
@@ -44,11 +47,21 @@ const WALLPAPER_RE = /^wallpaper\.(jpg|jpeg|png|bmp)$/i;
 const SECRETS_REQUIRED = ['RDP_PASSWORD', 'TAILSCALE_AUTH_KEY'];
 const SECRETS_OPTIONAL = ['NGROK_AUTHTOKEN', 'CLEANUP_TOKEN'];
 const SESSION_TTL_DAYS = 7;
+const ADMIN_TTL_SECONDS = 12 * 60 * 60;
+const ADMIN_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const ADMIN_LOGIN_MAX_FAILURES = 5;
+const adminLoginAttempts = new Map();
+function sessionSecretReady() {
+  return !!process.env.SESSION_SECRET && Buffer.byteLength(process.env.SESSION_SECRET, 'utf8') >= 32;
+}
 
 /* ---------------------------------------------------------------- session -- */
 function b64u(buf) { return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 function unb64u(str) { return Buffer.from(String(str).replace(/-/g, '+').replace(/_/g, '/'), 'base64'); }
-function sessionKey() { return crypto.createHash('sha256').update(ENV.session_secret + '|xyrdp-session').digest(); }
+function sessionKey() {
+  if (!sessionSecretReady()) throw new Error('SESSION_SECRET belum diatur atau terlalu pendek');
+  return crypto.createHash('sha256').update(ENV.session_secret + '|xyrdp-session').digest();
+}
 
 function seal(obj) {
   const iv = crypto.randomBytes(12);
@@ -68,7 +81,7 @@ function unseal(str) {
 }
 
 function cookieHeader(name, value, maxAge) {
-  const secure = process.env.VERCEL_ENV === 'production' ? '; Secure' : '';
+  const secure = process.env.VERCEL_ENV ? '; Secure' : '';
   return `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 function readCookies(req) {
@@ -80,27 +93,66 @@ function readCookies(req) {
   return out;
 }
 
-// cookie login admin (perilaku lama, dipertahankan)
-function adminSessionId() {
+function adminConfigured() {
+  return !!String(process.env.AUTH_USER || '').trim() && !!process.env.AUTH_PASS;
+}
+function adminLoginReady() {
+  return adminConfigured() && sessionSecretReady() && !!ENV.turnstile_site_key && !!ENV.turnstile_secret;
+}
+function adminCredVersion() {
   return crypto.createHash('sha256')
-    .update(((process.env.AUTH_USER) || '') + '|' + (process.env.AUTH_PASS || '') + '|xyrdp-sid')
-    .digest('hex').slice(0, 48);
+    .update(String(process.env.AUTH_USER || '').trim().toLowerCase() + '|' + (process.env.AUTH_PASS || '') + '|xyrdp-admin-v2')
+    .digest('hex');
 }
 function credsOk(u, p) {
-  return !!process.env.AUTH_PASS && u === (process.env.AUTH_USER || '') && p === (process.env.AUTH_PASS || '');
+  if (!adminConfigured()) return false;
+  const user = String(u || '').trim().toLowerCase();
+  const expectedUser = String(process.env.AUTH_USER || '').trim().toLowerCase();
+  if (user !== expectedUser) return false;
+  const given = crypto.createHash('sha256').update(String(p || ''), 'utf8').digest();
+  const expected = crypto.createHash('sha256').update(String(process.env.AUTH_PASS || ''), 'utf8').digest();
+  return crypto.timingSafeEqual(given, expected);
 }
 function adminOk(req) {
-  if (!process.env.AUTH_PASS) return true;   // tanpa AUTH_PASS = terbuka (perilaku lama)
+  if (!adminLoginReady()) return false;
   const c = readCookies(req);
-  if (c.sid && c.sid === adminSessionId()) return true;
-  const h = req.headers.authorization || '';
-  if (h.startsWith('Basic ')) {
-    const [u, ...ps] = Buffer.from(h.slice(6), 'base64').toString('utf8').split(':');
-    return credsOk(u, ps.join(':'));
+  if (!c.sid) return false;
+  const s = unseal(c.sid);
+  return !!(s && s.k === 'admin' && s.v === adminCredVersion() && s.e && Date.now() < s.e);
+}
+function clientAddress(req) {
+  const raw = req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.socket && req.socket.remoteAddress || 'unknown';
+  return String(raw).split(',')[0].trim().slice(0, 120) || 'unknown';
+}
+function loginRate(req, failed = false, reset = false) {
+  const key = clientAddress(req), now = Date.now();
+  let bucket = adminLoginAttempts.get(key);
+  if (!bucket || now - bucket.at >= ADMIN_LOGIN_WINDOW_MS) bucket = { at: now, failures: 0 };
+  if (reset) { adminLoginAttempts.delete(key); return { locked: false, retry: 0 }; }
+  if (failed) bucket.failures++;
+  adminLoginAttempts.set(key, bucket);
+  if (adminLoginAttempts.size > 2000) {
+    for (const [k, b] of adminLoginAttempts) if (now - b.at >= ADMIN_LOGIN_WINDOW_MS) adminLoginAttempts.delete(k);
   }
-  return false;
+  const locked = bucket.failures >= ADMIN_LOGIN_MAX_FAILURES;
+  return { locked, retry: locked ? Math.max(1, Math.ceil((ADMIN_LOGIN_WINDOW_MS - (now - bucket.at)) / 1000)) : 0 };
+}
+async function verifyTurnstile(token, req) {
+  if (!ENV.turnstile_site_key || !ENV.turnstile_secret || !sessionSecretReady() || !token) return false;
+  try {
+    const body = new URLSearchParams({ secret: ENV.turnstile_secret, response: String(token) });
+    const ip = clientAddress(req);
+    if (ip && ip !== 'unknown') body.set('remoteip', ip);
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body,
+    });
+    if (!r.ok) return false;
+    const result = await r.json();
+    return !!(result && result.success && String(result.hostname || '').toLowerCase() === ENV.turnstile_hostname && result.action === 'admin_login');
+  } catch { return false; }
 }
 function ghUser(req) {
+  if (!sessionSecretReady()) return null;
   const c = readCookies(req);
   if (!c.ghs) return null;
   const s = unseal(c.ghs);
@@ -257,11 +309,20 @@ async function readLog(ctx, runId) {
   return buf.toString('utf8');
 }
 
-function readBody(req) {
+function readBody(req, maxBytes = 5 * 1024 * 1024) {
   return new Promise(resolve => {
-    let b = '';
-    req.on('data', c => b += c);
-    req.on('end', () => { try { resolve(JSON.parse(b || '{}')); } catch { resolve({}); } });
+    let b = '', total = 0, tooLarge = false;
+    req.on('data', c => {
+      if (tooLarge) return;
+      total += c.length;
+      if (total > maxBytes) { tooLarge = true; b = ''; return; }
+      b += c;
+    });
+    req.on('end', () => {
+      if (tooLarge) return resolve({ __too_large: true });
+      try { resolve(JSON.parse(b || '{}')); } catch { resolve({}); }
+    });
+    req.on('error', () => resolve({}));
   });
 }
 
@@ -304,9 +365,9 @@ async function configureRepo(ctx) {
 
 /* ------------------------------------------------------------- handler ----- */
 module.exports = async (req, res) => {
-  const send = (code, obj, type = 'application/json') => {
+  const send = (code, obj, type = 'application/json', headers = {}) => {
     const body = type === 'application/json' ? JSON.stringify(obj) : obj;
-    res.writeHead(code, { 'Content-Type': type + '; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.writeHead(code, Object.assign({ 'Content-Type': type + '; charset=utf-8', 'Cache-Control': 'no-store' }, headers));
     res.end(body);
   };
   const redirect = (loc, cookies) => {
@@ -328,17 +389,25 @@ module.exports = async (req, res) => {
     // ---- halaman: selalu boleh (berisi layar login tanpa data sensitif) ----
     if (p === '/' || p === '/index.html') {
       try {
-        return send(200, fs.readFileSync(path.join(__dirname, '..', 'assets', 'index.html')), 'text/html');
+        return send(200, fs.readFileSync(path.join(__dirname, '..', 'assets', 'index.html'), 'utf8'), 'text/html');
       } catch { return send(200, '<h1>XyRDP</h1>', 'text/html'); }
+    }
+    if (p === '/panduan' || p === '/guide') {
+      try {
+        return send(200, fs.readFileSync(path.join(__dirname, '..', 'assets', 'panduan.html'), 'utf8'), 'text/html');
+      } catch { return send(404, '<h1>Panduan belum tersedia</h1>', 'text/html'); }
     }
 
     /* ============================ AUTH ==================================== */
     if (req.method === 'GET' && p === '/auth/status') {
       const ctx = makeCtx(req);
       return send(200, {
-        oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret),
-        admin_login: !!process.env.AUTH_PASS,
-        open_admin: !process.env.AUTH_PASS,
+        oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret && sessionSecretReady()),
+        admin_login: adminConfigured(),
+        admin_login_ready: adminLoginReady(),
+        open_admin: false,
+        turnstile_required: adminConfigured(),
+        turnstile_site_key: ENV.turnstile_site_key,
         template: ENV.template,
         mode: ctx ? ctx.kind : null,
         login: ctx && ctx.kind === 'user' ? ctx.login : (ctx ? ENV.owner_login : null),
@@ -347,7 +416,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'GET' && p === '/auth/login') {
-      if (!ENV.oauth_id || !ENV.oauth_secret) return redirect('/?err=oauth_belum_dikonfigurasi');
+      if (!ENV.oauth_id || !ENV.oauth_secret || !sessionSecretReady()) return redirect('/?err=oauth_belum_dikonfigurasi');
       const state = b64u(crypto.randomBytes(16));
       const cb = `${origin}/api/auth/callback`;
       const loc = 'https://github.com/login/oauth/authorize'
@@ -387,12 +456,23 @@ module.exports = async (req, res) => {
       return res.end(JSON.stringify({ ok: true }));
     }
 
-    // login admin (form lama: user + kata sandi)
+    // Login admin: email allowlist + kata sandi + verifikasi Turnstile wajib.
     if (req.method === 'POST' && p === '/login') {
-      if (!process.env.AUTH_PASS) return send(200, { ok: true, note: 'auth tidak aktif' });
-      const body = await readBody(req);
-      if (!credsOk(String(body.user || ''), String(body.pass || ''))) return send(403, { error: 'Kredensial salah' });
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookieHeader('sid', adminSessionId(), SESSION_TTL_DAYS * 24 * 3600) });
+      if (!adminLoginReady()) return send(503, { error: 'Login admin dikunci: konfigurasi kredensial, SESSION_SECRET, atau Cloudflare Turnstile belum lengkap.' });
+      const rate = loginRate(req);
+      if (rate.locked) return send(429, { error: 'Terlalu banyak percobaan login. Coba lagi setelah beberapa menit.' }, 'application/json', { 'Retry-After': String(rate.retry) });
+      const body = await readBody(req, 16 * 1024);
+      if (body.__too_large) return send(413, { error: 'Permintaan login terlalu besar.' });
+      const human = await verifyTurnstile(String(body.turnstile || ''), req);
+      const valid = human && credsOk(String(body.user || ''), String(body.pass || ''));
+      if (!valid) {
+        const failed = loginRate(req, true);
+        if (failed.locked) return send(429, { error: 'Terlalu banyak percobaan login. Coba lagi setelah beberapa menit.' }, 'application/json', { 'Retry-After': String(failed.retry) });
+        return send(403, { error: 'Verifikasi atau kredensial tidak cocok. Coba lagi.' });
+      }
+      loginRate(req, false, true);
+      const sid = seal({ k: 'admin', v: adminCredVersion(), e: Date.now() + ADMIN_TTL_SECONDS * 1000 });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookieHeader('sid', sid, ADMIN_TTL_SECONDS) });
       return res.end(JSON.stringify({ ok: true }));
     }
 
@@ -408,7 +488,7 @@ module.exports = async (req, res) => {
           mode: 'admin', login: ENV.owner_login, owner: ctx.owner, repo: ctx.repo,
           repo_url: `https://github.com/${ctx.owner}/${ctx.repo}`,
           repo_exists: st.ok, private: st.ok ? !!st.data.private : null,
-          ready: st.ok, template: ENV.template, oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret),
+          ready: st.ok, template: ENV.template, oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret && sessionSecretReady()),
           secrets_url: `https://github.com/${ctx.owner}/${ctx.repo}/settings/secrets/actions`,
         });
       }
@@ -478,7 +558,7 @@ module.exports = async (req, res) => {
         owner: ctx.owner, repo: ctx.repo, workflow: ENV.workflow, rdp_user: ctx.rdp_user, rdp_port: 3389,
         mode: ctx.kind, login: ctx.login, template: ENV.template,
         repo_url: `https://github.com/${ctx.owner}/${ctx.repo}`,
-        oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret),
+        oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret && sessionSecretReady()),
         password_from_secret: ctx.kind === 'user',
       };
       if (ctx.kind === 'admin') return send(200, Object.assign(base, { rdp_password: ctx.rdp_password }));

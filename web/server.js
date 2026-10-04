@@ -11,6 +11,8 @@ const zlib = require('zlib');
 
 const CFG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
 const { token, owner, repo, workflow = 'rdp-6h.yml', branch = 'main', port = 4173 } = CFG;
+// Token GitHub pada config.json tidak boleh terekspos ke jaringan lokal.
+const host = process.env.HOST || '127.0.0.1';
 const STATUS_RAW = `https://raw.githubusercontent.com/${owner}/${repo}/status/rdp-status.json`;
 const API = 'https://api.github.com';
 const UA = { 'User-Agent': 'XyRDP-dash', 'Authorization': `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' };
@@ -141,7 +143,19 @@ async function handle(req, res) {
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
       return send(200, fs.readFileSync(path.join(__dirname, 'public', 'index.html')), 'text/html');
     }
+    if (req.method === 'GET' && (url.pathname === '/panduan' || url.pathname === '/guide')) {
+      return send(200, fs.readFileSync(path.join(__dirname, 'public', 'panduan.html')), 'text/html');
+    }
 
+    if (req.method === 'GET' && url.pathname === '/api/auth/status') {
+      return send(200, { oauth_ready: false, admin_login: false, open_admin: true, mode: 'admin', login: owner, repo: `${owner}/${repo}`, local_mode: true });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/me') {
+      return send(200, { mode: 'admin', login: owner, owner, repo, repo_url: `https://github.com/${owner}/${repo}`, repo_exists: true, ready: true, local_mode: true });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
+      return send(200, { ok: true });
+    }
     if (req.method === 'GET' && url.pathname === '/api/config') {
       return send(200, {
         owner, repo, workflow,
@@ -307,5 +321,6 @@ async function handle(req, res) {
   }
 }
 
-http.createServer(handle).listen(port, '0.0.0.0', () =>
-  console.log(`XyRDP dashboard: http://localhost:${port}  (repo: ${owner}/${repo})`));
+const displayHost = host === '0.0.0.0' ? 'localhost' : host;
+http.createServer(handle).listen(port, host, () =>
+  console.log(`XyRDP dashboard: http://${displayHost}:${port} (bound ${host}; repo: ${owner}/${repo})`));

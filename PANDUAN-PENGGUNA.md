@@ -1,67 +1,66 @@
-# XyRDP — panduan untuk pengguna (orang lain yang mau ikut pakai)
+# XyRDP — panduan pengguna
 
-Dashboard: **https://xyrdp-dash.vercel.app** — semua sesi RDP kamu jalan di
-**repo GitHub milikmu sendiri**. Pemilik dashboard tidak bisa melihat token,
-secret, atau sesi RDP-mu.
+**Dashboard:** [xyrdp-dash.vercel.app](https://xyrdp-dash.vercel.app)
 
-## 1. Masuk & bikin repo kerja
+**Panduan visual interaktif:** [xyrdp-dash.vercel.app/panduan](https://xyrdp-dash.vercel.app/panduan)
 
-1. Buka dashboard → **Masuk dengan GitHub** → *Authorize*.
-   (Minta izin scope `repo` supaya bisa membuat repo & menjalankan Actions-mu.)
-2. Di panel **Repo kamu**, klik **BUAT REPO DARI TEMPLATE**.
-   - Repo `<username-mu>/XyRDP` dibuat (kopi dari template), izin Actions dirapikan otomatis.
-   - Pilih **Publik** supaya menit Actions gratis **tanpa batas** (privat = kuota 2000 menit/bulan).
+Sesi RDP kamu berjalan di **repo GitHub milikmu sendiri**. Pemilik dashboard tidak menjalankan sesi di repo pribadinya untuk pengguna lain.
 
-## 2. Isi 2 secret (wajib) — hanya ini
+## 1. Login dan buat repo
 
-Tombol **BUKA SECRETS** membawa ke `Settings → Secrets and variables → Actions`
-di repo kamu. Tambahkan *New repository secret*:
+1. Buka dashboard, lalu tekan **Masuk dengan GitHub**.
+2. Setujui akses GitHub setelah membaca halaman izin.
+3. Di panel **Repo kamu**, pilih nama serta visibilitas repo, lalu tekan **BUAT REPO DARI TEMPLATE**.
+4. Repo baru akan muncul di akunmu, misalnya `<username>/XyRDP`.
 
-| Secret | Isi apa |
+## 2. Isi dua secret wajib
+
+Tekan **BUKA SECRETS** untuk membuka pengaturan repo. Masuk ke `Settings → Secrets and variables → Actions` lalu tambahkan:
+
+| Nama secret | Nilai |
 |---|---|
-| `RDP_PASSWORD` | kata sandi login RDP sesi-mu (bebas, tapi kuat — ini sandi administrator VM) |
-| `TAILSCALE_AUTH_KEY` | auth key dari **akun Tailscale-mu**: admin console → **Settings → Keys → Generate auth key** → pilih **Reusable** + *Ephemeral* (opsional) |
+| `RDP_PASSWORD` | Kata sandi unik untuk login desktop RDP. Jangan gunakan sandi GitHub/email. |
+| `TAILSCALE_AUTH_KEY` | Auth key dari akun Tailscale-mu. Buat lewat **Admin Console → Settings → Keys**; reusable diperlukan untuk alur ini dan ephemeral disarankan jika tersedia. |
 
-Opsional:
+Secret opsional:
 
-| Secret | Isi apa |
+| Nama | Kegunaan |
 |---|---|
-| `NGROK_AUTHTOKEN` | kalau mau pakai ngrok sebagai jalur tunnel (akun gratis ngrok) |
-| `CLEANUP_TOKEN` | PAT scope `repo` milikmu, untuk hapus run lama otomatis |
+| `NGROK_AUTHTOKEN` | Tunnel RDP melalui akun ngrok |
+| `CLEANUP_TOKEN` | Menghapus run Actions lama secara otomatis |
+
+**Jangan kirim nilai secret melalui chat, issue publik, screenshot, atau commit.** Isikan langsung di GitHub. Dashboard hanya memeriksa nama secret.
 
 ## 3. Nyalakan sesi
 
-1. Kembali ke dashboard → **PERIKSA / RAPIKKAN LAGI** (sampai pill jadi **siap**).
-2. Atur durasi, jalur akses (**Tailscale** direkomendasikan), lalu **NYALAKAN**.
-   VM siap ±3–5 menit; status berubah **AKTIF**.
-3. Di HP: pasang app **Tailscale** → login akun yang sama → buka klien
-   **XyDesk Remote** → **Koneksi RDP Penuh** → Host = **IP `100.x`** dari baris
-   Tailscale di dashboard, Port = **3389**, user **`xyadmin`** + `RDP_PASSWORD`-mu.
-4. Tombol **MATIKAN** menghentikan VM kapan saja; tanpa itu VM mati sendiri
-   setelah durasi habis.
+1. Kembali ke dashboard dan tekan **PERIKSA / RAPIKKAN LAGI** sampai repo berstatus **siap**.
+2. Pilih durasi dan jalur. Untuk HP, gunakan **Tailscale**.
+3. Tekan **NYALAKAN** sekali. Tunggu beberapa menit sampai status dashboard berubah menjadi **AKTIF**.
+4. Di HP, buka Tailscale dan login ke akun yang membuat auth key.
+5. Buka **XyDesk Remote → Koneksi RDP Penuh**:
+   - Host: IP `100.x` terbaru dari dashboard.
+   - Port: `3389`.
+   - User: `xyadmin`.
+   - Password: nilai secret `RDP_PASSWORD` yang kamu masukkan sendiri.
 
-## Hal yang perlu kamu tahu
+Jangan gunakan IP dari sesi lama: alamat berubah saat sesi baru dimulai.
 
-- **Ini VM sementara.** Setiap sesi = VM baru dari nol: file yang kamu simpan
-  di dalam hilang saat sesi berakhir (kecuali kamu upload sendiri ke
-  cloud/Drive). Kata sandi, wallpaper, dan setelan ekstra tetap karena
-  tersimpan di repo/secret-mu.
-- **Repo kamu = kendali sesi.** Kalau Actions di repo itu dimatikan atau
-  workflow diubah, sesi ikut berhenti.
-- **Grafis = software (CPU).** Runner GitHub tidak punya GPU fisik; Mesa
-  llvmpipe/lavapipe dipasang supaya aplikasi yang butuh OpenGL/Vulkan bisa
-  jalan. 3D berat & render video tetap lambat.
-- **Kuota.** Repo publik: menit Actions gratis tanpa batas. Repo privat: 2000
-  menit/bulan; satu sesi 6 jam ≈ 360 menit.
-- **Jangan pakai untuk hal sensitif.** VM ada di infrastruktur GitHub, dan
-  sandi RDP-mu tersimpan sebagai secret di repo-mu (aman, tapi tetap sandi
-  sekali-pakai yang tidak kamu pakai di tempat lain).
+## 4. Wallpaper dan tampilan
 
-## Buat key Tailscale (sekali saja)
+Wallpaper bawaan XyCloud sudah tertanam di repo template (`assets/wallpaper.jpg` dan `assets/wallpaper-win10.jpg`). Workflow menerapkannya ke desktop sesi serta latar login. Perubahan wallpaper melalui panel **Tampilan** dashboard berlaku pada sesi berikutnya.
 
-1. https://login.tailscale.com/admin/settings/keys
-2. **Generate auth key** → **Reusable** → (opsional) *Ephemeral* & masa berlaku.
-3. Salin `tskey-auth-...` → tempel sebagai secret `TAILSCALE_AUTH_KEY` di repo kamu.
+## 5. Batasan dan keamanan
 
-Punya key itu, kamu punya tailnet sendiri — sesi RDP-mu **tidak** lewat akun
-Tailscale pemilik dashboard.
+- Ini **Windows Server 2022 dengan tampilan Windows 10-style**, bukan Windows 10 desktop asli.
+- Runner GitHub-hosted bersifat sementara; file lokal dapat hilang ketika sesi selesai. Simpan file penting di penyimpanan milikmu sendiri.
+- GPU software (Mesa llvmpipe/lavapipe) memakai CPU; tidak ada GPU fisik dan aplikasi 3D berat tetap lambat.
+- Satu sesi dapat berjalan maksimal 6 jam dan berhenti otomatis. Gunakan **MATIKAN** setelah selesai.
+- Workflow memeriksa bahwa pemicu adalah pemilik repo sebelum job runner dijalankan. Kolaborator non-pemilik tidak dapat memulai job RDP.
+- Kuota dan penggunaan gratis mengikuti plan/kebijakan GitHub dan layanan terkait. Periksa ketentuan akunmu.
+- Hindari menyimpan data rahasia di VM sementara dan gunakan sandi RDP khusus, bukan sandi yang dipakai di layanan lain.
+
+## Komunitas
+
+- [Join Saluran XyVerse Technology Global di WhatsApp](https://whatsapp.com/channel/0029VbB7nwuJZg3ym6UQ4Z1L)
+- [Gabung Grup XyCloud di WhatsApp](https://chat.whatsapp.com/DpROBXmeUHJGcXecfxP6n7?s=cl&p=a&ilr=2&amv=0)
+- [Kembali ke dashboard](https://xyrdp-dash.vercel.app)

@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "hostname": "xyrdp-77",
+  "active": true,
+  "hostname": "xyrdp-78",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
@@ -8,12 +8,12 @@
   "rdp_user": "xyadmin",
   "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
   "rdp_denyts": true,
-  "started_at": "2026-10-07T13:10:40Z",
-  "expires_at": "2026-10-07T19:05:40Z",
+  "started_at": "2026-10-07T19:06:09Z",
+  "expires_at": "2026-10-08T01:01:09Z",
   "duration_menit": 355,
-  "run_id": "37626425786",
-  "run_number": "77",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37626425786",
+  "run_id": "37671887130",
+  "run_number": "78",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37671887130",
   "mode": "bersih+win10",
   "win10": {
     "look": "ok",
@@ -41,53 +41,51 @@
   },
   "grafis": {
     "mode": "software",
-    "opengl": "4.6 (Core Profile) Mesa 26.2.4 (git-9a0169f2a7) | llvmpipe (LLVM 23.1.2, 256 bits) | Mesa",
-    "note": "GPU software (CPU): OpenGL 4.6 (llvmpipe) + Vulkan lavapipe + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat.",
+    "files": "opengl32.dll,libgallium_wgl.dll,vulkan_lvp.dll,vulkan-1.dll",
     "loader": "vulkan-1.dll 1.4.363.0 (LunarG)",
-    "adapters": "Microsoft Hyper-V Video",
+    "opengl": "4.6 (Core Profile) Mesa 26.2.4 (git-9a0169f2a7) | llvmpipe (LLVM 23.1.2, 256 bits) | Mesa",
+    "dir": "C:\\XyRDP\\grafis",
+    "install": "mesa 26.2.4.0 [Mesa/X.org]",
+    "note": "GPU software (CPU): OpenGL 4.6 (llvmpipe) + Vulkan lavapipe + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat.",
+    "mesa": "26.2.4",
     "debug": "",
     "vulkan": "llvmpipe (LLVM 23.1.2, 256 bits) (PHYSICAL_DEVICE_TYPE_CPU)",
-    "files": "opengl32.dll,libgallium_wgl.dll,vulkan_lvp.dll,vulkan-1.dll",
-    "install": "mesa 26.2.4.0 [Mesa/X.org]",
-    "dir": "C:\\XyRDP\\grafis",
-    "mesa": "26.2.4"
+    "adapters": "Microsoft Hyper-V Video"
   },
   "akses": {
     "mode": "tailscale",
     "rustdesk": {
       "status": "skip",
       "service": null,
+      "id": "",
       "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
-      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password",
-      "id": ""
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
     },
     "tailscale": {
       "status": "ok",
-      "ip": "100.78.37.69",
-      "magicdns": "xyrdp-77.tail01cd7c.ts.net.",
-      "hostname": "xyrdp-77",
+      "ip": "100.108.184.19",
+      "magicdns": "xyrdp-78.tail01cd7c.ts.net.",
+      "hostname": "xyrdp-78",
       "funnel": "tidak aktif",
       "funnel_addr": "",
-      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.78.37.69 Port=3389 di XyDesk Remote (atau mstsc). Funnel: tidak aktif"
+      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.108.184.19 Port=3389 di XyDesk Remote (atau mstsc). Funnel: tidak aktif"
     },
     "tunnel": {
       "status": "skip",
       "provider": "",
+      "host": "",
+      "port": 0,
+      "address": "",
       "rdp_local": "",
       "selftest": "",
       "outside": "",
       "note2": "",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin",
-      "host": "",
-      "port": 0,
-      "address": ""
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin"
     }
   },
   "memory": {
     "total_mb": 16379,
-    "available_mb": 13632,
+    "available_mb": 13756,
     "measured": "akhir setup"
-  },
-  "heartbeat_at": "2026-10-07T18:43:01Z",
-  "stopped_at": "2026-10-07T19:03:09Z"
+  }
 }

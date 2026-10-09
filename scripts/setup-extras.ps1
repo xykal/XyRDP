@@ -367,12 +367,15 @@ try {
   $usrExists = Get-LocalUser -Name $u -ErrorAction SilentlyContinue
   if ($grpExists -and $usrExists) {
     $members = Get-LocalGroupMember -Group 'Administrators' | ForEach-Object { ($_.Name -split '\\')[-1] }
+    # Highest admin check: UAC
+    $lua2 = Get-Reg 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'EnableLUA'
+    $cpa = Get-Reg 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'ConsentPromptBehaviorAdmin'
     $rdpMembers = @()
     try { $rdpMembers = Get-LocalGroupMember -Group 'Remote Desktop Users' | ForEach-Object { ($_.Name -split '\\')[-1] } } catch {}
     $adminOk = ($members -contains $u)
     $adminTxt = $(if ($adminOk) { 'YA' } else { 'TIDAK' })
     $rdpTxt   = $(if ($rdpMembers -contains $u) { 'YA' } else { 'TIDAK' })
-    Log ("  user '{0}' ada: YA | Administrators: {1} | Remote Desktop Users: {2}" -f $u, $adminTxt, $rdpTxt)
+    Log ("  user '{0}' ada: YA | Administrators: {1} | Remote Desktop Users: {2} | HIGHEST ADMIN (UAC OFF): EnableLUA={3} Consent={4}" -f $u, $adminTxt, $rdpTxt, $lua2, $cpa)
     $lf = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'LocalAccountTokenFilterPolicy' -ErrorAction SilentlyContinue).LocalAccountTokenFilterPolicy
     Log "  LocalAccountTokenFilterPolicy = $lf (1 = token admin penuh untuk sesi jaringan/RDP)"
   } else { Log '  user/grup tidak ditemukan (harusnya dibuat setup-rdp.ps1)' }

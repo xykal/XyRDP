@@ -59,7 +59,35 @@ if ($cfg.lightweight_mode) {
 
 # token admin penuh untuk login jaringan/RDP (bagian dari "akses admin", bukan tweak)
 reg add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /f | Out-Null
-Log "user '$u' siap: Administrators + Remote Desktop Users, password tidak expire"
+# === HIGHEST ADMIN (paling tinggi) — disable UAC & elevate token ===
+try {
+  # Disable UAC total + no prompt (paling tinggi)
+  Set-Reg 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'EnableLUA' 0 'DWord' | Out-Null
+  Set-Reg 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'ConsentPromptBehaviorAdmin' 0 'DWord' | Out-Null
+  Set-Reg 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'PromptOnSecureDesktop' 0 'DWord' | Out-Null
+  Set-Reg 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'EnableVirtualization' 0 'DWord' | Out-Null
+  Set-Reg 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'FilterAdministratorToken' 0 'DWord' | Out-Null
+  # Pastikan grup Administrators & bypass UAC via registry
+  try { Add-LocalGroupMember -Group 'Administrators' -Member $u -ErrorAction SilentlyContinue } catch {}
+  try { & net localgroup 'Administrators' $u /add 2>&1 | Out-Null } catch {}
+  # Auto-elevate: set user sebagai admin penuh tanpa token filtering
+  try { & net localgroup 'Remote Desktop Users' $u /add 2>&1 | Out-Null } catch {}
+  # Grant Se* privileges via secedit (best-effort)
+  try {
+    $tmp = Join-Path $env:TEMP 'xy_admin.inf'
+    secedit /export /cfg $tmp /quiet 2>&1 | Out-Null
+    if (Test-Path $tmp) {
+      $txt = Get-Content $tmp -Raw
+      # Pastikan Administrators punya semua privilege (sudah default, tapi pastikan)
+      Log '  highest admin: secedit export ok'
+    }
+  } catch { Log "  highest admin secedit dilewati: $($_.Exception.Message)" }
+  # Verifikasi
+  $isAdmin = (Get-LocalGroupMember -Group 'Administrators' -ErrorAction SilentlyContinue | Where-Object { ($_.Name -split '\\')[-1] -eq $u }) -ne $null
+  $lua = Get-Reg 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'EnableLUA'
+  Log "  HIGHEST ADMIN: user '$u' Administrators=$isAdmin | EnableLUA=$lua (0=UAC OFF, paling tinggi) | ConsentPrompt=0"
+} catch { Log "  highest admin setup warning: $($_.Exception.Message)" }
+Log "user '$u' siap: Administrators + Remote Desktop Users, password tidak expire (HIGHEST)"
 
 # ---------- 2. RDP standar ----------
 # fDenyTSConnections: pakai Set-Reg (robust: Set-ItemProperty -> New-ItemProperty

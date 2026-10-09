@@ -56,6 +56,15 @@ on:
         options:
           - "ya"
           - "tidak"
+      debloat:
+        description: "🧹 Debloat: hapus app bawaan gede (ringan=OneDrive/Xbox/Appx, full=+Edge ~1.5GB). Edge dihapus hanya jika Chrome ada"
+        required: false
+        default: "ringan"
+        type: choice
+        options:
+          - "ringan"
+          - "full"
+          - "tidak"
       samp:
         description: "🎮 GTA SAMP: pasang SA-MP client + dependensi DirectX/VC++ (butuh GTA_SA_URL atau upload manual)"
         required: false
@@ -154,6 +163,7 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       # --- SAMP MOD ---
       STORAGE_BOOST: ${{ inputs.storage_boost }}
+      DEBLOAT: ${{ inputs.debloat }}
       SAMP: ${{ inputs.samp }}
       SAMP_EXTRA: ${{ inputs.samp_extra }}
       GTA_SA_URL: ${{ inputs.gta_sa_url }}

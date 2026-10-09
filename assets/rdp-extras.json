@@ -15,5 +15,6 @@
   "rdp_user": "xyadmin",
   "storage_boost": true,
   "samp": false,
-  "samp_extra": false
+  "samp_extra": false,
+  "debloat": "ringan"
 }

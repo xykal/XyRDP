@@ -120,6 +120,7 @@ $script:XyCfgDefaults = [ordered]@{
   notepadpp        = $false           # editor ringan opsional
   rdp_user         = 'xyadmin'        # username RDP default tersimpan per-repo
   storage_boost    = $true            # bersihkan toolcache biar free 70GB -> 120GB+
+  debloat          = 'ringan'         # tidak / ringan / full (Edge)
   samp             = $false           # pasang GTA SAMP (butuh GTA_SA_URL atau upload manual)
   samp_extra       = $false           # silentpatch + widescreen fix
 }
@@ -155,6 +156,7 @@ function Get-Cfg {
       $c.$k = Get-CfgBool $j $k $c.$k
     }
     $c.translucent_mode = (Get-CfgStr $j 'translucent_mode' $c.translucent_mode).ToLower()
+    $c.debloat          = (Get-CfgStr $j 'debloat' $c.debloat).ToLower()
     $c.wallpaper_file   = (Get-CfgStr $j 'wallpaper_file'   $c.wallpaper_file).ToLower()
     $c.rdp_user         = Get-CfgStr $j 'rdp_user' $c.rdp_user
   }

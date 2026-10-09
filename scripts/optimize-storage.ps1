@@ -160,6 +160,124 @@ try { & Dism.exe /Online /Cleanup-Image /StartComponentCleanup /ResetBase 2>&1 |
 try { Clear-RecycleBin -Force -ErrorAction SilentlyContinue; Log '  RecycleBin dikosongkan' } catch {}
 try { & cleanmgr.exe /verylowdisk /sagerun:1 2>&1 | Out-Null } catch {}
 
+# ---------- 5b. DEBLOAT — hapus app bawaan gede (Edge + OneDrive + Xbox dll) ----------
+# Env DEBLOAT: tidak / ringan / full (default ringan kalau STORAGE_BOOST=ya, user mau hemat)
+$debloat = if ($env:DEBLOAT) { $env:DEBLOAT.Trim().ToLower() } else { 'ringan' }
+if ($env:DEBLOAT -eq 'tidak' -or $env:DEBLOAT -eq '0' -or $env:DEBLOAT -eq 'false') { $debloat = 'tidak' }
+$cfgDeb = $null
+try { $cfgDeb = (Get-Cfg).PSObject.Properties['debloat'] } catch {}
+if ($cfgDeb -and $null -ne $cfgDeb.Value) {
+  # jika di rdp-extras.json ada setting debloat, pakai itu kalau input tidak diisi explicit
+  if (-not $env:DEBLOAT) { $debloat = "$($cfgDeb.Value)".ToLower() }
+}
+Log "  Debloat mode: $debloat (tidak=skip, ringan=OneDrive/Xbox/Appx, full=+Edge)"
+
+if ($debloat -ne 'tidak') {
+  # cek Chrome ada sebelum hapus Edge
+  $chromeExists = $false
+  foreach ($cp in @('C:\Program Files\Google\Chrome\Application\chrome.exe','C:\Program Files (x86)\Google\Chrome\Application\chrome.exe')) {
+    if (Test-Path $cp) { $chromeExists = $true; break }
+  }
+  if (-not $chromeExists) { $cc = Get-Command chrome -ErrorAction SilentlyContinue; if ($cc) { $chromeExists = $true } }
+
+  # ringan: Appx bloat
+  $bloatAppx = @(
+    'Microsoft.OneDriveSync','Microsoft.Xbox*','Microsoft.XboxGamingOverlay','Microsoft.XboxGameCallableUI',
+    'Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.BingNews','Microsoft.BingWeather',
+    'Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.WindowsFeedbackHub','Microsoft.MicrosoftOfficeHub',
+    'Microsoft.Office.OneNote','Microsoft.SkypeApp','Microsoft.MixedReality.Portal','Microsoft.People',
+    'Microsoft.WindowsMaps','Microsoft.Microsoft3DViewer','Microsoft.Print3D','Microsoft.Wallet',
+    'Microsoft.MicrosoftSolitaireCollection','Microsoft.MSPaint','Clipchamp.Clipchamp'
+  )
+  # full tambahan Edge + Office hub
+  if ($debloat -eq 'full') {
+    Log '  Debloat FULL: akan coba hapus Edge (Chrome ada='+ $chromeExists +')'
+    # simpan WebView2 runtime, hanya hapus Edge browser
+    try {
+      $edgePaths = @(
+        'C:\Program Files (x86)\Microsoft\Edge\Application',
+        'C:\Program Files\Microsoft\Edge\Application'
+      )
+      $edgeVer = $null
+      foreach ($ep in $edgePaths) {
+        if (Test-Path $ep) {
+          $vers = Get-ChildItem $ep -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+          if ($vers) { $edgeVer = $vers.FullName; break }
+        }
+      }
+      $edgeSize = 0
+      if ($edgeVer) { $edgeSize = Get-SizeGB $edgeVer }
+      Log "  Edge terdeteksi: $edgeVer (~${edgeSize}GB)"
+      if (-not $chromeExists) {
+        Log '  Chrome TIDAK ada — Edge TIDAK dihapus (biar browser tetap ada)'
+      } else {
+        # coba winget dulu (paling bersih)
+        $wg = Get-Command winget -ErrorAction SilentlyContinue
+        if ($wg) {
+          Log '  Winget uninstall Edge...'
+          & winget uninstall --id Microsoft.Edge --exact --silent --accept-source-agreements --disable-interactivity 2>&1 | Out-Null
+          Start-Sleep -Seconds 5
+        }
+        # fallback setup.exe --uninstall (Edge)
+        if (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application') {
+          try {
+            $setups = Get-ChildItem 'C:\Program Files (x86)\Microsoft\Edge\Application' -Recurse -Filter 'setup.exe' -ErrorAction SilentlyContinue | Where-Object { $_.FullName -like '*Installer*setup.exe' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if ($setups) {
+              Log "  Edge setup.exe uninstall: $($setups.FullName)"
+              Start-Process -FilePath $setups.FullName -ArgumentList '--uninstall','--system-level','--verbose-logging','--force-uninstall' -Wait -ErrorAction SilentlyContinue | Out-Null
+              Start-Sleep -Seconds 8
+            }
+          } catch { Log "  Edge setup uninstall gagal: $($_.Exception.Message)" }
+        }
+        # cek hasil
+        $edgeGone = -not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')
+        $freedEdge = if ($edgeGone) { $edgeSize } else { 0 }
+        $totalFreed += $freedEdge
+        Log "  Edge: $(if ($edgeGone) { 'BERHASIL dihapus (+'+$freedEdge+'GB)' } else { 'GAGAL/masih ada — coba winget manual di RDP' })"
+        # pastikan WebView2 tetap ada
+        if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\EdgeWebView\Application\msedgewebview2.exe')) {
+          Log '  WebView2 tidak ada — install WebView2 Runtime (dibutuhkan beberapa app)'
+          try { & winget install --id Microsoft.EdgeWebView2Runtime --exact --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null } catch {}
+        }
+      }
+    } catch { Log "  Debloat Edge error: $($_.Exception.Message)" }
+  } else {
+    Log '  Debloat RINGAN: Edge dipertahankan (hapus OneDrive/Xbox/Appx saja). Pakai full kalau mau hapus Edge.'
+  }
+
+  # hapus Appx untuk ringan & full
+  $removedAppx = 0
+  foreach ($pat in $bloatAppx) {
+    try {
+      $pkgs = Get-AppxPackage -Name $pat -ErrorAction SilentlyContinue
+      foreach ($pkg in $pkgs) {
+        try {
+          Remove-AppxPackage -Package $pkg.PackageFullName -ErrorAction SilentlyContinue | Out-Null
+          Log "  Appx dihapus: $($pkg.Name) ($($pkg.PackageFullName))"
+          $removedAppx++
+        } catch {}
+      }
+      $prov = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like $pat }
+      foreach ($pr in $prov) {
+        try { Remove-AppxProvisionedPackage -Online -PackageName $pr.PackageName -ErrorAction SilentlyContinue | Out-Null; Log "  Provisioned dihapus: $($pr.DisplayName)" } catch {}
+      }
+    } catch {}
+  }
+  # OneDrive standalone (bukan Appx)
+  try {
+    if (Get-Process OneDrive -ErrorAction SilentlyContinue) { Stop-Process -Name OneDrive -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 }
+    $odSetup = @('C:\Windows\System32\OneDriveSetup.exe','C:\Windows\SysWOW64\OneDriveSetup.exe')
+    foreach ($od in $odSetup) {
+      if (Test-Path $od) { Start-Process $od -ArgumentList '/uninstall' -Wait -ErrorAction SilentlyContinue | Out-Null; Log "  OneDrive uninstall: $od"; break }
+    }
+    $totalFreed += Remove-Tree "$env:USERPROFILE\OneDrive" 'OneDrive user folder'
+    $totalFreed += Remove-Tree 'C:\OneDriveTemp' 'OneDriveTemp'
+  } catch { Log "  OneDrive uninstall error: $($_.Exception.Message)" }
+  Log "  Debloat Appx selesai: $removedAppx paket dihapus"
+} else {
+  Log '  Debloat dilewati (DEBLOAT=tidak)'
+}
+
 # ---------- 6. Non-aktifkan pagefile sementara? TIDAK — RDP butuh pagefile.
 # Tapi kita bisa pindahkan pagefile ke D: jika D: ada & lebih lega
 try {

@@ -411,12 +411,13 @@ module.exports = async (req, res) => {
     const p = url.pathname.replace(/^\/api\/?/, '/');
 
     // ---- halaman: selalu boleh (berisi layar login tanpa data sensitif) ----
-    if (p === '/' || p === '/index.html') {
+    // SPA routes: /id/home, /en/home, /id/folder etc — auto detect, rounded-full super UI
+    if (p === '/' || p === '/index.html' || /^\/(id|en)(\/|$)/.test(p) || ['/home','/folder','/settings','/logs'].includes(p)) {
       try {
         return send(200, fs.readFileSync(path.join(__dirname, '..', 'assets', 'index.html'), 'utf8'), 'text/html');
-      } catch { return send(200, '<h1>XyRDP</h1>', 'text/html'); }
+      } catch { return send(200, '<h1>RdpFree</h1>', 'text/html'); }
     }
-    if (p === '/panduan' || p === '/guide') {
+    if (p === '/panduan' || p === '/guide' || p === '/id/guide' || p === '/en/guide') {
       try {
         return send(200, fs.readFileSync(path.join(__dirname, '..', 'assets', 'panduan.html'), 'utf8'), 'text/html');
       } catch { return send(404, '<h1>Panduan belum tersedia</h1>', 'text/html'); }

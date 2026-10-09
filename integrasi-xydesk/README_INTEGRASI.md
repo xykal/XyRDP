@@ -131,3 +131,36 @@ Web bisa panggil `Android.onRdpCreated(...)` saat `poll()` detect `session.activ
 
 Credit tetap **KallAncrit** untuk XyRDP template.
 
+
+---
+
+## 7) Anti-AdBlock & Pilihan Iklan Cuan (2026)
+
+### Kenapa tetap kedeteksi walau pakai AdBlock?
+Gate kita **tidak tergantung** script iklan eksternal untuk unlock:
+- Deteksi: cek bait `div.ad` + `getComputedStyle` + coba fetch `adsbygoogle.js`. Hasil simpan `__adBlockDetected`.
+- Unlock **wajib** lewat `POST /api/ad/verify` + cookie `ad_verified` + `localStorage` — server yang validasi, bukan client. Jadi walau uBlock/APK AdGuard, user **tetap harus** 15s di modal internal kita. Tidak bisa bypass inspect-element (server tolak `POST /start` dengan `402 need_ad`).
+
+Fallback internal ad yang tampil kalau block:
+- `adPreviewText = "⚠️ AdBlock terdeteksi — tetap harus nonton 15s (internal ad)"` → tampil promo XyDesk + sponsor lokal (bisa isi dengan banner affiliate kamu). Countdown tetap jalan, reward tetap unlock. Jadi AdBlock justru bikin user lihat promo kamu, bukan kabur.
+
+### Rekomendasi Jaringan Iklan (cuan lumayan, 2026)
+
+**WEB (dash Vercel):**
+- **Terbaik untuk rewarded 1x:** `Google AdSense Rewarded` atau `Google Ad Manager Rewarded` — eCPM tertinggi ($3–$8 di ID, $8–$15 US) tapi butuh approve domain.
+- **Paling gampang approve & anti-AdBlock:** `Adsterra Social Bar + Rewarded Interstitial` atau `Monetag Rewarded` — eCPM $1–$4 ID, $4–$9 US, approve instan, script ringan, tidak diblok uBlock se-agresif AdSense. Cocok untuk fallback kalau `__adBlockDetected==true`.
+- **Alternatif:** `PropellerAds Rewarded`, `a-ads.com` (crypto, tanpa KYC), `HilltopAds`.
+- **Implementasi hybrid (disarankan):** 
+  ```js
+  if(!__adBlockDetected) loadAdsense(); else loadAdsterra(); // tetap 15s
+  ```
+  Simpan ID di `window.__adProviders.web`.
+
+**APK (XyDesk Remote):**
+- **Terbaik:** `AdMob Rewarded` (`play-services-ads:23.0.0`) — eCPM $5–$12 ID, $15–$40 US untuk rewarded video. Pakai **mediation** biar fill-rate 99%:
+  - Mediation: AdMob + `Facebook Audience Network` + `Unity Ads` + `AppLovin MAX`. 
+- **Setup:** Test ID `ca-app-pub-3940256099942544/5224354917` → ganti ke produksi `ca-app-pub-xxx/yyy` di `XyRdpAdHelper.kt`. Jangan lupa `APPLICATION_ID` di `AndroidManifest.xml`.
+- **Tips cuan:** Rewarded jangan interstitial — rewarded dibayar 3–5x lebih mahal & tidak ganggu UX karena 1x aja.
+
+> **Kesimpulan:** Untuk PR ini, default internal 15s (100% work walau AdBlock). Nanti kamu tinggal ganti `window.__adProviders` & `XyRdpAdHelper.PROD_REWARDED_ID` ke ID produksi, tanpa ubah logic gate.
+

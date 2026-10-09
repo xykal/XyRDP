@@ -37,10 +37,22 @@ Log "mode dasar | hostname $hostName | durasi $dur menit | user $u | OS $osName 
 
 # ---------- 1. User admin (akses penuh, password tetap) ----------
 $sp = ConvertTo-SecureString $env:RDP_PASSWORD -AsPlainText -Force
-if (Get-LocalUser -Name $u -ErrorAction SilentlyContinue) { Remove-LocalUser -Name $u }
-New-LocalUser -Name $u -Password $sp -FullName 'XyRDP Admin' -PasswordNeverExpires -AccountNeverExpires -Description 'XyRDP remote user' | Out-Null
+# === runneradmin = akun bawaan runner GitHub (paling tinggi), jangan dihapus ===
+if ($u.ToLower() -eq 'runneradmin') {
+  Log "mode runneradmin: pakai akun bawaan runner (highest, tidak dibuat ulang)"
+  try { Set-LocalUser -Name $u -Password $sp -PasswordNeverExpires $true -AccountNeverExpires -ErrorAction Stop | Out-Null } catch {
+    try { & net user $u $env:RDP_PASSWORD /add 2>&1 | Out-Null; & net user $u $env:RDP_PASSWORD 2>&1 | Out-Null } catch {}
+  }
+  try { Set-LocalUser -Name $u -PasswordNeverExpires $true -AccountNeverExpires -ErrorAction SilentlyContinue } catch {}
+} else {
+  if (Get-LocalUser -Name $u -ErrorAction SilentlyContinue) { Remove-LocalUser -Name $u }
+  New-LocalUser -Name $u -Password $sp -FullName 'XyRDP Admin' -PasswordNeverExpires -AccountNeverExpires -Description 'XyRDP remote user' | Out-Null
+}
 Add-LocalGroupMember -Group 'Administrators'         -Member $u -ErrorAction SilentlyContinue
 Add-LocalGroupMember -Group 'Remote Desktop Users'   -Member $u -ErrorAction SilentlyContinue
+# Pastikan runneradmin juga tetap ada sebagai fallback (jaga kalau user pakai xyadmin tapi mau runneradmin juga bisa RDP)
+try { Add-LocalGroupMember -Group 'Administrators' -Member 'runneradmin' -ErrorAction SilentlyContinue } catch {}
+try { Add-LocalGroupMember -Group 'Remote Desktop Users' -Member 'runneradmin' -ErrorAction SilentlyContinue } catch {}
 
 # ---------- 1b. Profil ringan konservatif (non-esensial saja) --------------
 if ($cfg.lightweight_mode) {
@@ -87,7 +99,7 @@ try {
   $lua = Get-Reg 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'EnableLUA'
   Log "  HIGHEST ADMIN: user '$u' Administrators=$isAdmin | EnableLUA=$lua (0=UAC OFF, paling tinggi) | ConsentPrompt=0"
 } catch { Log "  highest admin setup warning: $($_.Exception.Message)" }
-Log "user '$u' siap: Administrators + Remote Desktop Users, password tidak expire (HIGHEST)"
+if ($u.ToLower() -eq 'runneradmin') { Log "user '$u' (runneradmin bawaan) siap: HIGHEST ADMIN tanpa buat ulang" } else { Log "user '$u' siap: Administrators + Remote Desktop Users, password tidak expire (HIGHEST)" }
 
 # ---------- 2. RDP standar ----------
 # fDenyTSConnections: pakai Set-Reg (robust: Set-ItemProperty -> New-ItemProperty

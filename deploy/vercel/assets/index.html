@@ -3,839 +3,289 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>XyRDP — sesi baru dijeda</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23161618'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%236a6a70'/%3E%3C/svg%3E">
+<title>XyRDP — RDP Tailscale & Tunnel</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%236366f1'/%3E%3Ctext x='50%' y='55%' text-anchor='middle' dominant-baseline='middle' fill='white' font-size='14' font-weight='700'%3EX%3C/text%3E%3C/svg%3E">
 <style>
-  :root{
-    --bg:#101012; --panel:#161618; --panel2:#131315; --line:#262629;
-    --txt:#c6c6c9; --dim:#75757a;
-    --ok:#93a893; --mid:#a89f88; --bad:#a88585;
-    --mono:ui-monospace,"SF Mono",Cascadia Mono,Consolas,monospace;
-  }
+  :root{--bg:#0a0a0f;--panel:#14141c;--panel2:#1a1a26;--line:#2a2a3a;--txt:#e4e4e7;--dim:#9f9fa9;--accent:#6366f1;--ok:#22c55e;--warn:#eab308;--bad:#ef4444;--radius:12px}
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%}
-  body{background:var(--bg);color:var(--txt);font:13px/1.55 var(--mono);min-height:100vh}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;
-    padding:13px 20px;border-bottom:1px solid var(--line);background:var(--panel2);position:sticky;top:0;z-index:5}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:.14em;color:#9a9aa0;font-size:12px}
-  .dot{width:8px;height:8px;border-radius:50%;background:#3a3a3f;flex:none}
-  .dot.on{background:var(--ok)}
-  .dot.mid{background:var(--mid)}
-  .dot.err{background:var(--bad)}
-  .repo{color:#5c5c62;font-size:11px;text-align:right;line-height:1.5}
-  main{padding:20px;max-width:1180px;margin:0 auto}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}
-  .panel h2{font-size:10px;font-weight:600;letter-spacing:.18em;color:#63636a;text-transform:uppercase;margin-bottom:12px;
-    display:flex;align-items:center;gap:7px}
-  .panel h2 .pill{margin-left:auto}
-  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:4px 0;border-bottom:1px dotted #1f1f23}
-  .row:last-child{border-bottom:0}
-  .k{color:var(--dim)}
-  .v{font-weight:600;text-align:right;word-break:break-all}
-  .v small{color:var(--dim);font-weight:400}
-  .pill{display:inline-block;padding:2px 10px;border-radius:3px;font-size:11px;font-weight:600;letter-spacing:.04em;background:#1c1c1f;color:#8b8b91;border:1px solid var(--line)}
-  .pill.ok{color:var(--ok);border-color:#2c322c;background:#1a1e1a}
-  .pill.mid{color:var(--mid);border-color:#332f26;background:#201e18}
-  .pill.err{color:var(--bad);border-color:#342727;background:#201818}
-  .big{font-size:20px;letter-spacing:.03em;color:var(--txt);font-weight:600}
-  .bar{height:3px;background:#1c1c1f;border-radius:99px;overflow:hidden;margin-top:10px}
-  .bar i{display:block;height:100%;width:0%;background:#4a4a50;transition:width 1s linear}
-  label{display:block;font-size:11px;color:var(--dim);margin:10px 0 5px}
-  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
-    font:13px var(--mono);padding:9px 10px;border-radius:5px;outline:none}
-  input:focus,select:focus{border-color:#3d3d44}
-  .two{display:flex;gap:10px}.two>*{flex:1;min-width:0}
-  .chk{display:flex;gap:8px;align-items:center;color:var(--dim);font-size:11.5px;margin-top:10px;cursor:pointer}
-  .chk input{width:auto}
+  body{background:var(--bg);color:var(--txt);font:14px/1.6 'Inter',system-ui,-apple-system,sans-serif;min-height:100vh}
+  header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:16px;padding:14px 20px;background:rgba(10,10,15,.8);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .brand{font-weight:800;letter-spacing:.08em;font-size:15px}
+  .brand span{color:var(--accent)}
+  .dot{width:8px;height:8px;border-radius:50%;background:#333;flex:none}
+  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)} .dot.mid{background:var(--warn)} .dot.err{background:var(--bad)}
+  .spacer{flex:1}
+  .repo{font-size:11px;color:var(--dim);text-align:right;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+  .ghbtn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;background:var(--accent);color:white;font-weight:600;font-size:13px;text-decoration:none;border:0;cursor:pointer}
+  .ghbtn:hover{background:#5558e3}
+  .mini{font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--dim);cursor:pointer}
+  .mini:hover{border-color:var(--accent);color:white}
+  main{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .center{max-width:420px;margin:60px auto;text-align:center}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .card h2{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .pill{font-size:11px;padding:3px 8px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+  .pill.ok{color:var(--ok);border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.1)}
+  .pill.err{color:var(--bad);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.1)}
+  .pill.mid{color:var(--warn);border-color:rgba(234,179,8,.3);background:rgba(234,179,8,.1)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  @media(max-width:800px){.grid{grid-template-columns:1fr}}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #1e1e2e}
+  .row:last-child{border:0}
+  .k{color:var(--dim);font-size:13px}
+  .v{font-weight:600;font-size:13px;word-break:break-all;text-align:right}
+  .big{font-size:22px;font-weight:800}
+  .bar{height:4px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:10px}
+  .bar i{display:block;height:100%;background:var(--accent);transition:width .5s}
+  label{font-size:12px;color:var(--dim);display:block;margin:12px 0 6px;font-weight:500}
+  input,select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);outline:none;font-size:13px}
+  input:focus,select:focus{border-color:var(--accent)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .btns{display:flex;gap:10px;margin-top:14px}
-  button{font:600 12px var(--mono);letter-spacing:.05em;border:1px solid var(--line);border-radius:5px;
-    padding:10px 16px;cursor:pointer;background:#1b1b1e;color:#b9b9bf;transition:.15s}
-  button:hover{border-color:#34343a;color:#d6d6da}
-  button.primary{background:#26262a;border-color:#34343a;color:#e2e2e6}
-  button.primary:hover{background:#2c2c31}
-  button.danger{color:var(--bad);border-color:#302626}
-  button.danger:hover{background:#1e1616}
-  button.danger.armed{background:#3a2626;color:#e0c8c8;border-color:#4a3030}
-  button:disabled{opacity:.45;cursor:default}
-  .mini{font-size:10.5px;padding:3px 8px;border-radius:3px;color:#8f8f96;background:none}
-  .mini:hover{border-color:#3d3d44;color:#c6c6c9}
-  .note{font-size:11.5px;color:var(--dim);margin-top:10px;min-height:16px}
-  .note.ok{color:var(--ok)} .note.bad{color:var(--bad)}
-  pre{background:#0c0c0e;border:1px solid var(--line);border-radius:5px;padding:12px;margin-top:10px;
-    max-height:420px;overflow:auto;font-size:11.5px;color:#8f9aa6;white-space:pre-wrap;word-break:break-word}
-  a{color:#9a9aa2;text-decoration:none} a:hover{text-decoration:underline}
-  .hidden{display:none!important}
-  .center{max-width:340px;margin:14vh auto 0}
-  .hint{font-size:11px;color:#63636a;margin-top:12px;line-height:1.65}
-  .flash{position:fixed;right:18px;bottom:18px;background:#161618;border:1px solid #33333a;
-    color:#b9b9bf;padding:10px 14px;border-radius:5px;font-size:12px;opacity:0;transform:translateY(6px);
-    transition:.25s;pointer-events:none;max-width:320px}
+  button.primary{flex:1;padding:12px;background:var(--accent);border:0;color:white;border-radius:8px;font-weight:700;cursor:pointer}
+  button.primary:hover{background:#5558e3}
+  button.secondary{padding:12px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{font-size:12px;color:var(--dim);margin-top:8px;line-height:1.5}
+  .hint details{margin-top:6px}
+  .hint summary{cursor:pointer;color:var(--accent);font-weight:600}
+  .note{font-size:12px;margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--panel2);border:1px solid transparent}
+  .note.ok{border-color:rgba(34,197,94,.3);color:#86efac}
+  .note.bad{border-color:rgba(239,68,68,.3);color:#fca5a5}
+  .flash{position:fixed;right:16px;bottom:16px;background:var(--panel);border:1px solid var(--line);padding:10px 14px;border-radius:8px;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none}
   .flash.show{opacity:1;transform:none}
-  footer{padding:16px 20px;color:#4a4a50;font-size:11px;text-align:center}
-  /* --- wallpaper dropzone --- */
-  .drop{border:1px dashed #2e2e33;border-radius:6px;background:#0e0e10;min-height:128px;
-    display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;
-    padding:10px;transition:.15s;overflow:hidden;position:relative}
-  .drop:hover{border-color:#3d3d44}
-  .drop.over{border-color:#55555c;background:#121214}
-  .drop img{max-width:100%;max-height:180px;border-radius:4px;display:block}
-  .droptxt{color:var(--dim);font-size:11.5px;line-height:1.7;padding:8px}
-  .droptxt small{color:#4e4e54;font-size:10.5px}
-  /* --- switch --- */
-  .switch{position:relative;display:inline-block;width:36px;height:19px;flex:none}
+  .tabs{display:flex;gap:8px;margin:16px 0;border-bottom:1px solid var(--line);padding-bottom:0}
+  .tab{padding:10px 14px;border-radius:8px 8px 0 0;cursor:pointer;color:var(--dim);font-weight:600;font-size:13px;border:1px solid transparent;border-bottom:0}
+  .tab.active{background:var(--panel);color:var(--txt);border-color:var(--line)}
+  .hidden{display:none!important}
+  .switch{position:relative;width:38px;height:22px;flex:none}
   .switch input{opacity:0;width:0;height:0}
-  .switch i{position:absolute;inset:0;background:#222226;border:1px solid var(--line);border-radius:99px;transition:.18s}
-  .switch i:before{content:"";position:absolute;width:13px;height:13px;left:2px;top:2px;background:#55555b;border-radius:50%;transition:.18s}
-  .switch input:checked + i{background:#26262a;border-color:#3d3d44}
-  .switch input:checked + i:before{transform:translateX(17px);background:#9a9aa2}
-  select.compact{width:auto;min-width:130px;padding:6px 8px;font-size:12px}
-  code{color:#8f8f96;background:#1a1a1d;padding:1px 5px;border-radius:3px;font-size:11px}
-  /* --- login GitHub --- */
-  .ghbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;
-    padding:11px 14px;border:1px solid #34343a;border-radius:5px;background:#1d1d21;color:#e2e2e6;
-    font:600 12.5px var(--mono);letter-spacing:.04em;cursor:pointer;text-decoration:none}
-  .ghbtn:hover{background:#242429;text-decoration:none}
-  .ghbtn svg{width:17px;height:17px;fill:currentColor;flex:none}
-  .badge-me{display:inline-flex;align-items:center;gap:6px}
-  .badge-me img{width:16px;height:16px;border-radius:3px;vertical-align:-3px}
-  .steps{counter-reset:st;font-size:11.5px;color:var(--dim);line-height:1.8}
-  .steps b{color:#9a9aa2}
-  .header-guide{flex:none;margin-left:auto;color:#a989c7;border:1px solid #34273f;border-radius:5px;padding:5px 9px;font-size:10px;letter-spacing:.08em}
-  .header-guide:hover{color:#e4c5ff;border-color:#604479;text-decoration:none}
-  .pause-banner{max-width:1180px;margin:14px auto 0;padding:15px 18px;border:1px solid #6b3c35;border-left:4px solid #e08c64;border-radius:7px;background:linear-gradient(120deg,#2a1718,#191416);color:#ead2c8}
-  .pause-banner strong{display:block;color:#ffbb9f;font-size:13px;letter-spacing:.04em}
-  .pause-banner p{margin:5px 0 8px;color:#c7aba4;font-size:11.5px;line-height:1.65}
-  .pause-links{display:flex;gap:14px;flex-wrap:wrap;font-size:11px}.pause-links a{color:#ffc4a9;text-decoration:underline;text-underline-offset:3px}
-  .pause-inline{padding:14px;border:1px solid #613b35;border-radius:5px;background:#211718;color:#d5b7ae;font-size:12px;line-height:1.7}
-  .pause-inline strong{display:block;color:#ffbb9f;margin-bottom:5px}
-  fieldset.paused-fieldset{min-width:0;border:0;padding:0;margin:0;width:100%;opacity:.55}
-  .turnstile-shell{margin-top:12px;padding:10px;background:#101012;border:1px solid var(--line);border-radius:5px;min-height:74px}
-  .turnstile-shell .hint{margin:4px 0 0}
-  .welcome-overlay{display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:18px;background:rgba(5,4,9,.82);backdrop-filter:blur(9px)}
-  .welcome-overlay.show{display:flex;animation:guideFade .24s ease-out}
-  .welcome-card{position:relative;width:min(100%,560px);overflow:hidden;padding:24px;border:1px solid #5c4070;border-radius:13px;background:radial-gradient(ellipse at 100% 0%,#773da32a,transparent 44%),linear-gradient(145deg,#19131f,#111012);box-shadow:0 24px 90px #000b}
-  .welcome-card:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#9d57d7,#d9a7ff,#7ec7ae)}
-  .welcome-eyebrow{color:#b88bd6;font-size:10px;letter-spacing:.16em;font-weight:700}
-  .welcome-card h2{margin:9px 0 7px;color:#ded2e9;font-size:18px;letter-spacing:.01em}
-  .welcome-card p{color:#88838f;font-size:12px;line-height:1.7;margin:0}
-  .welcome-points{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:17px 0}
-  .welcome-points span{border:1px solid #302536;background:#131116;border-radius:5px;padding:9px;color:#a9a0af;font-size:10px;text-align:center}
-  .welcome-points b{display:block;color:#d3b0e7;font-size:11px;margin-bottom:3px}
-  .welcome-actions{display:flex;gap:9px;margin-top:15px}
-  .welcome-actions>*{flex:1;text-align:center}
-  .welcome-actions a{display:block;font:600 11px var(--mono);letter-spacing:.03em;text-decoration:none;padding:10px 12px;border:1px solid #493459;border-radius:5px;background:#241a2d;color:#e3caF4}
-  .welcome-actions a:hover{background:#2d2039;border-color:#76518c}
-  .welcome-actions button{font-size:10px;padding:9px 11px}
-  @keyframes guideFade{from{opacity:0}to{opacity:1}}
-  @media(max-width:600px){.welcome-card{padding:20px}.welcome-points{grid-template-columns:1fr}.welcome-actions{flex-direction:column}.header-guide{padding:4px 6px;font-size:9px}}
+  .switch i{position:absolute;inset:0;background:#222;border:1px solid var(--line);border-radius:99px;transition:.2s}
+  .switch i:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:2px;background:#888;border-radius:50%;transition:.2s}
+  .switch input:checked+i{background:var(--accent);border-color:var(--accent)}
+  .switch input:checked+i:before{transform:translateX(16px);background:white}
+  pre{background:#0a0a0f;border:1px solid var(--line);border-radius:8px;padding:12px;max-height:300px;overflow:auto;font-size:11px;color:#a1a1aa;white-space:pre-wrap}
+  .drop{border:1px dashed var(--line);border-radius:8px;background:var(--panel2);min-height:100px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer}
+  .pause-banner{margin:16px auto;max-width:1100px;padding:14px 16px;border-radius:8px;background:#1a1210;border:1px solid #3a2018;color:#fecaca;display:flex;gap:12px;align-items:flex-start}
+  .pause-banner strong{color:#fca5a5}
+  footer{text-align:center;padding:20px;color:var(--dim);font-size:11px}
+  .welcome-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .welcome-overlay.show{display:flex}
+  .welcome-card{max-width:480px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px}
 </style>
 </head>
 <body>
 <header>
-  <div class="brand"><span class="dot" id="hdot"></span><span>DASBOR</span></div>
+  <div class="brand"><span class="dot" id="hdot"></span> <span>Xy</span>RDP</div>
   <div class="repo" id="repoTop"></div>
-  <a class="header-guide" href="/panduan" id="guideHeader">PANDUAN ↗</a>
-  <button class="mini hidden" id="bLogout" style="margin-left:10px">KELUAR</button>
+  <div class="spacer"></div>
+  <a href="/panduan" style="font-size:12px;color:var(--dim);text-decoration:none">Panduan →</a>
+  <button class="mini hidden" id="bLogout">Keluar</button>
 </header>
-<div class="pause-banner hidden" id="pauseBanner" role="alert" aria-labelledby="pauseTitle">
-  <strong id="pauseTitle">JEDA LAYANAN — jangan mulai sesi RDP baru</strong>
-  <p>Dashboard dan workflow resmi kini memblokir sesi baru. GitHub-hosted Actions bukan layanan desktop RDP umum; penggunaan seperti ini berisiko membuat job/repo dibatasi atau akun ditangguhkan. Ini bukan akibat secret Tailscale yang kosong. Sesi yang sudah berjalan tidak dibatalkan otomatis.</p>
-  <div class="pause-links"><a href="/panduan">Baca alasan dan langkah aman</a><a href="https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features#actions" target="_blank" rel="noopener">Ketentuan GitHub Actions ↗</a><a href="https://docs.github.com/en/site-policy/acceptable-use-policies/github-appeal-and-reinstatement" target="_blank" rel="noopener">Ajukan appeal resmi ↗</a></div>
+
+<div class="pause-banner hidden" id="pauseBanner" role="alert">
+  <div>⛔</div>
+  <div><strong>Jeda layanan</strong><br> Sesi baru dijeda oleh admin. Hubungi admin jika butuh.</div>
 </div>
 
-<main id="dashboard">
-  <section class="panel center hidden" id="loginBox">
-    <h2>Masuk</h2>
-    <a class="ghbtn" id="ghLogin" href="/api/auth/login">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-      Masuk dengan GitHub
-    </a>
-    <div class="note" id="ghNote"></div>
-    <div class="btns hidden" id="adminToggleWrap"><button class="mini" id="adminToggle" style="width:100%">login admin (pemilik)</button></div>
-    <div class="hidden" id="adminWrap">
-      <label>Email admin</label>
-      <input id="luser" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required>
-      <label>Kata sandi</label>
-      <input id="lpass" type="password" autocomplete="current-password" required>
-      <div class="turnstile-shell"><div id="turnstileWidget"></div><div class="hint" id="turnstileHint">Verifikasi anti-bot Cloudflare akan muncul di sini.</div></div>
-      <div class="btns"><button class="primary" id="lgo" style="width:100%">Masuk admin</button></div>
+<main>
+  <!-- LOGIN -->
+  <section class="center card hidden" id="loginBox" style="padding:28px">
+    <h2 style="justify-content:center;font-size:16px;text-transform:none;letter-spacing:0;color:var(--txt)">Masuk ke Dashboard</h2>
+    <p class="hint" style="margin:8px 0 16px;text-align:center">Login GitHub biar bisa fork & atur RDP di repo kamu sendiri.</p>
+    <a class="ghbtn" id="ghLogin" href="/api/auth/login" style="width:100%;justify-content:center"> <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg> Masuk dengan GitHub</a>
+    <div class="note hidden" id="ghNote"></div>
+    <div id="adminToggleWrap" class="hidden" style="margin-top:12px"><button class="mini" id="adminToggle" style="width:100%">Login admin</button></div>
+    <div id="adminWrap" class="hidden" style="text-align:left;margin-top:12px">
+      <label>Email admin</label><input id="luser" type="email">
+      <label>Kata sandi</label><input id="lpass" type="password">
+      <div id="turnstileWidget" style="margin-top:10px"></div>
+      <div class="hint" id="turnstileHint">Verifikasi Cloudflare</div>
+      <button class="primary" id="lgo" style="width:100%;margin-top:10px">Masuk admin</button>
     </div>
-    <div class="note" id="lerr"></div>
-    <div class="hint">Login hanya untuk melihat status repo/run lama dan mengelola atau mencabut secret. Pembuatan repo, penyimpanan pengaturan baru, serta sesi RDP baru sedang dijeda.</div>
-    <div class="hint"><a href="/panduan">Baca alasan jeda dan langkah aman ↗</a></div>
+    <div class="note hidden" id="lerr"></div>
+    <div class="hint">Dengan login, kamu setuju repo RDP jalan di akun GitHub-mu sendiri (gratis, isolasi).</div>
   </section>
 
-  <div id="app" class="grid hidden">
-    <div class="panel hidden" id="repoPanel" style="grid-column:1/-1">
-      <h2>Repo kamu <span class="pill" id="rpPill">-</span></h2>
-      <div class="row"><span class="k">Akun GitHub</span><span class="v" id="rpWho">-</span></div>
-      <div class="row"><span class="k">Repo kerja</span><span class="v" id="rpRepo">-</span></div>
-      <div class="row"><span class="k">Inventaris secret <small>(nama saja)</small></span><span class="v" id="rpSecrets">-</span></div>
-      <div class="row"><span class="k">Izin Actions</span><span class="v" id="rpPerms">-</span></div>
-      <div class="two" id="rpCreateWrap">
-        <div><label>Nama repo (kalau belum ada)</label><input id="rpName" value="XyRDP" spellcheck="false"></div>
-        <div><label>Visibilitas</label><select id="rpVis">
-          <option value="publik" selected>Publik (repo terbuka — cek ketentuan Actions)</option>
-          <option value="privat">Privat (kuota mengikuti plan GitHub)</option>
-        </select></div>
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" data-tab="overview">Overview</div>
+      <div class="tab" data-tab="settings">Settings</div>
+      <div class="tab" data-tab="logs">Logs</div>
+    </div>
+
+    <!-- TAB OVERVIEW -->
+    <div id="tab-overview">
+      <div class="grid">
+        <div class="card hidden" id="repoPanel" style="grid-column:1/-1">
+          <h2>🚀 Setup Repo <span class="pill" id="rpPill">-</span></h2>
+          <div class="row"><span class="k">Akun</span><span class="v" id="rpWho">-</span></div>
+          <div class="row"><span class="k">Repo</span><span class="v" id="rpRepo">-</span></div>
+          <div class="row"><span class="k">Secrets</span><span class="v" id="rpSecrets">-</span></div>
+          <div class="row"><span class="k">Actions</span><span class="v" id="rpPerms">-</span></div>
+          <div class="two hidden" id="rpCreateWrap">
+            <div><label>Nama repo</label><input id="rpName" value="XyRDP"></div>
+            <div><label>Visibilitas</label><select id="rpVis"><option value="publik" selected>Publik</option><option value="privat">Privat</option></select></div>
+          </div>
+          <div class="btns">
+            <button class="primary" id="rpSetup">Buat Repo</button>
+            <button class="secondary" id="rpSecretsBtn">Buka di GitHub</button>
+          </div>
+          <div class="note hidden" id="rpNote"></div>
+          <!-- SECRETS VIA DASH -->
+          <div class="card" id="secretsPanel" style="margin-top:16px;background:var(--panel2)">
+            <h2>🔑 Password & Kunci <span class="pill" id="secPill">per akun</span></h2>
+            <p class="hint">Isi di sini, auto terenkripsi ke GitHub. Kita cuma sedia template — password milik kamu.</p>
+            <label>RDP_PASSWORD *</label><input id="secRdpPass" type="password" placeholder="Min 8 karakter">
+            <div class="two">
+              <div><label>Tailscale Key</label><input id="secTsKey" type="password" placeholder="tskey-... (opsional)"></div>
+              <div><label>Ngrok Token</label><input id="secNgrok" type="password" placeholder="(opsional)"></div>
+            </div>
+            <label>GTA SA URL</label><input id="secGtaUrl" type="text" placeholder="Direct link ZIP (opsional)">
+            <label>Cleanup Token</label><input id="secCleanup" type="password" placeholder="ghp_... (opsional)">
+            <div class="btns">
+              <button class="primary" id="secSave">💾 Simpan</button>
+              <button class="secondary" id="secLoad">Cek</button>
+            </div>
+            <div class="note hidden" id="secNote"></div>
+          </div>
+          <div class="hint" id="rpWarn"></div>
+        </div>
+
+        <div class="card">
+          <h2>⏱️ Sesi <span class="pill" id="stPill">-</span></h2>
+          <div class="row"><span class="k">Status</span><span class="v" id="stRun">-</span></div>
+          <div class="row"><span class="k">Sistem</span><span class="v" id="stOs">-</span></div>
+          <div class="row"><span class="k">Mulai</span><span class="v" id="stStart">-</span></div>
+          <div class="row"><span class="k">Berakhir</span><span class="v" id="stEnd">-</span></div>
+          <div class="row"><span class="k">Sisa</span><span class="v big" id="stLeft">-</span></div>
+          <div class="bar"><i id="stBar"></i></div>
+          <div class="hint">Sesi aktif 6 jam, auto mati. Jangan pakai alamat lama di sesi baru.</div>
+        </div>
+
+        <div class="card">
+          <h2>🔌 Koneksi — IP / User / Pass</h2>
+          <div class="row"><span class="k">Host:Port</span><span class="v" style="display:flex;gap:6px;align-items:center"><span id="cTun">-</span> <button class="mini" data-copy="cTunAll">Salin</button></span></div>
+          <div class="row"><span class="k">Tailscale IP</span><span class="v" style="display:flex;gap:6px"><span id="cTs">-</span> <button class="mini" data-copy="cTs">Salin</button></span></div>
+          <div class="row"><span class="k">User</span><span class="v" style="display:flex;gap:6px"><span id="cUser">-</span> <button class="mini" data-copy="cUser">Salin</button></span></div>
+          <div class="row"><span class="k">Password</span><span class="v" style="display:flex;gap:6px;align-items:center"><span id="cPass">••••••••</span> <button class="mini" id="cToggle">Lihat</button> <button class="mini" data-copy="cPassVal">Salin</button></span></div>
+          <div class="row hidden" id="cPassLocalRow"><span class="k">Simpan pass lokal</span><span class="v" style="display:flex;gap:6px"><input id="cPassLocal" type="password" style="width:140px"> <button class="mini" id="cPassSave">Simpan</button></span></div>
+          <div class="row"><span class="k">RustDesk ID</span><span class="v" style="display:flex;gap:6px"><span id="cRdId">-</span> <button class="mini" data-copy="cRdId">Salin</button></span></div>
+          <div class="row"><span class="k">Mode</span><span class="v" id="cMode">-</span></div>
+          <div class="hint" id="cWarn"></div>
+          <details class="hint"><summary>ℹ️ Cara konek</summary>
+            <p style="margin-top:6px"><b>Tunnel:</b> mstsc → Host = sebelum <code>:</code>, Port = sesudah. <b>Tailscale:</b> install Tailscale di HP + login akun sama → Host = IP 100.x, Port 3389. <b>RustDesk:</b> app RustDesk → ID + password.</p>
+          </details>
+        </div>
       </div>
-      <div class="btns">
-        <button class="primary" id="rpSetup" style="flex:2" disabled>PEMBUATAN / PERBAIKAN DIJEDA</button>
-        <button id="rpSecretsBtn" style="flex:1">KELOLA SECRETS</button>
-      </div>
-      <div class="note" id="rpNote">Pemeriksaan ini hanya menampilkan nama secret—dashboard tidak dapat membaca nilainya.</div>
-      <div class="panel" style="margin-top:14px;background:#131315;border:1px solid #262629" id="secretsPanel">
-        <h2 style="margin-bottom:8px">🔑 Secrets RDP — isi langsung dari dashboard <span class="pill" id="secPill">fleksibel per akun</span></h2>
-        <div class="hint" style="margin-bottom:10px">Setiap user isi secret-nya sendiri di repo hasil fork-nya. Kita cuma nyiapin template script — akun & password punya mereka. Dashboard akan enkripsi otomatis via GitHub API (libsodium).</div>
-        <label>RDP_PASSWORD <small style="color:#93a893">*wajib, min 8 karakter — ini jadi password RDP + RustDesk</small></label>
-        <input id="secRdpPass" type="password" placeholder="contoh: SampGacor123!" maxlength="64">
+
+      <div class="card" style="margin-top:16px">
+        <h2>▶️ Kontrol</h2>
+        <div class="two" style="align-items:end">
+          <div><label>Durasi</label><select id="fDur"><option>360</option><option>120</option><option>60</option></select></div>
+          <div><label>Hostname</label><input id="fHost" value="xyrdp" placeholder="xyrdp"></div>
+        </div>
         <div class="two">
-          <div><label>TAILSCALE_AUTH_KEY <small>(opsional, untuk IP 100.x)</small></label><input id="secTsKey" type="password" placeholder="tskey-auth-... (kosong = tanpa Tailscale)"></div>
-          <div><label>NGROK_AUTHTOKEN <small>(opsional, untuk tunnel ngrok)</small></label><input id="secNgrok" type="password" placeholder="2abc... (kosong = pakai bore/pinggy)"></div>
+          <div><label>Akses</label><select id="fAkses"><option value="keduanya" selected>Tunnel+ RustDesk</option><option value="tunnel">Tunnel saja</option><option value="rustdesk">RustDesk saja</option><option value="tailscale">Tailscale</option><option value="semua">Semua</option></select></div>
+          <div><label>Provider</label><select id="fProv"><option value="otomatis" selected>Otomatis</option><option value="pinggy">Pinggy</option><option value="bore">Bore</option><option value="ngrok">Ngrok</option></select></div>
         </div>
-        <label>GTA_SA_URL <small>(opsional, direct link ZIP GTA SA portable milik user)</small></label>
-        <input id="secGtaUrl" type="text" placeholder="https://drive.google.com/uc?export=download&id=... atau kosong = upload manual">
-        <label>CLEANUP_TOKEN <small>(opsional, PAT repo untuk auto hapus log lama)</small></label>
-        <input id="secCleanup" type="password" placeholder="ghp_... (opsional)">
+        <div class="two">
+          <div><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="fWin10" checked> Win10 look</label></div>
+          <div><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="fGrafis" checked> GPU software (untuk SAMP)</label></div>
+        </div>
         <div class="btns">
-          <button class="primary" id="secSave" style="flex:2">💾 SIMPAN SECRETS VIA DASHBOARD</button>
-          <button id="secLoad" style="flex:1">CEK STATUS</button>
+          <button class="primary" id="bStart">▶️ Mulai Sesi</button>
+          <button class="secondary" id="bStop" style="color:var(--bad);border-color:var(--bad)">⛔ Matikan</button>
         </div>
-        <div class="note" id="secNote">Secret disimpan terenkripsi di GitHub (nama saja yang terbaca). Dashboard tidak pernah simpan password di server.</div>
-        <div class="hint">Setelah simpan, cek di <code>Settings → Secrets and variables → Actions</code> di repo fork kamu — nama secret akan muncul.</div>
+        <div class="note hidden" id="opNote"></div>
       </div>
-      <div class="hint steps">Jangan buat repo atau tambahkan secret baru untuk memulai RDP selama jeda. Bila repo lama tidak akan dipakai, buka pengaturan secret untuk menghapus/revoke yang sudah tidak dibutuhkan. Untuk repo template lama, nonaktifkan workflow dari tab <code>Actions</code>; perubahan template tidak otomatis masuk ke salinan lama.</div>
-      <div class="hint" id="rpWarn"></div>
     </div>
 
-    <div class="panel">
-      <h2>Sesi</h2>
-      <div class="row"><span class="k">Kondisi</span><span class="v"><span class="pill" id="stPill">MEMERIKSA</span></span></div>
-      <div class="row"><span class="k">Run</span><span class="v"><a id="stRun" href="#" target="_blank" rel="noopener">-</a></span></div>
-      <div class="row"><span class="k">Sistem</span><span class="v" id="stOs">-</span></div>
-      <div class="row"><span class="k">Dimulai</span><span class="v" id="stStart">-</span></div>
-      <div class="row"><span class="k">Berakhir otomatis</span><span class="v" id="stEnd">-</span></div>
-      <div class="row"><span class="k">Sisa waktu</span><span class="v big" id="stLeft">-</span></div>
-      <div class="row"><span class="k">Ekstra sesi ini</span><span class="v" id="stExtras">-</span></div>
-      <div class="row"><span class="k">RAM tersedia <small>(snapshot akhir setup)</small></span><span class="v" id="stRam">-</span></div>
-      <div class="bar"><i id="stBar"></i></div>
-    </div>
-
-    <div class="panel">
-      <h2>Koneksi</h2>
-      <div class="row"><span class="k">Jalur yang dipakai</span><span class="v" id="cMode">-</span></div>
-      <div class="row"><span class="k">Host &amp; Port (XyDesk / mstsc)</span>
-        <span class="v"><span id="cTun">-</span> <button class="mini" data-copy="cTunHost">SALIN HOST</button>
-        <button class="mini" data-copy="cTunPort">SALIN PORT</button>
-        <button class="mini" data-copy="cTunAll">SALIN HOST:PORT</button></span></div>
-      <div class="hint" id="cWarn"></div>
-      <div class="row"><span class="k">Tailscale (IP 100.x)</span>
-        <span class="v"><span id="cTs">-</span> <button class="mini" data-copy="cTs">SALIN IP</button></span></div>
-      <div class="row"><span class="k">Grafis / GPU</span><span class="v" id="cGpu">-</span></div>
-      <div class="row"><span class="k">Kesiapan RDP di VM</span><span class="v" id="cRdp">-</span></div>
-      <div class="row"><span class="k">Server RustDesk</span><span class="v" id="cRdSrv">-</span></div>
-      <div class="row"><span class="k">Pengguna</span>
-        <span class="v"><span id="cUser">-</span> <button class="mini" data-copy="cUser">SALIN</button></span></div>
-      <div class="row"><span class="k">Hak akses</span><span class="v">Administrator <small>(Administrators + Remote Desktop Users, token admin penuh)</small></span></div>
-      <div class="row"><span class="k">Kata sandi</span>
-        <span class="v"><span id="cPass">************</span>
-          <button class="mini" id="cToggle">TAMPIL</button>
-          <button class="mini" data-copy="cPassVal">SALIN</button></span></div>
-      <div class="row hidden" id="cPassLocalRow"><span class="k">Sandi RDP ku <small>(disimpan di browser ini saja)</small></span>
-        <span class="v"><input id="cPassLocal" type="password" placeholder="sama dengan secret RDP_PASSWORD"
-          style="max-width:210px;display:inline-block;padding:5px 8px"> <button class="mini" id="cPassSave">SIMPAN</button></span></div>
-      <div class="row"><span class="k">RustDesk ID <small>(cadangan)</small></span>
-        <span class="v"><span id="cRdId">-</span> <button class="mini" data-copy="cRdId">SALIN</button></span></div>
-      <div class="hint"><b>Hanya untuk run lama yang masih aktif.</b> Dari HP (XyDesk Remote): buka <b>Koneksi RDP Penuh</b> → kolom <b>Host</b> = bagian
-        sebelum tanda <code>:</code>, kolom <b>Port</b> = bagian setelahnya (bisa juga tempel
-        <code>host:port</code> di kolom host). Login <b id="cUserInline">xyadmin</b> + kata sandi di atas. AVC444, ClearType,
-        clipboard, keyboard, dan <b>audio</b> jalan lewat jalur ini; kalau sertifikat RDP ditanya, terima
-        (sertifikat VM sekali-pakai). <b>RustDesk</b> cuma jalur cadangan kalau tunnel mati.
-        Catatan: audio bridge QUIC XyDesk (UDP 4433) tidak lewat tunnel TCP — klien otomatis
-        fallback ke audio RDP.</div>
-      <div class="hint" id="cTunNote"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Kontrol sesi</h2>
-      <div class="pause-inline"><strong>RDP BARU DINONAKTIFKAN</strong>
-        Tidak ada durasi atau jalur akses yang dapat menyalakan sesi baru saat ini. Jangan membuat salinan repo tambahan atau mencoba dispatch manual untuk melewati jeda.
-        <div class="pause-links" style="margin-top:8px"><a href="/panduan">Langkah aman &amp; bantuan akun</a></div>
-      </div>
-      <div class="btns">
-        <button class="primary" id="bStart" style="flex:2" disabled title="Sesi baru dijeda">SESI BARU DIJEDA</button>
-        <button class="danger" id="bStop" style="flex:1">MATIKAN RUN SAYA</button>
-      </div>
-      <div class="note" id="opNote">MATIKAN hanya mengirim stop ke run di repo yang sedang login; tidak dijalankan otomatis.</div>
-      <div class="hint">Run yang sudah berjalan tidak diubah oleh jeda ini. Periksa statusnya di panel Sesi. Jangan menekan MATIKAN jika kamu tidak ingin menghentikan run milik repo tersebut.</div>
-    </div>
-
-    <div class="panel">
-      <h2>Tampilan <span class="pill" id="exPill">-</span></h2>
-
-      <fieldset disabled class="paused-fieldset" aria-label="Pengaturan visual dinonaktifkan selama jeda">
-      <div class="drop" id="wpDrop">
-        <input type="file" id="wpFile" accept="image/png,image/jpeg,image/bmp" class="hidden">
-        <img id="wpPrev" class="hidden" alt="pratinjau wallpaper">
-        <div class="droptxt" id="wpDropTxt">Tarik &amp; lepas gambar ke sini, atau klik untuk memilih<br>
-          <small>JPG / PNG / BMP — otomatis dikecilkan (maks 1920px) sebelum diunggah</small></div>
-      </div>
-      <div class="btns">
-        <button class="primary" id="wpUp" style="flex:1">UNGGAH &amp; PASANG</button>
-      </div>
-      <div class="note" id="wpNote"></div>
-
-      <label style="margin-top:16px">Tampilan &amp; profil ringan</label>
-      <div class="row"><span class="k">Tema gelap Windows + aplikasi</span>
-        <span class="v"><label class="switch"><input type="checkbox" id="exDark"><i></i></label></span></div>
-      <div class="row"><span class="k">Profil ringan <small>(SysMain/telemetri non-esensial)</small></span>
-        <span class="v"><label class="switch"><input type="checkbox" id="exLean"><i></i></label></span></div>
-      <div class="row"><span class="k">Transparansi taskbar</span>
-        <span class="v"><label class="switch"><input type="checkbox" id="exTrans"><i></i></label></span></div>
-      <div class="row"><span class="k">Mode transparansi</span>
-        <span class="v"><select id="exMode" class="compact">
-          <option value="clear">Clear</option>
-          <option value="blur">Blur</option>
-          <option value="acrylic">Acrylic</option>
-          <option value="opaque">Opaque</option>
-          <option value="normal">Normal</option>
-        </select></span></div>
-      <label style="margin-top:16px">Gaya Windows 10</label>
-      <div class="row"><span class="k">Tweak tampilan</span>
-        <span class="v"><label class="switch"><input type="checkbox" id="exWin10"><i></i></label></span></div>
-      <div class="row"><span class="k">Label "Windows 10 Pro"</span>
-        <span class="v"><label class="switch"><input type="checkbox" id="exBadge"><i></i></label></span></div>
-      <label style="margin-top:16px">Editor tambahan (opsional)</label>
-      <div class="row"><span class="k">Visual Studio Code</span>
-        <span class="v"><label class="switch"><input type="checkbox" id="exVscode"><i></i></label></span></div>
-      <div class="row"><span class="k">Notepad++</span>
-        <span class="v"><label class="switch"><input type="checkbox" id="exNpp"><i></i></label></span></div>
-      <div class="hint">Git, Node.js, Python, 7-Zip, Visual Studio 2022, .NET, Java, CMake, GCC/GDB sudah tersedia di runner windows-2022. VS Code dan Notepad++ hanya diunduh jika dipilih; biarkan mati untuk setup lebih cepat.</div>
-      <label style="margin-top:16px">Username RDP default</label>
-      <input id="exRdpUser" type="text" value="xyadmin" maxlength="20" autocomplete="off" autocapitalize="none" spellcheck="false">
-      <div class="hint">3–20 karakter: huruf/angka di awal, lalu huruf, angka, underscore atau tanda hubung. Default disimpan di repo dan dipakai sesi baru; sandi tetap di secret GitHub.</div>
-      <label style="margin-top:16px">Host &amp; aplikasi</label>
-      <div class="row"><span class="k">XyDesk host <small>(AVC444 + ClearType + audio)</small></span>
-        <span class="v"><label class="switch"><input type="checkbox" id="exXy"><i></i></label></span></div>
-      <div class="row"><span class="k">Lightshot <small>(nonaktif default, hemat app latar)</small></span>
-        <span class="v"><label class="switch"><input type="checkbox" id="exLs"><i></i></label></span></div>
-      <div class="btns"><button id="exSave" style="flex:1">SIMPAN PENGATURAN</button></div>
-      <div class="note" id="exNote"></div>
-      </fieldset>
-      <div class="hint">Wallpaper dan pengaturan visual tidak akan diterapkan selama sesi baru dijeda. Status sukses lama tidak selalu membuktikan gambar tampil pada profil RDP; jangan unggah ulang dulu. Diagnosis wallpaper akan dilanjutkan bila ada host desktop yang sesuai.</div>
-    </div>
-
-    <div class="panel" style="grid-column:1/-1">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-        <h2 style="margin:0">Log</h2>
-        <div style="display:flex;gap:12px;align-items:center">
-          <label class="chk" style="margin:0"><input type="checkbox" id="logAuto" checked> auto</label>
-          <button class="mini" id="logPull">MUAT ULANG</button>
+    <!-- TAB SETTINGS -->
+    <div id="tab-settings" class="hidden">
+      <div class="card">
+        <h2>🎨 Tampilan & Wallpaper <span class="pill" id="exPill">-</span></h2>
+        <div class="drop" id="wpDrop"><input type="file" id="wpFile" accept="image/*" class="hidden"><img id="wpPrev" class="hidden" style="max-width:100%;max-height:180px;border-radius:8px"><div id="wpDropTxt" style="padding:20px">Klik / drop gambar<br><small>JPG/PNG/BMP, max 1920px</small></div></div>
+        <button class="primary" id="wpUp" style="width:100%;margin-top:10px">Upload Wallpaper</button>
+        <div class="note hidden" id="wpNote"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+          <label style="display:flex;justify-content:space-between;align-items:center">Tema gelap <span class="switch"><input type="checkbox" id="exDark"><i></i></span></label>
+          <label style="display:flex;justify-content:space-between;align-items:center">Transparan <span class="switch"><input type="checkbox" id="exTrans"><i></i></span></label>
+          <label style="display:flex;justify-content:space-between;align-items:center">Win10 look <span class="switch"><input type="checkbox" id="exWin10"><i></i></span></label>
+          <label style="display:flex;justify-content:space-between;align-items:center">XyDesk host <span class="switch"><input type="checkbox" id="exXy"><i></i></span></label>
+          <label style="display:flex;justify-content:space-between;align-items:center">VS Code <span class="switch"><input type="checkbox" id="exVscode"><i></i></span></label>
+          <label style="display:flex;justify-content:space-between;align-items:center">Notepad++ <span class="switch"><input type="checkbox" id="exNpp"><i></i></span></label>
         </div>
+        <label>RDP User</label><input id="exRdpUser" value="xyadmin">
+        <button class="secondary" id="exSave" style="width:100%;margin-top:12px">Simpan Pengaturan</button>
+        <div class="note hidden" id="exNote"></div>
       </div>
-      <pre id="logBox">belum ada log</pre>
+    </div>
+
+    <!-- TAB LOGS -->
+    <div id="tab-logs" class="hidden">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 style="margin:0">📜 Logs</h2>
+          <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="logAuto" checked> Auto</label>
+        </div>
+        <button class="mini" id="logPull" style="margin:10px 0">Muat Ulang</button>
+        <pre id="logBox">belum ada log</pre>
+      </div>
     </div>
   </div>
 </main>
 
-<footer>Dasbor kontrol sesi · <a href="/panduan">Panduan langkah demi langkah</a> · <a href="https://whatsapp.com/channel/0029VbB7nwuJZg3ym6UQ4Z1L" target="_blank" rel="noopener">Join Saluran</a></footer>
+<footer>XyRDP • Sesi 6 jam • <a href="/panduan" style="color:var(--accent)">Panduan</a> • <a href="https://github.com/xykal/XyRDP" style="color:var(--dim)">GitHub</a></footer>
 <div class="flash" id="flash"></div>
-<div class="welcome-overlay" id="guideWelcome" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" aria-describedby="welcomeDesc">
-  <div class="welcome-card" tabindex="-1">
-    <div class="welcome-eyebrow">XYRDP · LAYANAN DIJEDA</div>
-    <h2 id="welcomeTitle">Sesi RDP baru sedang dijeda.</h2>
-    <p id="welcomeDesc">Jangan membuat repo/secret baru atau menjalankan workflow untuk melewati jeda. GitHub-hosted Actions dibatasi untuk pengembangan dan pengujian proyek terkait. Buka panduan untuk melihat alasan, mengamankan secret, dan mengajukan appeal.</p>
-    <div class="welcome-points"><span><b>01 · Jangan dispatch</b>Start baru diblokir</span><span><b>02 · Amankan key</b>Hapus/revoke jika tak dipakai</span><span><b>03 · Banding resmi</b>Gunakan form GitHub</span></div>
-    <div class="welcome-actions"><a id="guideRead" href="/panduan">ALASAN &amp; LANGKAH AMAN ↗</a><button id="guideContinue" class="primary">MENGERTI — TUTUP</button></div>
-    <button id="guideLater" class="mini" style="width:100%;margin-top:8px">Tutup</button>
-  </div>
-</div>
+<div class="welcome-overlay" id="guideWelcome"><div class="welcome-card"><h3 style="color:var(--accent);font-size:12px;letter-spacing:.1em">XyRDP • RDP Gratis</h3><h2 style="margin:8px 0">Mulai RDP di akun kamu sendiri</h2><p class="hint">Fork → isi password → start → konek pakai IP/user/pass. 6 jam per sesi.</p><div class="btns"><a href="/panduan" class="primary" style="text-decoration:none;text-align:center;padding:12px;border-radius:8px">Panduan</a><button id="guideContinue" class="secondary">Mengerti</button></div></div></div>
 
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)},
-      // tulis teks dengan aman: elemen yang tidak ada di HTML tidak bikin
-      // seluruh render berhenti (bug lama: $('cRdSrv') tidak ada -> TypeError
-      // membuat baris tunnel & sisa render tidak pernah jalan)
-      setTxt=function(id,txt){var el=$(id);if(el)el.textContent=txt;if(el)el.title=txt||'';},
+      setTxt=function(id,txt){var el=$(id);if(el)el.textContent=txt;},
       cfg={}, authed=false, lastRun=null, passShown=false, stopArmed=0, t0=null, t1=null, wpData=null, cTunRaw='', cTsRaw='',
       authInfo={}, me=null, turnstileToken='', turnstileWidgetId=null, turnstileScriptLoading=false, savedExtras=null;
-
-  function flash(msg){var f=$('flash');f.textContent=msg;f.classList.add('show');
-    clearTimeout(f._t);f._t=setTimeout(function(){f.classList.remove('show')},2400)}
-  function note(msg,cls){var n=$('opNote');n.textContent=msg;n.className='note '+(cls||'')}
-  function wpNote(msg,cls){var n=$('wpNote');n.textContent=msg;n.className='note '+(cls||'')}
-  function exNote(msg,cls){var n=$('exNote');n.textContent=msg;n.className='note '+(cls||'')}
-
-  function api(p,method,body){
-    var opt={method:method||'GET',headers:{'Content-Type':'application/json'}};
-    if(body)opt.body=JSON.stringify(body);
-    return fetch('/api'+p,opt).then(function(r){
-      if(!r.ok&&(r.status===403||r.status===401)){var e=new Error('auth');e.needLogin=true}
-      return r.json().then(function(j){
-        if(r.status===401&&j&&j.need_login){authed=false;$('app').classList.add('hidden');
-          $('loginBox').classList.remove('hidden');$('lerr').textContent=j.error||'Sesi berakhir — login lagi.'}
-        if(!r.ok)throw (e||new Error(j.error||('HTTP '+r.status)));
-        return j})
-    })
-  }
-
-  function enterApp(){$('loginBox').classList.add('hidden');$('app').classList.remove('hidden');
-    authed=true;poll();pullLogs();loadExtras()}
-
-  // ---------- identitas & repo (multi-user) ----------
-  function renderMe(m){
-    me=m;
-    var isUser=(m.mode==='user');
-    $('repoPanel').classList.toggle('hidden',!isUser);
-    $('bLogout').classList.toggle('hidden',!!m.local_mode);
-    if(isUser){
-      $('repoTop').innerHTML='<span class="badge-me">'+(m.avatar?('<img src="'+m.avatar+'" alt="">'):'')+
-        '<b>'+m.login+'</b></span><br>'+m.owner+'/'+m.repo;
-      $('rpTpl').textContent=m.template;
-      $('rpWho').textContent=m.login+(m.is_owner?' (pemilik)':'');
-      $('rpRepo').innerHTML='<a href="'+m.repo_url+'" target="_blank" rel="noopener">'+m.owner+'/'+m.repo+'</a>'+
-        (m.repo_exists?(' <small>'+(m.private?'privat':'publik')+'</small>'):'');
-      setTxt('rpName',m.repo);
-      var miss=m.missing_required||[];
-      if(m.rdp_start_paused){
-        var names=m.secrets||[];
-        $('rpSecrets').textContent=m.repo_exists?(names.length?('terdaftar: '+names.join(', ')):'tidak ada nama secret terdeteksi'):'repo belum dibuat';
-      }else{
-        $('rpSecrets').innerHTML=(m.repo_exists
-          ? ((miss.length?('<span class="pill err">KURANG: '+miss.join(', ')+'</span>'):'<span class="pill ok">LENGKAP</span>')+
-             ((m.missing_optional&&m.missing_optional.length)?(' <small>opsional: '+m.missing_optional.join(', ')+'</small>'):''))
-          : '<span class="pill mid">repo belum dibuat</span>');
-      }
-      $('rpPerms').innerHTML=(m.actions_enabled===false?'<span class="pill err">Actions mati</span>':'<span class="pill ok">aktif</span>')+
-        ' <small>token: '+(m.workflow_permissions||'-')+'</small>';
-      var paused=!!m.rdp_start_paused;
-      $('rpPill').textContent=paused?'JEDA':(m.ready?'siap':(m.repo_exists?'perlu secret':'perlu dibuat'));
-      $('rpPill').className='pill '+(paused?'err':(m.ready?'ok':(m.repo_exists?'err':'mid')));
-      $('rpCreateWrap').classList.toggle('hidden',paused||!!m.repo_exists);
-      $('rpSetup').disabled=paused;
-      var pb=document.getElementById('pauseBanner'); if(pb) pb.classList.toggle('hidden', !paused);
-      $('rpSetup').textContent=paused?'PEMBUATAN / PERBAIKAN DIJEDA':(m.repo_exists?'PERIKSA / RAPIKKAN LAGI':'BUAT REPO DARI TEMPLATE');
-      $('rpSecretsBtn').disabled=paused&&!m.repo_exists;
-      $('rpSecretsBtn').textContent=m.repo_exists?'KELOLA SECRETS':'SECRETS TIDAK DIPERLUKAN';
-      $('bStart').disabled=paused;
-      $('rpWarn').textContent=paused?'Sesi baru dijeda: tombol start, pembuatan repo, dan penulisan pengaturan tidak tersedia. Kamu boleh membuka pengaturan repo lama untuk menghapus secret yang tak digunakan.':
-        ((m.setup_note?('Catatan: '+m.setup_note+' '):'')+
-        (isUser&&!m.ready&&m.repo_exists?('Sesi tidak bisa dinyalakan sebelum '+((m.missing_required||[]).join(' & '))+' diisi.') :''));
-      // kata sandi: user menyimpannya sendiri di browser (server tidak tahu)
-      var lp='';try{lp=localStorage.getItem('xyrdp_pass_'+m.owner+'_'+m.repo)||''}catch(e){}
-      $('cPassLocalRow').classList.toggle('hidden',!isUser);
-      if(isUser){cfg.rdp_password=lp;
-        $('cPass').textContent=lp?(passShown?lp:'************'):'(dari secret repo)';
-        $('cPassLocal').value=lp;}
-    }else{
-      $('repoTop').innerHTML='<b>'+m.owner+' / '+m.repo+'</b><br>sesi administrator';
-      $('cPassLocalRow').classList.add('hidden');
-    }
-  }
-
-  function refreshMe(){
-    return api('/me').then(function(m){renderMe(m);return m}).catch(function(e){
-      if(e&&e.needLogin)return null;
-      flash('Gagal baca status repo: '+e.message);return null})
-  }
-
-  function showLogin(st){
-    $('app').classList.add('hidden');$('loginBox').classList.remove('hidden');
-    $('lerr').textContent='';$('lerr').className='note';
-    authInfo=st||{};
-    var oauth=!!(st&&st.oauth_ready);
-    $('ghLogin').style.display=oauth?'':'none';
-    $('ghNote').className='note'+(oauth?'':' bad');
-    $('ghNote').textContent=oauth?'Sesi kamu berjalan di repo GitHub milikmu sendiri.'
-      :'Login GitHub belum aktif — admin perlu memasang OAuth App (env GITHUB_OAUTH_CLIENT_ID/SECRET) dulu.';
-    var adminAvail=!!(st&&st.admin_login);
-    $('adminToggleWrap').classList.toggle('hidden',!adminAvail);
-    if(adminAvail&&!st.admin_login_ready){$('lerr').className='note bad';$('lerr').textContent='Login admin sementara dikunci sampai email, sandi, SESSION_SECRET, dan Cloudflare Turnstile siap.'}
-    var q=new URLSearchParams(location.search);
-    var err=q.get('err');
-    if(err){
-      var map={oauth_belum_dikonfigurasi:'Login GitHub belum dikonfigurasi admin.',
-        github_batal:'Login GitHub dibatalkan.',state_tidak_cocok:'Sesi login tidak cocok — coba lagi.',
-        token_github_gagal:'GitHub menolak permintaan token (cek client id/secret).',
-        profil_github_gagal:'Gagal membaca profil GitHub.'};
-      $('lerr').className='note bad';$('lerr').textContent=map[err]||('Login gagal: '+err);
-      try{history.replaceState(null,'',location.pathname)}catch(e){}
-    }
-  }
-
-  function doSetup(){
-    if(!me||me.rdp_start_paused!==false){$('rpNote').textContent='Jeda aktif: repo baru tidak dibuat dan Actions tidak diaktifkan. Baca /panduan.';return}
-    var b=$('rpSetup');b.disabled=true;$('rpNote').className='note';$('rpNote').textContent='Menyiapkan repo... (bisa 5-15 detik)';
-    api('/setup','POST',{name:$('rpName').value.trim(),private:$('rpVis').value==='privat'})
-      .then(function(r){$('rpNote').className='note ok';$('rpNote').textContent=(r.notes||[]).join(' · ');
-        return refreshMe()})
-      .then(function(){flash('Repo siap — cek daftar secret di panel')})
-      .catch(function(e){$('rpNote').className='note bad';$('rpNote').textContent='Gagal: '+e.message})
-      .finally(function(){b.disabled=false})
-  }
+  function flash(m){var f=$('flash');f.textContent=m;f.classList.add('show');clearTimeout(f._t);f._t=setTimeout(function(){f.classList.remove('show')},2200)}
+  function note(m,c){var n=$('opNote');n.textContent=m;n.className='note '+(c||'');n.classList.remove('hidden')}
+  function wpNote(m,c){var n=$('wpNote');n.textContent=m;n.className='note '+(c||'');n.classList.remove('hidden')}
+  function exNote(m,c){var n=$('exNote');n.textContent=m;n.className='note '+(c||'');n.classList.remove('hidden')}
+  function api(p,m,b){var o={method:m||'GET',headers:{'Content-Type':'application/json'}};if(b)o.body=JSON.stringify(b);return fetch('/api'+p,o).then(function(r){return r.json().then(function(j){if(r.status===401&&j&&j.need_login){authed=false;$('app').classList.add('hidden');$('loginBox').classList.remove('hidden');}if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})})}
+  function enterApp(){$('loginBox').classList.add('hidden');$('app').classList.remove('hidden');authed=true;poll();pullLogs();loadExtras()}
+  // tabs
+  document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['overview','settings','logs'].forEach(function(id){$(`tab-${id}`).classList.toggle('hidden', t.dataset.tab!==id)})})})
+  function renderMe(m){me=m;var isUser=(m.mode==='user');$('repoPanel').classList.toggle('hidden',!isUser);$('bLogout').classList.toggle('hidden',!!m.local_mode);
+    if(isUser){$('repoTop').innerHTML='<b>'+m.login+'</b> • '+m.owner+'/'+m.repo;$('rpWho').textContent=m.login; $('rpRepo').innerHTML='<a href="'+m.repo_url+'" target="_blank">'+m.owner+'/'+m.repo+'</a>'; var miss=m.missing_required||[]; $('rpSecrets').innerHTML=(miss.length?'<span class="pill err">'+miss.join(', ')+'</span>':'<span class="pill ok">lengkap</span>'); $('rpPerms').innerHTML=(m.actions_enabled===false?'<span class="pill err">mati</span>':'<span class="pill ok">aktif</span>'); var paused=!!m.rdp_start_paused; $('rpPill').textContent=paused?'jeda':(m.ready?'siap':'perlu secret'); $('rpPill').className='pill '+(paused?'err':m.ready?'ok':'mid'); $('rpCreateWrap').classList.toggle('hidden',paused||!!m.repo_exists); $('rpSetup').disabled=paused; $('rpSetup').textContent=paused?'Dijeda':(m.repo_exists?'Periksa':'Buat Repo'); var pb=$('pauseBanner'); if(pb) pb.classList.toggle('hidden',!paused); $('bStart').disabled=paused; $('rpWarn').textContent=paused?'Jeda aktif — hubungi admin':''; var lp='';try{lp=localStorage.getItem('xyrdp_pass_'+m.owner+'_'+m.repo)||''}catch(e){} $('cPassLocalRow').classList.toggle('hidden',!isUser); if(isUser){cfg.rdp_password=lp; $('cPass').textContent=lp?(passShown?lp:'••••••••'):'(dari secret)'; $('cPassLocal').value=lp;}}else{$('repoTop').innerHTML='<b>'+m.owner+'/'+m.repo+'</b>'; $('cPassLocalRow').classList.add('hidden');}}
+  function refreshMe(){return api('/me').then(function(m){renderMe(m);return m}).catch(function(){})}
+  function showLogin(st){$('app').classList.add('hidden');$('loginBox').classList.remove('hidden');authInfo=st||{};var oauth=!!(st&&st.oauth_ready);$('ghLogin').style.display=oauth?'':'none'; var adminAvail=!!(st&&st.admin_login);$('adminToggleWrap').classList.toggle('hidden',!adminAvail); var err=new URLSearchParams(location.search).get('err'); if(err){var n=$('lerr');n.textContent=err;n.className='note bad';n.classList.remove('hidden');}}
+  function doSetup(){if(!me||me.rdp_start_paused!==false){$('rpNote').textContent='Jeda aktif';$('rpNote').classList.remove('hidden');return} var b=$('rpSetup');b.disabled=true;var noteEl=$('rpNote');noteEl.textContent='Membuat...';noteEl.classList.remove('hidden'); api('/setup','POST',{name:$('rpName').value.trim(),private:$('rpVis').value==='privat'}).then(function(r){noteEl.textContent=(r.notes||[]).join(' • ');noteEl.className='note ok';return refreshMe()}).catch(function(e){noteEl.textContent='Gagal: '+e.message;noteEl.className='note bad'}).finally(function(){b.disabled=false})}
   $('rpSetup').addEventListener('click',doSetup);
-  $('rpSecretsBtn').addEventListener('click',function(){
-    var u=(me&&me.secrets_url)||(authInfo&&authInfo.repo?('https://github.com/'+authInfo.repo+'/settings/secrets/actions'):'');
-    if(u)window.open(u,'_blank','noopener');else flash('Repo belum dibuat')});
-  // --- secrets via dashboard (flexibel per akun) ---
-  function secNote(msg,cls){ var n=$('secNote'); n.textContent=msg; n.className='note '+(cls||''); }
-  function loadSecrets(){
-    if(!me || me.mode!=='user'){ secNote('Login GitHub dulu sebagai user.','bad'); return; }
-    secNote('Memeriksa secrets...','');
-    api('/secrets').then(function(r){
-      secNote('Secrets terdeteksi: '+(r.secrets&&r.secrets.length? r.secrets.join(', ') : 'belum ada')+' | kurang wajib: '+(r.missing_required&&r.missing_required.length? r.missing_required.join(', ') : 'lengkap'),'ok');
-      $('secPill').textContent = r.ready ? 'siap' : 'perlu '+ (r.missing_required||[]).join(', ');
-      $('secPill').className='pill '+(r.ready?'ok':'err');
-    }).catch(function(e){ secNote('Gagal cek: '+e.message,'bad'); });
-  }
-  $('secLoad').addEventListener('click', loadSecrets);
-  $('secSave').addEventListener('click', function(){
-    if(!me || me.mode!=='user'){ secNote('Login GitHub dulu.','bad'); return; }
-    if(me.rdp_start_paused){ secNote('Jeda aktif: tidak bisa simpan secret untuk sesi baru.','bad'); return; }
-    var payload={};
-    var rd=$('secRdpPass').value.trim();
-    var ts=$('secTsKey').value.trim();
-    var ng=$('secNgrok').value.trim();
-    var gt=$('secGtaUrl').value.trim();
-    var cl=$('secCleanup').value.trim();
-    if(rd) payload.RDP_PASSWORD = rd;
-    if(ts) payload.TAILSCALE_AUTH_KEY = ts;
-    if(ng) payload.NGROK_AUTHTOKEN = ng;
-    if(gt) payload.GTA_SA_URL = gt;
-    if(cl) payload.CLEANUP_TOKEN = cl;
-    if(!Object.keys(payload).length){ secNote('Isi minimal RDP_PASSWORD dulu.','bad'); return; }
-    if(payload.RDP_PASSWORD && payload.RDP_PASSWORD.length < 8){ secNote('RDP_PASSWORD minimal 8 karakter','bad'); return; }
-    var b=$('secSave'); b.disabled=true; secNote('Mengenkripsi & menyimpan ke GitHub...','');
-    api('/secrets','POST',payload).then(function(r){
-      secNote('✅ Tersimpan: '+(r.results||[]).map(x=>x.name).join(', ')+' — cek di Settings → Secrets','ok');
-      flash('Secrets tersimpan!');
-      $('secRdpPass').value=''; $('secTsKey').value=''; $('secNgrok').value=''; $('secGtaUrl').value=''; $('secCleanup').value='';
-      return refreshMe();
-    }).catch(function(e){ secNote('Gagal simpan: '+e.message,'bad'); }).finally(function(){ b.disabled=false; });
-  });
-  $('cPassSave').addEventListener('click',function(){
-    var v=$('cPassLocal').value;
-    try{localStorage.setItem('xyrdp_pass_'+(me?me.owner+'_'+me.repo:'x'),v)}catch(e){}
-    cfg.rdp_password=v;$('cPass').textContent=v?(passShown?v:'************'):'(dari secret repo)';
-    flash('Sandi disimpan di browser ini saja');
-  });
-  $('bLogout').addEventListener('click',function(){
-    fetch('/api/auth/logout',{method:'POST'}).finally(function(){location.href='/'})});
-  $('adminToggle').addEventListener('click',function(){
-    $('adminWrap').classList.remove('hidden');$('adminToggleWrap').classList.add('hidden');ensureTurnstile()});
-
-  function doLogin(){
-    var u=$('luser').value.trim(),p=$('lpass').value;
-    $('lerr').textContent='';$('lerr').className='note';
-    if(!authInfo.admin_login_ready){$('lerr').className='note bad';$('lerr').textContent='Login admin belum siap. Periksa konfigurasi Turnstile dan Vercel.';return}
-    if(!turnstileToken){$('lerr').className='note bad';$('lerr').textContent='Selesaikan verifikasi Cloudflare Turnstile dulu.';ensureTurnstile();return}
-    $('lgo').disabled=true;$('lgo').textContent='MEMERIKSA...';
-    fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p,turnstile:turnstileToken})})
-    .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Login gagal');return j})})
-    .then(function(){turnstileToken='';return refreshMe().then(function(){return api('/config')}).then(function(c){cfg=c;$('cUser').textContent=c.rdp_user;enterApp();flash('Masuk berhasil')})})
-    .catch(function(e){$('lerr').className='note bad';$('lerr').textContent=e.message;turnstileToken='';if(window.turnstile&&turnstileWidgetId!==null){try{window.turnstile.reset(turnstileWidgetId);$('turnstileHint').textContent='Selesaikan verifikasi lagi sebelum mencoba.'}catch(x){}}})
-    .finally(function(){$('lpass').value='';$('lgo').disabled=false;$('lgo').textContent='Masuk admin'})
-  }
-  $('lgo').addEventListener('click',doLogin);
-  $('lpass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
-
-  function fmt(iso){if(!iso)return '-';var d=new Date(iso);
-    return d.toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
-
-  function setPill(txt,cls){var e=$('stPill');e.textContent=txt;e.className='pill '+(cls||'')}
-
-  function extrasText(g){
-    if(!g||!g.extras)return '-';
-    var e=g.extras,lbl={ok:'ok',gagal:'gagal',sebagian:'sebagian',skip:'mati',default:'default'};
-    var s=[];
-    if(e.lightshot)s.push('lightshot:'+(lbl[e.lightshot]||e.lightshot));
-    if(e.translucent)s.push('translucent:'+(lbl[e.translucent]||e.translucent));
-    if(e.vscode)s.push('VS Code:'+(lbl[e.vscode]||e.vscode));
-    if(e.notepadpp)s.push('Notepad++:'+(lbl[e.notepadpp]||e.notepadpp));
-    if(e.wallpaper)s.push('wallpaper:'+(lbl[e.wallpaper]||e.wallpaper)+(e.wallpaper_file?(' '+e.wallpaper_file):''));
-    if(g.win10&&g.win10.look)s.push('win10:'+(lbl[g.win10.look]||g.win10.look)+(g.win10.badge==='ok'?'+label':''));
-    if(g.xydesk&&g.xydesk.host)s.push('xydesk:'+(lbl[g.xydesk.host]||g.xydesk.host)+(g.xydesk.avc444==='ok'?'+avc444':''));
-    s.push('admin:'+(e.admin===true?'YA':(e.admin===false?'TIDAK':'-')));
-    return s.join(' · ')||'-'
-  }
-
-  function poll(){
-    return api('/status').then(function(s){
-      if(!authed)return;
-      var r=s.run,g=s.session;
-      if(r)lastRun=r.id;
-      var txt='NONAKTIF',cls='';
-      if(g&&g.active){txt='AKTIF';cls='ok'}
-      else if(r&&r.status==='queued'){txt='MENGANTRE';cls='mid'}
-      else if(r&&r.status==='in_progress'){txt='MEMBERSIAPKAN';cls='mid'}
-      else if(r&&r.conclusion==='failure'){txt='GAGAL';cls='err'}
-      else if(r&&r.conclusion==='cancelled'){txt='DIHENTIKAN';cls='err'}
-      setPill(txt,cls);
-      var d=$('hdot');d.className='dot '+(cls==='ok'?'on':cls==='mid'?'mid':cls==='err'?'err':'');
-      if(r){setTxt('stRun','#'+r.id);$('stRun').href=r.html_url||'#'}
-      var st=g?g.started_at:null, en=g?g.expires_at:null;
-      setTxt('stOs',(g&&g.os)?(g.os.replace(/^Microsoft /,'')+(g.os_style?(' · '+g.os_style):'')):'-');
-      $('stStart').textContent=fmt(st); $('stEnd').textContent=fmt(en);
-      setTxt('stExtras',extrasText(g));
-      var memory=g&&g.memory?g.memory:null;
-      setTxt('stRam',memory&&Number.isFinite(Number(memory.available_mb))
-        ?(memory.available_mb+' MB / '+memory.total_mb+' MB tersedia'):'-');
-      if(g&&g.rdp_user){setTxt('cUser',g.rdp_user);setTxt('cUserInline',g.rdp_user)}
-      // --- akses: RustDesk + tunnel ---
-      var a=g&&g.akses?g.akses:null;
-      var modeTxt={keduanya:'Tunnel (XyDesk/mstsc) + RustDesk',rustdesk:'RustDesk saja',tunnel:'Tunnel RDP saja',tailscale:'Tailscale (IP 100.x)',semua:'Tailscale + Tunnel + RustDesk'};
-      var provTxt=a&&a.tunnel&&a.tunnel.provider?(' ['+a.tunnel.provider.toUpperCase()+(a.tunnel.provider==='pinggy'?' - berlaku 60 mnt, diperpanjang otomatis':'')+']'):'';
-      setTxt('cMode',(a?(modeTxt[a.mode]||a.mode):'-')+provTxt);
-      var rdId=a&&a.rustdesk?a.rustdesk.id:'';
-      setTxt('cRdId',(rdId?rdId:'-'));
-      setTxt('cRdSrv',a&&a.rustdesk&&a.rustdesk.server?a.rustdesk.server:'server publik bawaan');
-      var tun=a&&a.tunnel?a.tunnel.address:'';
-      var tunTxt=(tun?((a.tunnel.provider?a.tunnel.provider.toUpperCase()+' ':'')+tun):'-');
-      if(tun&&a.tunnel.selftest)tunTxt+=(' ['+(a.tunnel.selftest==='ok'?'self-test ok':'self-test '+a.tunnel.selftest)+']');
-      if(tun&&a.tunnel.outside)tunTxt+=(' [luar '+(a.tunnel.outside.indexOf('ok (')===0?('ok '+a.tunnel.outside.slice(3)):a.tunnel.outside)+']');
-      setTxt('cTun',tunTxt);
-      var ts=a&&a.tailscale?a.tailscale:null;
-      cTsRaw=(ts&&ts.ip)?ts.ip:'';
-      setTxt('cTs',ts&&ts.status==='ok'?(ts.ip+(ts.funnel==='ok'&&ts.funnel_addr?(' · funnel '+ts.funnel_addr+' (hanya klien TLS)'):'')):(ts&&ts.status==='gagal'?'gagal disiapkan':'tidak dipakai'));
-      var gp=g&&g.grafis?g.grafis:null;
-      setTxt('cGpu',gp?(gp.mode==='software'?('software · '+(gp.opengl||'llvmpipe')+(gp.vulkan?(' · '+gp.vulkan):'')):(gp.mode||'-')):'-');
-      var xd=g&&g.xydesk?g.xydesk:null;
-      setTxt('cRdp',(xd&&xd.rdp_ready)?xd.rdp_ready:(g&&g.rdp_listen?String(g.rdp_listen):'-'));
-      setTxt('cTunNote',(a&&a.tunnel&&a.tunnel.selftest!=='ok'&&a.tunnel.note2)?('Catatan tunnel: '+a.tunnel.note2):'');
-      // peringatan kejujuran: alamat hanya berlaku untuk sesi yang sedang jalan
-      var warnEl=$('cWarn');
-      if(warnEl){
-        var w='',wc='';
-        if(me&&me.rdp_start_paused){w='⛔ Sesi baru dijeda. Informasi koneksi hanya berlaku untuk run lama yang masih aktif; jangan dispatch workflow baru.';wc='bad'}
-        else if(g&&g.active&&ts&&ts.status==='ok'&&ts.ip){w='✅ Jalur paling andal: pasang app Tailscale di HP + login akun yang sama, lalu Host='+ts.ip+' Port='+((a&&a.tunnel&&a.tunnel.port)?3389:3389)+' (user/`password` seperti di bawah).';wc='ok'}
-        else if(!(g&&g.active)){w='⚠️ TIDAK ADA SESI AKTIF. Alamat di atas (kalau ada) sudah tidak berlaku — alamat tunnel BERGANTI setiap sesi baru, jadi jangan pakai alamat dari sesi sebelumnya. Tekan MULAI, lalu tunggu ±5 menit sampai status AKTIF dan "Kesiapan RDP" hijau.';wc='bad'}
-        else if(!tun){w='⏳ Sesi sedang disiapkan / tunnel belum terbentuk. Tunggu ±5 menit lalu muat ulang halaman ini — alamat akan muncul di baris di atas.'}
-        else if(a&&a.tunnel&&a.tunnel.selftest!=='ok'){w='⚠️ Tunnel hidup tapi uji end-to-end belum lolos — coba lagi sebentar, atau pakai RustDesk.';wc='bad'}
-        else {w='✅ Alamat ini segar dari sesi yang sedang jalan'+(g&&g.run_number?(' (run #'+g.run_number+')'):'')+(en?(' dan berlaku sampai '+fmt(en)):'')+'.';wc='ok'}
-        warnEl.textContent=w;warnEl.className='hint'+(wc?(' note '+wc):'');
-      }
-      cTunRaw=tun;
-      t0=st?Date.parse(st):null; t1=en?Date.parse(en):null; tickLeft();
-      var key=(rdId||'')+'|'+(tun||'');
-      if(g&&g.active&&key!=='|'&&key!==poll._key){poll._key=key;flash('Sesi aktif — RustDesk '+(rdId||'-')+' / tunnel '+(tun||'-'))}
-    }).catch(function(){})
-  }
-  function tickLeft(){
-    var el=$('stLeft'),bar=$('stBar');
-    if(!t1){el.textContent='-';bar.style.width='0%';return}
-    var ms=t1-Date.now();
-    if(ms<=0){el.textContent='00:00';bar.style.width='100%';return}
-    var s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60;
-    el.textContent=(h?(h+'j '):'')+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0');
-    if(t0)bar.style.width=Math.min(100,100*(1-ms/(t1-t0))).toFixed(2)+'%';
-  }
-  setInterval(tickLeft,1000);
-
-  function startSesi(){
-    if(!me||me.rdp_start_paused!==false){note('Sesi baru dijeda. Baca panduan keselamatan; tidak ada workflow yang dikirim.','bad');return}
-    if(me&&me.mode==='user'&&!me.ready){
-      note(me.repo_exists?('Belum bisa: isi secret '+(me.missing_required||[]).join(', ')+' di repo kamu (tombol BUKA SECRETS).')
-        :'Belum bisa: buat repo kamu dulu di panel "Repo kamu".','bad');
-      refreshMe();return}
-    var rdpUser=$('exRdpUser').value.trim();
-    if(!validRdpUser(rdpUser)){note('Username RDP harus 3–20 karakter (huruf/angka, _ atau -); jangan gunakan nama bawaan Windows.','bad');return}
-    var b=$('bStart');b.disabled=true;note('Menyimpan pengaturan lalu mengirim permintaan...');
-    saveExtrasIfChanged().then(function(){return api('/start','POST',{durasi:$('fDur').value,hostname:$('fHost').value.trim(),
-      rdp_user:rdpUser,akses:$('fAkses').value,tunnel_provider:$('fProv').value,
-      win10:$('fWin10').checked?'ya':'tidak',grafis:$('fGrafis').checked?'software':'tidak'})})
-    .then(function(){note('Permintaan terkirim. VM siap dalam ±3–5 menit; instalasi editor opsional dapat menambah waktu.','ok');
-      flash('Permintaan start terkirim');setTimeout(pullLogs,30000)})
-    .catch(function(e){note('Gagal: '+e.message,'bad')})
-    .finally(function(){b.disabled=false;poll()})
-  }
-
-  function stopSesi(){
-    var b=$('bStop');
-    if(!stopArmed){stopArmed=setTimeout(function(){stopArmed=0;b.classList.remove('armed');b.textContent='MATIKAN'},4000);
-      b.classList.add('armed');b.textContent='KONFIRMASI?';return}
-    clearTimeout(stopArmed);stopArmed=0;b.classList.remove('armed');b.textContent='MATIKAN';
-    api('/stop','POST',lastRun?{run_id:lastRun}:{})
-      .then(function(){note('Run dibatalkan.','ok');flash('Sesi dihentikan')})
-      .catch(function(e){note('Stop gagal: '+e.message,'bad')})
-      .finally(poll)
-  }
-  $('bStart').addEventListener('click',startSesi);
-  $('bStop').addEventListener('click',stopSesi);
-
-  $('cToggle').addEventListener('click',function(){passShown=!passShown;
-    $('cPass').textContent=passShown?String(cfg.rdp_password||''):('************');
-    this.textContent=passShown?'SEMBUNYI':'TAMPIL'});
-
-  document.querySelectorAll('[data-copy]').forEach(function(b){
-    b.addEventListener('click',function(){
-      var src=b.dataset.copy, txt='';
-      if(src==='cPassVal')txt=String(cfg.rdp_password||'');
-      else if(src==='cUser')txt=$('cUser').textContent;
-      else if(src==='cRdId')txt=$('cRdId').textContent;
-      else if(src==='cTunHost')txt=cTunRaw?cTunRaw.split(':')[0]:'';
-      else if(src==='cTunPort')txt=cTunRaw?cTunRaw.split(':')[1]:'';
-      else if(src==='cTunAll')txt=cTunRaw||'';
-      else if(src==='cTs')txt=(cTsRaw||'');
-      function done(){b.textContent='TERSALIN';setTimeout(function(){b.textContent='SALIN'},1200)}
-      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done)}
-      else{var t=document.createElement('textarea');t.value=txt;document.body.appendChild(t);
-        t.select();document.execCommand('copy');t.remove();done()}
-    })
-  });
-
-  function pullLogs(manual){
-    if(!lastRun){if(manual)flash('Belum ada run');return}
-    api('/logs?run_id='+lastRun).then(function(r){
-      var e=$('logBox');e.textContent=r.log?r.log.trim():'(log belum tersedia saat job berjalan - tunggu beberapa menit)';
-      e.scrollTop=e.scrollHeight
-    }).catch(function(){if(manual)flash('Log belum tersedia; GitHub menunda file log sampai job selesai')})
-  }
-  $('logPull').addEventListener('click',function(){pullLogs(true)});
-  setInterval(function(){if($('logAuto').checked)pullLogs(false)},30000);
-  setInterval(function(){if(authed)poll()},10000);
-
-  // ---------- tampilan, tools, username, wallpaper ----------
-  function extrasPayload(){
-    return {translucent:$('exTrans').checked,translucent_mode:$('exMode').value,
-      lightshot:$('exLs').checked,win10_look:$('exWin10').checked,win10_badge:$('exBadge').checked,
-      xydesk_host:$('exXy').checked,dark_theme:$('exDark').checked,lightweight_mode:$('exLean').checked,
-      vscode:$('exVscode').checked,notepadpp:$('exNpp').checked,rdp_user:$('exRdpUser').value.trim()};
-  }
-  function saveExtrasIfChanged(){
-    var payload=extrasPayload(),json=JSON.stringify(payload);
-    if(savedExtras&&JSON.stringify(savedExtras)===json)return Promise.resolve({unchanged:true});
-    return api('/extras','POST',payload).then(function(r){savedExtras=payload;return r});
-  }
-  function validRdpUser(name){
-    return /^[A-Za-z0-9][A-Za-z0-9_-]{2,19}$/.test(name)&&!['administrator','guest','defaultaccount','wdagutilityaccount','system','localservice','networkservice','con','prn','aux','nul'].includes(name.toLowerCase());
-  }
-  // ---------- tampilan (wallpaper + ekstra) ----------
-  function loadExtras(){
-    api('/extras').then(function(c){
-      $('exTrans').checked=!!c.config.translucent;
-      $('exMode').value=c.config.translucent_mode||'clear';
-      $('exLs').checked=!!c.config.lightshot;
-      $('exWin10').checked=c.config.win10_look!==false;
-      $('exBadge').checked=c.config.win10_badge!==false;
-      $('exXy').checked=c.config.xydesk_host!==false;
-      $('exDark').checked=c.config.dark_theme!==false;
-      $('exLean').checked=c.config.lightweight_mode!==false;
-      $('exVscode').checked=!!c.config.vscode;
-      $('exNpp').checked=!!c.config.notepadpp;
-      $('exRdpUser').value=c.config.rdp_user||'xyadmin';
-      $('cUser').textContent=$('exRdpUser').value;$('cUserInline').textContent=$('exRdpUser').value;
-      savedExtras=extrasPayload();
-      if(c.config.wallpaper){
-        var im=$('wpPrev');im.src=c.wallpaper_url;im.classList.remove('hidden');$('wpDropTxt').classList.add('hidden');
-        $('exPill').textContent='wallpaper aktif';$('exPill').className='pill';
-      }else{
-        $('wpPrev').classList.add('hidden');$('wpDropTxt').classList.remove('hidden');
-        $('exPill').textContent='wallpaper mati';$('exPill').className='pill';
-      }
-    }).catch(function(){})
-  }
-
-  function pickWallpaper(file){
-    if(!file)return;
-    if(!/^image\/(png|jpeg|jpg|bmp)$/.test(file.type)){wpNote('Format harus JPG, PNG, atau BMP','bad');return}
-    if(file.size>8*1024*1024){wpNote('Ukuran maksimal 8 MB (sebelum dikecilkan)','bad');return}
-    wpNote('Memproses gambar...');
-    var rd=new FileReader();
-    rd.onload=function(){
-      var img=new Image();
-      img.onload=function(){
-        var max=1920,w=img.width,h=img.height;
-        if(w>max||h>max){var s=Math.min(max/w,max/h);w=Math.round(w*s);h=Math.round(h*s)}
-        var cv=document.createElement('canvas');cv.width=w;cv.height=h;
-        cv.getContext('2d').drawImage(img,0,0,w,h);
-        wpData=cv.toDataURL('image/jpeg',0.85);
-        $('wpPrev').src=wpData;$('wpPrev').classList.remove('hidden');$('wpDropTxt').classList.add('hidden');
-        wpNote('Pratinjau siap ('+w+'x'+h+', ~'+Math.round(wpData.length*0.75/1024)+' KB) — klik UNGGAH & PASANG','ok');
-      };
-      img.onerror=function(){wpNote('Gambar tidak bisa dibaca','bad')};
-      img.src=rd.result;
-    };
-    rd.readAsDataURL(file);
-  }
-
-  $('wpDrop').addEventListener('click',function(){$('wpFile').click()});
-  $('wpFile').addEventListener('change',function(){pickWallpaper(this.files&&this.files[0]);this.value=''});
-  ;['dragenter','dragover'].forEach(function(ev){
-    $('wpDrop').addEventListener(ev,function(e){e.preventDefault();$('wpDrop').classList.add('over')})
-  });
-  ;['dragleave','drop'].forEach(function(ev){
-    $('wpDrop').addEventListener(ev,function(e){e.preventDefault();$('wpDrop').classList.remove('over')})
-  });
-  $('wpDrop').addEventListener('drop',function(e){
-    var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
-    pickWallpaper(f);
-  });
-
-  $('wpUp').addEventListener('click',function(){
-    if(!wpData){wpNote('Pilih gambar dulu','bad');return}
-    var b=this;b.disabled=true;wpNote('Mengunggah ke repo...');
-    api('/wallpaper','POST',{image:wpData})
-      .then(function(r){wpNote('Wallpaper terpasang: '+r.file+' ('+r.size_kb+' KB) — aktif otomatis di sesi berikutnya','ok');
-        flash('Wallpaper diperbarui');wpData=null;loadExtras()})
-      .catch(function(e){wpNote('Gagal: '+e.message,'bad')})
-      .finally(function(){b.disabled=false})
-  });
-
-  $('exSave').addEventListener('click',function(){
-    var b=this;b.disabled=true;exNote('Menyimpan...');
-    saveExtrasIfChanged()
-      .then(function(){exNote('Tersimpan — username, tema, profil ringan, dan pilihan aplikasi berlaku pada sesi berikutnya.','ok');flash('Pengaturan tersimpan');loadExtras()})
-      .catch(function(e){exNote('Gagal: '+e.message,'bad')})
-      .finally(function(){b.disabled=false})
-  });
-
-  function ensureTurnstile(){
-    var siteKey=authInfo&&authInfo.turnstile_site_key;
-    if(!authInfo||!authInfo.turnstile_required){$('turnstileHint').textContent='Verifikasi anti-bot tidak dikonfigurasi.';return}
-    if(!siteKey){$('turnstileHint').textContent='Turnstile belum disiapkan di server. Login admin dikunci.';return}
-    $('turnstileHint').textContent='Memuat verifikasi Cloudflare Turnstile...';
-    function render(){
-      if(!window.turnstile){$('turnstileHint').textContent='Widget Turnstile belum tersedia. Periksa koneksi dan coba muat ulang.';return}
-      if(turnstileWidgetId!==null){try{window.turnstile.reset(turnstileWidgetId)}catch(e){};return}
-      try{turnstileWidgetId=window.turnstile.render('#turnstileWidget',{sitekey:siteKey,theme:'dark',action:'admin_login',appearance:'always',callback:function(token){turnstileToken=token;$('turnstileHint').textContent='Verifikasi selesai.'},'expired-callback':function(){turnstileToken='';$('turnstileHint').textContent='Verifikasi kedaluwarsa. Selesaikan lagi.'},'error-callback':function(){turnstileToken='';$('turnstileHint').textContent='Verifikasi gagal dimuat. Coba lagi.'}});$('turnstileHint').textContent='Selesaikan verifikasi sebelum login.'}
-      catch(e){$('turnstileHint').textContent='Widget gagal disiapkan. Muat ulang halaman.'}
-    }
-    if(window.turnstile){render();return}
-    if(turnstileScriptLoading)return;
-    turnstileScriptLoading=true;
-    var script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';script.async=true;script.defer=true;
-    script.onload=render;script.onerror=function(){$('turnstileHint').textContent='Cloudflare Turnstile tidak dapat dimuat. Coba periksa koneksi.'};document.head.appendChild(script)
-  }
-
-  function setupGuidePopup(){
-    var modal=$('guideWelcome'),seen=false;
-    try{seen=localStorage.getItem('xyrdp_guide_seen_v2')==='1'}catch(e){}
-    function dismiss(){modal.classList.remove('show');document.body.style.overflow='';try{localStorage.setItem('xyrdp_guide_seen_v2','1')}catch(e){}}
-    $('guideContinue').addEventListener('click',dismiss);$('guideLater').addEventListener('click',dismiss);
-    $('guideRead').addEventListener('click',function(){try{localStorage.setItem('xyrdp_guide_seen_v2','1')}catch(e){}});
-    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.classList.contains('show'))dismiss()});
-    if(!seen){modal.classList.add('show');document.body.style.overflow='hidden';setTimeout(function(){$('guideContinue').focus()},50)}
-  }
-
-  // ---------- boot: cek identitas dulu (admin / user GitHub) ----------
-  function boot(){
-    fetch('/api/auth/status',{headers:{'Content-Type':'application/json'}}).then(function(r){return r.json()})
-    .then(function(st){
-      if(!st||!st.mode)return showLogin(st);
-      return refreshMe().then(function(){
-        return api('/config').then(function(c){cfg=c;
-          $('cUser').textContent=c.rdp_user;
-          if(me&&me.mode==='user'){
-            cfg.rdp_password=(function(){try{return localStorage.getItem('xyrdp_pass_'+me.owner+'_'+me.repo)||''}catch(e){return ''}})();
-          }
-          enterApp()})
-      })
-    }).catch(function(){showLogin({})})
-  }
-  setupGuidePopup();
-  boot()
+  $('rpSecretsBtn').addEventListener('click',function(){var u=(me&&me.secrets_url)||''; if(u)window.open(u,'_blank')});
+  function secNote(m,c){var n=$('secNote');n.textContent=m;n.className='note '+(c||'');n.classList.remove('hidden')}
+  $('secLoad').addEventListener('click',function(){api('/secrets').then(function(r){secNote('Secrets: '+(r.secrets||[]).join(', ')||'kosong','ok')}).catch(function(e){secNote(e.message,'bad')})});
+  $('secSave').addEventListener('click',function(){var p={};var rd=$('secRdpPass').value.trim();if(rd)p.RDP_PASSWORD=rd;var ts=$('secTsKey').value.trim();if(ts)p.TAILSCALE_AUTH_KEY=ts;var ng=$('secNgrok').value.trim();if(ng)p.NGROK_AUTHTOKEN=ng;var gt=$('secGtaUrl').value.trim();if(gt)p.GTA_SA_URL=gt;var cl=$('secCleanup').value.trim();if(cl)p.CLEANUP_TOKEN=cl;if(!p.RDP_PASSWORD){secNote('Isi RDP_PASSWORD','bad');return}if(p.RDP_PASSWORD.length<8){secNote('Min 8','bad');return}var b=$('secSave');b.disabled=true;secNote('Menyimpan...','');api('/secrets','POST',p).then(function(r){secNote('✅ '+(r.results||[]).map(x=>x.name).join(', '),'ok');flash('Tersimpan');$('secRdpPass').value=''}).catch(function(e){secNote(e.message,'bad')}).finally(function(){b.disabled=false})});
+  $('cPassSave').addEventListener('click',function(){var v=$('cPassLocal').value;try{localStorage.setItem('xyrdp_pass_'+me.owner+'_'+me.repo,v)}catch(e){} cfg.rdp_password=v; $('cPass').textContent=v?(passShown?v:'••••••••'):'(dari secret)'; flash('Tersimpan lokal')});
+  $('bLogout').addEventListener('click',function(){fetch('/api/auth/logout',{method:'POST'}).finally(function(){location.href='/'})});
+  $('adminToggle').addEventListener('click',function(){$('adminWrap').classList.remove('hidden')});
+  $('lgo').addEventListener('click',function(){var u=$('luser').value,p=$('lpass').value;fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p,turnstile:turnstileToken})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error);return j})}).then(function(){return refreshMe().then(function(){return api('/config')}).then(function(c){cfg=c;enterApp()})}).catch(function(e){var n=$('lerr');n.textContent=e.message;n.className='note bad';n.classList.remove('hidden')})});
+  function fmt(iso){if(!iso)return '-';var d=new Date(iso);return d.toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+  function setPill(t,c){var e=$('stPill');e.textContent=t;e.className='pill '+(c||'')}
+  function poll(){return api('/status').then(function(s){if(!authed)return;var r=s.run,g=s.session;if(r)lastRun=r.id;var txt='NONAKTIF',cls='';if(g&&g.active){txt='AKTIF';cls='ok'}else if(r&&r.status==='queued'){txt='ANTRI';cls='mid'}else if(r&&r.status==='in_progress'){txt='SIAPKAN';cls='mid'}else if(r&&r.conclusion==='failure'){txt='GAGAL';cls='err'} setPill(txt,cls);var d=$('hdot');d.className='dot '+(cls==='ok'?'on':cls==='mid'?'mid':'err');if(r){$('stRun').textContent='#'+r.id; $('stRun').href=r.html_url||'#'} var st=g?g.started_at:null,en=g?g.expires_at:null; $('stOs').textContent=(g&&g.os?g.os.replace(/^Microsoft /,''):'-'); $('stStart').textContent=fmt(st); $('stEnd').textContent=fmt(en); var a=g&&g.akses?g.akses:null; setTxt('cMode',a?(a.mode||'-'):'-'); var rdId=a&&a.rustdesk?a.rustdesk.id:''; setTxt('cRdId',rdId||'-'); var tun=a&&a.tunnel?a.tunnel.address:''; setTxt('cTun',tun||'-'); cTunRaw=tun; var ts=a&&a.tailscale?a.tailscale:null; cTsRaw=(ts&&ts.ip)?ts.ip:''; setTxt('cTs',ts&&ts.status==='ok'?ts.ip:'-'); var t0=st?Date.parse(st):null,t1=en?Date.parse(en):null; if(t1){var ms=t1-Date.now();var s=Math.floor(ms/1000);if(s>0){var h=Math.floor(s/3600),m=Math.floor(s%3600/60); $('stLeft').textContent=(h?h+'j ':'')+String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); if(t0) $('stBar').style.width=(100*(1-ms/(t1-t0))).toFixed(1)+'%'}else{$('stLeft').textContent='00:00'}}; var warn=$('cWarn'); if(warn){var w=''; if(!g||!g.active)w='⚠️ Belum ada sesi aktif — start dulu.'; else if(!tun&&!cTsRaw) w='⏳ Tunnel/IP lagi disiapkan...'; else if(g&&g.active) w='✅ Siap konek pakai Host:Port atau Tailscale IP + user/pass di bawah.'; warn.textContent=w} }).catch(function(){})}
+  setInterval(poll,10000); setInterval(function(){if(authed)poll()},10000);
+  function pullLogs(manual){if(!lastRun){if(manual)flash('Belum ada run');return} api('/logs?run_id='+lastRun).then(function(r){$('logBox').textContent=r.log||'belum ada';}).catch(function(){})}
+  $('logPull').addEventListener('click',function(){pullLogs(true)}); setInterval(function(){if($('logAuto').checked)pullLogs(false)},30000);
+  function loadExtras(){api('/extras').then(function(c){$('exDark').checked=!!c.config.dark_theme; $('exTrans').checked=!!c.config.translucent; $('exWin10').checked=c.config.win10_look!==false; $('exXy').checked=c.config.xydesk_host!==false; $('exVscode').checked=!!c.config.vscode; $('exNpp').checked=!!c.config.notepadpp; $('exRdpUser').value=c.config.rdp_user||'xyadmin'; if(c.config.wallpaper){$('wpPrev').src=c.wallpaper_url; $('wpPrev').classList.remove('hidden');} })}
+  function pickWallpaper(f){if(!f)return;var rd=new FileReader(); rd.onload=function(){var img=new Image(); img.onload=function(){var cv=document.createElement('canvas');var max=1920,w=img.width,h=img.height; if(w>max||h>max){var s=Math.min(max/w,max/h); w=Math.round(w*s);h=Math.round(h*s)} cv.width=w;cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h); wpData=cv.toDataURL('image/jpeg',0.85); $('wpPrev').src=wpData; $('wpPrev').classList.remove('hidden'); wpNote('Siap upload','ok')}; img.src=rd.result}; rd.readAsDataURL(f)}
+  var wpData=null; $('wpDrop').addEventListener('click',function(){$('wpFile').click()}); $('wpFile').addEventListener('change',function(){pickWallpaper(this.files[0])}); $('wpDrop').addEventListener('dragover',function(e){e.preventDefault()}); $('wpDrop').addEventListener('drop',function(e){e.preventDefault();pickWallpaper(e.dataTransfer.files[0])}); $('wpUp').addEventListener('click',function(){if(!wpData){wpNote('Pilih dulu','bad');return} var b=this;b.disabled=true; api('/wallpaper','POST',{image:wpData}).then(function(){wpNote('OK','ok');flash('Wallpaper OK')}).catch(function(e){wpNote(e.message,'bad')}).finally(function(){b.disabled=false})});
+  $('exSave').addEventListener('click',function(){var p={translucent:$('exTrans').checked,win10_look:$('exWin10').checked,xydesk_host:$('exXy').checked,dark_theme:$('exDark').checked,vscode:$('exVscode').checked,notepadpp:$('exNpp').checked,rdp_user:$('exRdpUser').value}; api('/extras','POST',p).then(function(){exNote('Tersimpan','ok')}).catch(function(e){exNote(e.message,'bad')})});
+  $('bStart').addEventListener('click',function(){var b=$('bStart');b.disabled=true; api('/start','POST',{durasi:$('fDur').value,hostname:$('fHost').value,akses:$('fAkses').value,tunnel_provider:$('fProv').value}).then(function(){flash('Start OK');}).catch(function(e){note(e.message,'bad')}).finally(function(){b.disabled=false})});
+  $('bStop').addEventListener('click',function(){var b=$('bStop');if(!stopArmed){stopArmed=setTimeout(function(){stopArmed=0;b.textContent='Matikan'},3000);b.textContent='Yakin?';return} clearTimeout(stopArmed);stopArmed=0; api('/stop','POST',{}).then(function(){flash('Stop OK')}).catch(function(e){note(e.message,'bad')})});
+  $('cToggle').addEventListener('click',function(){passShown=!passShown; $('cPass').textContent=passShown?cfg.rdp_password:'••••••••'; this.textContent=passShown?'Sembunyi':'Lihat'});
+  document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var k=b.dataset.copy,txt='';if(k==='cTunAll')txt=cTunRaw;else if(k==='cTs')txt=cTsRaw;else if(k==='cUser')txt=$('cUser').textContent;else if(k==='cRdId')txt=$('cRdId').textContent;else if(k==='cPassVal')txt=cfg.rdp_password; navigator.clipboard.writeText(txt).then(function(){b.textContent='OK';setTimeout(function(){b.textContent='Salin'},1000)})})});
+  function boot(){fetch('/api/auth/status').then(function(r){return r.json()}).then(function(st){if(!st||!st.mode){$('loginBox').classList.remove('hidden'); var n=$('ghNote'); if(st&&st.oauth_ready) n.textContent='Login GitHub untuk fork.'; return} refreshMe().then(function(){return api('/config').then(function(c){cfg=c;enterApp()})})})}
+  boot();
 })();
 </script>
 </body>

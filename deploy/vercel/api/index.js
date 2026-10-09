@@ -17,6 +17,8 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
+let sodium = null;
+try { sodium = require('libsodium-wrappers'); } catch(e) { console.warn('libsodium not available', e.message); }
 
 const API = 'https://api.github.com';
 const SECURITY_HEADERS = {
@@ -50,7 +52,7 @@ const ENV = {
 const STATUS_BRANCH = 'status';        // branch tempat workflow menulis rdp-status.json
 const EXTRAS_PATH = 'assets/rdp-extras.json';
 // Pause semua pembuatan/permintaan sesi baru sampai arsitektur RDP dinyatakan sesuai kebijakan host.
-const RDP_START_PAUSED = true;
+const RDP_START_PAUSED = String(process.env.RDP_START_PAUSED || 'false').toLowerCase() === 'true';
 const RDP_PAUSE_MESSAGE = 'Sesi RDP baru sedang dijeda. Jangan buat repo/secret baru atau dispatch workflow. GitHub-hosted Actions bukan layanan desktop RDP umum; baca /panduan untuk alasan, langkah pengamanan, dan banding resmi.';
 const EXTRAS_DEFAULTS = { lightshot: false, translucent: true, translucent_mode: 'clear', wallpaper: true, wallpaper_file: 'wallpaper.jpg', win10_look: true, win10_badge: true, win10_wallpaper: true, xydesk_host: true, dark_theme: true, lightweight_mode: true, vscode: false, notepadpp: false, rdp_user: 'xyadmin' };
 const RDP_USERNAME_RESERVED = new Set(['administrator', 'guest', 'defaultaccount', 'wdagutilityaccount', 'system', 'localservice', 'networkservice', 'con', 'prn', 'aux', 'nul']);
@@ -757,6 +759,71 @@ module.exports = async (req, res) => {
         content: Buffer.from(JSON.stringify(next, null, 2) + '\n', 'utf8').toString('base64'), branch: br, ...(cfgSha ? { sha: cfgSha } : {}),
       });
       return send(200, { ok: true, file: `wallpaper.${ext}`, size_kb: Math.round(buf.length / 1024) });
+    }
+
+    /* ============================ /secrets — set via dashboard (flexibel per akun) ======= */
+    if (req.method === 'GET' && p === '/secrets') {
+      const st = await repoState(ctx);
+      if (st.error === 'token') return send(401, { error: 'Token GitHub tidak valid — login lagi.', need_login: true });
+      return send(200, {
+        owner: ctx.owner, repo: ctx.repo,
+        secrets: st.secrets,
+        missing_required: st.missing_required,
+        missing_optional: st.missing_optional,
+        ready: !!st.ready,
+        required: SECRETS_REQUIRED,
+        optional: SECRETS_OPTIONAL,
+      });
+    }
+    if (req.method === 'POST' && p === '/secrets') {
+      if (RDP_START_PAUSED) return send(423, { error: RDP_PAUSE_MESSAGE, paused: true });
+      const body = await readBody(req, 64 * 1024);
+      if (body.__too_large) return send(413, { error: 'Payload terlalu besar' });
+      // Validasi RDP_PASSWORD minimal 8 char jika diisi
+      const toSet = {};
+      for (const name of [...SECRETS_REQUIRED, ...SECRETS_OPTIONAL]) {
+        if (name in body) {
+          const v = String(body[name] || '').trim();
+          if (v) toSet[name] = v;
+          else if (SECRETS_REQUIRED.includes(name) && (body[name] !== undefined)) {
+            // jika user kosongkan required, jangan hapus — kasih error
+            return send(400, { error: `${name} tidak boleh kosong` });
+          }
+        }
+      }
+      if (!Object.keys(toSet).length) return send(400, { error: 'Tidak ada secret yang diisi' });
+      if ('RDP_PASSWORD' in toSet && toSet.RDP_PASSWORD.length < 8) {
+        return send(400, { error: 'RDP_PASSWORD minimal 8 karakter' });
+      }
+      // butuh kunci publik repo
+      let pub;
+      try {
+        pub = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/actions/secrets/public-key`);
+      } catch (e) {
+        return send(e.status === 404 ? 400 : 500, { error: `Gagal ambil public-key repo: ${e.message}` });
+      }
+      if (!sodium) {
+        try { sodium = require('libsodium-wrappers'); } catch(e) { return send(500, { error: 'libsodium belum terinstall di server' }); }
+      }
+      await sodium.ready;
+      const results = [];
+      for (const [name, value] of Object.entries(toSet)) {
+        try {
+          const publicKey = sodium.from_base64(pub.key, sodium.base64_variants.ORIGINAL);
+          const encrypted = sodium.crypto_box_seal(sodium.from_string(value), publicKey);
+          const encrypted_value = sodium.to_base64(encrypted, sodium.base64_variants.ORIGINAL);
+          await gh(ctx.token, 'PUT', `/repos/${ctx.owner}/${ctx.repo}/actions/secrets/${name}`, {
+            encrypted_value, key_id: pub.key_id
+          });
+          results.push({ name, ok: true });
+        } catch (e) {
+          results.push({ name, ok: false, error: e.message });
+        }
+      }
+      const failed = results.filter(r => !r.ok);
+      if (failed.length) return send(500, { error: `Sebagian gagal: ${failed.map(f=>f.name+':'+f.error).join(', ')}`, results });
+      const fresh = await repoState(ctx);
+      return send(200, { ok: true, results, secrets: fresh.secrets, missing_required: fresh.missing_required, ready: !!fresh.ready });
     }
 
     return send(404, { error: 'not found' });

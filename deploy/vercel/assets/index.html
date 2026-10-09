@@ -138,7 +138,7 @@
   <a class="header-guide" href="/panduan" id="guideHeader">PANDUAN ↗</a>
   <button class="mini hidden" id="bLogout" style="margin-left:10px">KELUAR</button>
 </header>
-<div class="pause-banner" role="alert" aria-labelledby="pauseTitle">
+<div class="pause-banner hidden" id="pauseBanner" role="alert" aria-labelledby="pauseTitle">
   <strong id="pauseTitle">JEDA LAYANAN — jangan mulai sesi RDP baru</strong>
   <p>Dashboard dan workflow resmi kini memblokir sesi baru. GitHub-hosted Actions bukan layanan desktop RDP umum; penggunaan seperti ini berisiko membuat job/repo dibatasi atau akun ditangguhkan. Ini bukan akibat secret Tailscale yang kosong. Sesi yang sudah berjalan tidak dibatalkan otomatis.</p>
   <div class="pause-links"><a href="/panduan">Baca alasan dan langkah aman</a><a href="https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features#actions" target="_blank" rel="noopener">Ketentuan GitHub Actions ↗</a><a href="https://docs.github.com/en/site-policy/acceptable-use-policies/github-appeal-and-reinstatement" target="_blank" rel="noopener">Ajukan appeal resmi ↗</a></div>
@@ -185,6 +185,26 @@
         <button id="rpSecretsBtn" style="flex:1">KELOLA SECRETS</button>
       </div>
       <div class="note" id="rpNote">Pemeriksaan ini hanya menampilkan nama secret—dashboard tidak dapat membaca nilainya.</div>
+      <div class="panel" style="margin-top:14px;background:#131315;border:1px solid #262629" id="secretsPanel">
+        <h2 style="margin-bottom:8px">🔑 Secrets RDP — isi langsung dari dashboard <span class="pill" id="secPill">fleksibel per akun</span></h2>
+        <div class="hint" style="margin-bottom:10px">Setiap user isi secret-nya sendiri di repo hasil fork-nya. Kita cuma nyiapin template script — akun & password punya mereka. Dashboard akan enkripsi otomatis via GitHub API (libsodium).</div>
+        <label>RDP_PASSWORD <small style="color:#93a893">*wajib, min 8 karakter — ini jadi password RDP + RustDesk</small></label>
+        <input id="secRdpPass" type="password" placeholder="contoh: SampGacor123!" maxlength="64">
+        <div class="two">
+          <div><label>TAILSCALE_AUTH_KEY <small>(opsional, untuk IP 100.x)</small></label><input id="secTsKey" type="password" placeholder="tskey-auth-... (kosong = tanpa Tailscale)"></div>
+          <div><label>NGROK_AUTHTOKEN <small>(opsional, untuk tunnel ngrok)</small></label><input id="secNgrok" type="password" placeholder="2abc... (kosong = pakai bore/pinggy)"></div>
+        </div>
+        <label>GTA_SA_URL <small>(opsional, direct link ZIP GTA SA portable milik user)</small></label>
+        <input id="secGtaUrl" type="text" placeholder="https://drive.google.com/uc?export=download&id=... atau kosong = upload manual">
+        <label>CLEANUP_TOKEN <small>(opsional, PAT repo untuk auto hapus log lama)</small></label>
+        <input id="secCleanup" type="password" placeholder="ghp_... (opsional)">
+        <div class="btns">
+          <button class="primary" id="secSave" style="flex:2">💾 SIMPAN SECRETS VIA DASHBOARD</button>
+          <button id="secLoad" style="flex:1">CEK STATUS</button>
+        </div>
+        <div class="note" id="secNote">Secret disimpan terenkripsi di GitHub (nama saja yang terbaca). Dashboard tidak pernah simpan password di server.</div>
+        <div class="hint">Setelah simpan, cek di <code>Settings → Secrets and variables → Actions</code> di repo fork kamu — nama secret akan muncul.</div>
+      </div>
       <div class="hint steps">Jangan buat repo atau tambahkan secret baru untuk memulai RDP selama jeda. Bila repo lama tidak akan dipakai, buka pengaturan secret untuk menghapus/revoke yang sudah tidak dibutuhkan. Untuk repo template lama, nonaktifkan workflow dari tab <code>Actions</code>; perubahan template tidak otomatis masuk ke salinan lama.</div>
       <div class="hint" id="rpWarn"></div>
     </div>
@@ -395,6 +415,7 @@
       $('rpPill').className='pill '+(paused?'err':(m.ready?'ok':(m.repo_exists?'err':'mid')));
       $('rpCreateWrap').classList.toggle('hidden',paused||!!m.repo_exists);
       $('rpSetup').disabled=paused;
+      var pb=document.getElementById('pauseBanner'); if(pb) pb.classList.toggle('hidden', !paused);
       $('rpSetup').textContent=paused?'PEMBUATAN / PERBAIKAN DIJEDA':(m.repo_exists?'PERIKSA / RAPIKKAN LAGI':'BUAT REPO DARI TEMPLATE');
       $('rpSecretsBtn').disabled=paused&&!m.repo_exists;
       $('rpSecretsBtn').textContent=m.repo_exists?'KELOLA SECRETS':'SECRETS TIDAK DIPERLUKAN';
@@ -458,6 +479,42 @@
   $('rpSecretsBtn').addEventListener('click',function(){
     var u=(me&&me.secrets_url)||(authInfo&&authInfo.repo?('https://github.com/'+authInfo.repo+'/settings/secrets/actions'):'');
     if(u)window.open(u,'_blank','noopener');else flash('Repo belum dibuat')});
+  // --- secrets via dashboard (flexibel per akun) ---
+  function secNote(msg,cls){ var n=$('secNote'); n.textContent=msg; n.className='note '+(cls||''); }
+  function loadSecrets(){
+    if(!me || me.mode!=='user'){ secNote('Login GitHub dulu sebagai user.','bad'); return; }
+    secNote('Memeriksa secrets...','');
+    api('/secrets').then(function(r){
+      secNote('Secrets terdeteksi: '+(r.secrets&&r.secrets.length? r.secrets.join(', ') : 'belum ada')+' | kurang wajib: '+(r.missing_required&&r.missing_required.length? r.missing_required.join(', ') : 'lengkap'),'ok');
+      $('secPill').textContent = r.ready ? 'siap' : 'perlu '+ (r.missing_required||[]).join(', ');
+      $('secPill').className='pill '+(r.ready?'ok':'err');
+    }).catch(function(e){ secNote('Gagal cek: '+e.message,'bad'); });
+  }
+  $('secLoad').addEventListener('click', loadSecrets);
+  $('secSave').addEventListener('click', function(){
+    if(!me || me.mode!=='user'){ secNote('Login GitHub dulu.','bad'); return; }
+    if(me.rdp_start_paused){ secNote('Jeda aktif: tidak bisa simpan secret untuk sesi baru.','bad'); return; }
+    var payload={};
+    var rd=$('secRdpPass').value.trim();
+    var ts=$('secTsKey').value.trim();
+    var ng=$('secNgrok').value.trim();
+    var gt=$('secGtaUrl').value.trim();
+    var cl=$('secCleanup').value.trim();
+    if(rd) payload.RDP_PASSWORD = rd;
+    if(ts) payload.TAILSCALE_AUTH_KEY = ts;
+    if(ng) payload.NGROK_AUTHTOKEN = ng;
+    if(gt) payload.GTA_SA_URL = gt;
+    if(cl) payload.CLEANUP_TOKEN = cl;
+    if(!Object.keys(payload).length){ secNote('Isi minimal RDP_PASSWORD dulu.','bad'); return; }
+    if(payload.RDP_PASSWORD && payload.RDP_PASSWORD.length < 8){ secNote('RDP_PASSWORD minimal 8 karakter','bad'); return; }
+    var b=$('secSave'); b.disabled=true; secNote('Mengenkripsi & menyimpan ke GitHub...','');
+    api('/secrets','POST',payload).then(function(r){
+      secNote('✅ Tersimpan: '+(r.results||[]).map(x=>x.name).join(', ')+' — cek di Settings → Secrets','ok');
+      flash('Secrets tersimpan!');
+      $('secRdpPass').value=''; $('secTsKey').value=''; $('secNgrok').value=''; $('secGtaUrl').value=''; $('secCleanup').value='';
+      return refreshMe();
+    }).catch(function(e){ secNote('Gagal simpan: '+e.message,'bad'); }).finally(function(){ b.disabled=false; });
+  });
   $('cPassSave').addEventListener('click',function(){
     var v=$('cPassLocal').value;
     try{localStorage.setItem('xyrdp_pass_'+(me?me.owner+'_'+me.repo:'x'),v)}catch(e){}

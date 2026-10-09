@@ -1,0 +1,17 @@
+*** AppPrefs.kt — tambah pref untuk unlock RDP gratis ***
+--- a/client/Android/Studio/app/src/main/kotlin/id/xydesk/remote/ui/AppPrefs.kt
++++ b/client/Android/Studio/app/src/main/kotlin/id/xydesk/remote/ui/AppPrefs.kt
+@@ -120,6 +120,12 @@ class AppPrefs(context: Context) {
+     var defaultColorDepth: Int
+         get() = sp.getInt("default_color_depth", 16)
+         set(v) = sp.edit().putInt("default_color_depth", v).apply()
++
++    // === RDP Gratis 6 jam (XyRDP) — 1x iklan ===
++    var rdpFreeAdUnlocked: Boolean
++        get() = sp.getBoolean("rdp_free_ad_unlocked", false)
++        set(v) = sp.edit().putBoolean("rdp_free_ad_unlocked", v).apply()
++
++    var rdpFreeLastAdAt: Long
++        get() = sp.getLong("rdp_free_last_ad_at", 0L)
++        set(v) = sp.edit().putLong("rdp_free_last_ad_at", v).apply()
+ }

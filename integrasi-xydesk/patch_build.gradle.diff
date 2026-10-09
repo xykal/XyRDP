@@ -1,0 +1,8 @@
+*** app/build.gradle — tambah AdMob ***
+--- a/client/Android/Studio/app/build.gradle
++++ b/client/Android/Studio/app/build.gradle
+@@ -55,6 +55,7 @@ dependencies {
+     implementation 'androidx.media:media:1.7.0'
++    implementation 'com.google.android.gms:play-services-ads:23.0.0'
+     implementation project(':freeRDPCore')
+ }

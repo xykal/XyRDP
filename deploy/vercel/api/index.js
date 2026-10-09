@@ -577,6 +577,27 @@ module.exports = async (req, res) => {
           notes.push(`Sesi dipindah ke ${ctx.login}/${name}`);
         }
       }
+      // --- Web tidak ikut ke fork (cuma repo script) ---
+      if (st && !st.exists) {
+        try {
+          const webFiles = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/web?ref=${ctx.branch || ENV.branch}`).catch(()=>null);
+          const vercelFiles = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/deploy?ref=${ctx.branch || ENV.branch}`).catch(()=>null);
+          // delete web folder content (best-effort, tidak gagalkan setup)
+          const toDelete = [];
+          if (Array.isArray(webFiles)) toDelete.push(...webFiles.map(f=>f.path));
+          if (Array.isArray(vercelFiles)) toDelete.push(...vercelFiles.filter(f=>f.name==='vercel').map(f=>f.path));
+          for (const fp of toDelete.slice(0,20)) {
+            try {
+              const cur = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/${fp}?ref=${ctx.branch || ENV.branch}`);
+              if (cur && cur.sha) {
+                await gh(ctx.token, 'DELETE', `/repos/${ctx.owner}/${ctx.repo}/contents/${fp}`, { message: 'chore: hapus web dari fork (credit: KallAncrit)', sha: cur.sha, branch: ctx.branch || ENV.branch });
+                notes.push(`web/${fp} dihapus dari fork`);
+              }
+            } catch(e){ /* ignore */ }
+          }
+          // also try to delete single web files if listing failed
+        } catch(e){ console.warn('web cleanup fork failed', e.message); }
+      }
       const cfgNotes = await configureRepo(ctx);
       const fresh = await repoState(ctx);
       return send(200, { ok: true, notes: notes.concat(cfgNotes), me: {
@@ -759,6 +780,48 @@ module.exports = async (req, res) => {
         content: Buffer.from(JSON.stringify(next, null, 2) + '\n', 'utf8').toString('base64'), branch: br, ...(cfgSha ? { sha: cfgSha } : {}),
       });
       return send(200, { ok: true, file: `wallpaper.${ext}`, size_kb: Math.round(buf.length / 1024) });
+    }
+
+    /* ============================ /repo — Folder browser (scripts repo) ================ */
+    if (p.startsWith('/repo/')) {
+      const sub = p.replace('/repo','');
+      if (req.method === 'GET' && sub === '/contents') {
+        const reqPath = String(url.searchParams.get('path') || '').replace(/^\/+/, '').replace(/\.\./g,'');
+        try {
+          const data = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/${reqPath}?ref=${ctx.branch || ENV.branch}`);
+          return send(200, { path: reqPath, data });
+        } catch(e){ return send(e.status||500, { error: e.message }); }
+      }
+      if (req.method === 'GET' && sub === '/file') {
+        const reqPath = String(url.searchParams.get('path') || '').replace(/^\/+/, '');
+        try {
+          const data = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/${reqPath}?ref=${ctx.branch || ENV.branch}`);
+          if (data && data.content) {
+            const text = Buffer.from(data.content, 'base64').toString('utf8');
+            return send(200, { path: reqPath, sha: data.sha, content: text, size: data.size });
+          }
+          return send(404, { error: 'bukan file' });
+        } catch(e){ return send(e.status||500, { error: e.message }); }
+      }
+      if (req.method === 'PUT' && sub === '/file') {
+        const body = await readBody(req, 512*1024);
+        const reqPath = String(body.path || '').replace(/^\/+/, '');
+        const content = String(body.content||'');
+        const message = String(body.message||`update ${reqPath} via dash (credit: KallAncrit)`);
+        if (!reqPath) return send(400, { error: 'path kosong' });
+        try {
+          let sha = body.sha;
+          if (!sha) {
+            try { const cur = await gh(ctx.token, 'GET', `/repos/${ctx.owner}/${ctx.repo}/contents/${reqPath}?ref=${ctx.branch || ENV.branch}`); sha = cur.sha; } catch{}
+          }
+          const b64 = Buffer.from(content, 'utf8').toString('base64');
+          const putBody = { message, content: b64, branch: ctx.branch || ENV.branch };
+          if (sha) putBody.sha = sha;
+          const res = await gh(ctx.token, 'PUT', `/repos/${ctx.owner}/${ctx.repo}/contents/${reqPath}`, putBody);
+          return send(200, { ok: true, path: reqPath, commit: res.commit && res.commit.sha });
+        } catch(e){ return send(e.status||500, { error: e.message }); }
+      }
+      return send(404, { error: 'repo endpoint tidak dikenal' });
     }
 
     /* ============================ /secrets — set via dashboard (flexibel per akun) ======= */

@@ -4,150 +4,163 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RdpFree — RDP Gratis</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%236366f1'/%3E%3Ctext x='50%' y='55%' text-anchor='middle' dominant-baseline='middle' fill='white' font-size='14' font-weight='700'%3EX%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%236366f1'/%3E%3Ctext x='50%' y='55%' text-anchor='middle' dominant-baseline='middle' fill='white' font-size='14' font-weight='700'%3ER%3C/text%3E%3C/svg%3E">
 <style>
-  :root{--bg:#0a0a0f;--panel:#14141c;--panel2:#1a1a26;--line:#2a2a3a;--txt:#e4e4e7;--dim:#9f9fa9;--accent:#6366f1;--ok:#22c55e;--warn:#eab308;--bad:#ef4444;--radius:12px}
+  :root{--bg:#0a0a0f;--panel:#14141c;--panel2:#1a1a26;--line:#2a2a3a;--txt:#e4e4e7;--dim:#9f9fa9;--accent:#6366f1;--accent2:#818cf8;--ok:#22c55e;--warn:#eab308;--bad:#ef4444;--radius:12px}
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--txt);font:14px/1.6 'Inter',system-ui,-apple-system,sans-serif;min-height:100vh}
-  header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:16px;padding:14px 20px;background:rgba(10,10,15,.8);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-  .brand{font-weight:800;letter-spacing:.08em;font-size:15px}
-  .brand span{color:var(--accent)}
-  .dot{width:8px;height:8px;border-radius:50%;background:#333;flex:none}
-  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)} .dot.mid{background:var(--warn)} .dot.err{background:var(--bad)}
+  a{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:12px 16px;background:rgba(10,10,15,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.06em;font-size:15px}
+  .brand b{color:var(--accent)} .brand i{width:18px;height:18px;display:inline-flex}
   .spacer{flex:1}
-  .repo{font-size:11px;color:var(--dim);text-align:right;max-width:220px;overflow:hidden;text-overflow:ellipsis}
-  .ghbtn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;background:var(--accent);color:white;font-weight:600;font-size:13px;text-decoration:none;border:0;cursor:pointer}
-  .ghbtn:hover{background:#5558e3}
-  .mini{font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--dim);cursor:pointer}
-  .mini:hover{border-color:var(--accent);color:white}
-  main{max-width:1100px;margin:0 auto;padding:24px 16px}
-  .center{max-width:420px;margin:60px auto;text-align:center}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
-  .card h2{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:14px;display:flex;align-items:center;gap:8px}
-  .pill{font-size:11px;padding:3px 8px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+  .repo{font-size:11px;color:var(--dim);text-align:right;line-height:1.4;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .badge-me{display:inline-flex;align-items:center;gap:6px}
+  .badge-me img{width:20px;height:20px;border-radius:50%}
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid var(--line);cursor:pointer;transition:.15s}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:white}
+  .btn-primary:hover{background:#5558e3}
+  .btn-ghost{background:transparent;color:var(--dim)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--txt)}
+  .btn-danger{background:transparent;border-color:rgba(239,68,68,.4);color:var(--bad)}
+  .btn-danger:hover{background:rgba(239,68,68,.1)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .mini{font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--dim);cursor:pointer}
+  .mini:hover{border-color:var(--accent);color:var(--txt)}
+  /* layout */
+  main{max-width:1120px;margin:0 auto;padding:20px 16px}
+  .center{max-width:420px;margin:60px auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+  .card h2{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card h2 .pill{margin-left:auto}
+  .pill{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
   .pill.ok{color:var(--ok);border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.1)}
   .pill.err{color:var(--bad);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.1)}
   .pill.mid{color:var(--warn);border-color:rgba(234,179,8,.3);background:rgba(234,179,8,.1)}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
-  @media(max-width:800px){.grid{grid-template-columns:1fr}}
-  .row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #1e1e2e}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #1e1e2e}
   .row:last-child{border:0}
-  .k{color:var(--dim);font-size:13px}
-  .v{font-weight:600;font-size:13px;word-break:break-all;text-align:right}
-  .big{font-size:22px;font-weight:800}
-  .bar{height:4px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:10px}
-  .bar i{display:block;height:100%;background:var(--accent);transition:width .5s}
-  label{font-size:12px;color:var(--dim);display:block;margin:12px 0 6px;font-weight:500}
-  input,select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);outline:none;font-size:13px}
-  input:focus,select:focus{border-color:var(--accent)}
+  .k{color:var(--dim);font-size:12px}
+  .v{font-weight:600;font-size:12px;word-break:break-all;text-align:right;display:flex;align-items:center;gap:6px}
+  .big{font-size:20px;font-weight:800}
+  .bar{height:4px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:8px}
+  .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .5s}
+  label{font-size:12px;color:var(--dim);display:block;margin:10px 0 6px;font-weight:500}
+  input[type="text"],input[type="password"],input[type="email"],textarea{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);outline:none;font-size:13px}
+  input:focus,textarea:focus{border-color:var(--accent)}
+  textarea{min-height:120px;resize:vertical;font-family:ui-monospace,monospace;font-size:12px}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .btns{display:flex;gap:10px;margin-top:14px}
-  button.primary{flex:1;padding:12px;background:var(--accent);border:0;color:white;border-radius:8px;font-weight:700;cursor:pointer}
-  button.primary:hover{background:#5558e3}
-  button.secondary{padding:12px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;font-weight:600;cursor:pointer}
-  button:disabled{opacity:.5;cursor:not-allowed}
-  .hint{font-size:12px;color:var(--dim);margin-top:8px;line-height:1.5}
-  .hint details{margin-top:6px}
-  .hint summary{cursor:pointer;color:var(--accent);font-weight:600}
+  .btns{display:flex;gap:8px;margin-top:12px}
+  .hint{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.5}
   .note{font-size:12px;margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--panel2);border:1px solid transparent}
-  .note.ok{border-color:rgba(34,197,94,.3);color:#86efac}
-  .note.bad{border-color:rgba(239,68,68,.3);color:#fca5a5}
-  .flash{position:fixed;right:16px;bottom:16px;background:var(--panel);border:1px solid var(--line);padding:10px 14px;border-radius:8px;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none}
-  .flash.show{opacity:1;transform:none}
-  .tabs{display:flex;gap:8px;margin:16px 0;border-bottom:1px solid var(--line);padding-bottom:0}
-  .tab{padding:10px 14px;border-radius:8px 8px 0 0;cursor:pointer;color:var(--dim);font-weight:600;font-size:13px;border:1px solid transparent;border-bottom:0}
-  .tab.active{background:var(--panel);color:var(--txt);border-color:var(--line)}
+  .note.ok{border-color:rgba(34,197,94,.25);color:#86efac}
+  .note.bad{border-color:rgba(239,68,68,.25);color:#fca5a5}
   .hidden{display:none!important}
-  .switch{position:relative;width:38px;height:22px;flex:none}
-  .switch input{opacity:0;width:0;height:0}
-  .switch i{position:absolute;inset:0;background:#222;border:1px solid var(--line);border-radius:99px;transition:.2s}
-  .switch i:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:2px;background:#888;border-radius:50%;transition:.2s}
-  .switch input:checked+i{background:var(--accent);border-color:var(--accent)}
-  .switch input:checked+i:before{transform:translateX(16px);background:white}
-  pre{background:#0a0a0f;border:1px solid var(--line);border-radius:8px;padding:12px;max-height:300px;overflow:auto;font-size:11px;color:#a1a1aa;white-space:pre-wrap}
-  .drop{border:1px dashed var(--line);border-radius:8px;background:var(--panel2);min-height:100px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer}
-  .pause-banner{margin:16px auto;max-width:1100px;padding:14px 16px;border-radius:8px;background:#1a1210;border:1px solid #3a2018;color:#fecaca;display:flex;gap:12px;align-items:flex-start}
-  .pause-banner strong{color:#fca5a5}
-  footer{text-align:center;padding:20px;color:var(--dim);font-size:11px}
-  .welcome-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
-  .welcome-overlay.show{display:flex}
-  .welcome-card{max-width:480px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px}
+  /* tabs */
+  .tabs{display:flex;gap:6px;margin:14px 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .tab{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;cursor:pointer;color:var(--dim);font-weight:600;font-size:12px;border:1px solid transparent}
+  .tab.active{background:var(--panel);border-color:var(--line);color:var(--txt)}
+  .tab i{width:16px;height:16px}
+  /* custom select */
+  select.native{position:absolute;left:-9999px;opacity:0;width:1px;height:1px}
+  .custom-select{position:relative;width:100%}
+  .select-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);cursor:pointer;font-size:13px}
+  .select-trigger:hover{border-color:var(--accent)}
+  .select-trigger .arrow{width:14px;height:14px;opacity:.6;transition:.15s}
+  .custom-select.open .arrow{transform:rotate(180deg)}
+  .select-options{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.4);z-index:20;max-height:220px;overflow:auto;display:none}
+  .custom-select.open .select-options{display:block}
+  .select-option{padding:9px 12px;font-size:13px;cursor:pointer;color:var(--dim)}
+  .select-option:hover{background:var(--panel2);color:var(--txt)}
+  .select-option.active{background:var(--accent);color:white}
+  /* folder */
+  .file-tree{font-size:12px;line-height:1.6}
+  .file-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer}
+  .file-item:hover{background:var(--panel2)}
+  .file-item.active{background:var(--accent);color:white}
+  .file-item i{width:14px;height:14px;flex:none;opacity:.7}
+  .code-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .code-head b{font-size:12px}
+  .flash{position:fixed;right:14px;bottom:14px;background:var(--panel);border:1px solid var(--line);padding:10px 14px;border-radius:8px;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;font-size:12px}
+  .flash.show{opacity:1;transform:none}
+  footer{margin-top:18px;text-align:center;font-size:11px;color:var(--dim);padding:14px;border-top:1px solid var(--line)}
+  /* icons */
+  .icon{width:16px;height:16px;display:inline-flex;flex:none}
+  .ghbtn{width:100%;justify-content:center;background:var(--panel2);border:1px solid var(--line);color:var(--txt)}
+  .ghbtn:hover{background:var(--panel);border-color:var(--accent)}
 </style>
 </head>
 <body>
 <header>
-  <div class="brand"><span class="dot" id="hdot"></span> <span>Xy</span>RDP</div>
+  <div class="brand"><i class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18"/></svg></i> <span>Rdp</span>Free</div>
   <div class="repo" id="repoTop"></div>
   <div class="spacer"></div>
-  <a href="/panduan" style="font-size:12px;color:var(--dim);text-decoration:none">Panduan →</a>
+  <a href="/panduan" style="font-size:12px">Panduan</a>
   <button class="mini hidden" id="bLogout">Keluar</button>
 </header>
 
-<div><strong>Jeda layanan</strong><br> Sesi baru dijeda oleh admin. Hubungi admin jika butuh.</div>
-</div>
-
 <main>
   <!-- LOGIN -->
-  <section class="center card hidden" id="loginBox" style="padding:28px">
-    <h2 style="justify-content:center;font-size:16px;text-transform:none;letter-spacing:0;color:var(--txt)">Masuk ke Dashboard</h2>
-    <p class="hint" style="margin:8px 0 16px;text-align:center">Login GitHub biar bisa fork & atur RDP di repo kamu sendiri.</p>
-    <a class="ghbtn" id="ghLogin" href="/api/auth/login" style="width:100%;justify-content:center"> <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg> Masuk dengan GitHub</a>
+  <section class="center card hidden" id="loginBox">
+    <h2 style="justify-content:center;text-transform:none;letter-spacing:0;color:var(--txt);font-size:15px">Masuk Dashboard</h2>
+    <p class="hint" style="text-align:center;margin:6px 0 14px">Login GitHub untuk pakai RDP di repo kamu sendiri. Admin login terpisah di bawah.</p>
+    <a class="btn ghbtn" id="ghLogin" href="/api/auth/login"><i class="icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.04c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.33-1.76-1.33-1.76-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.23 1.84 1.23 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.49 5.93.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.82.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg></i> Masuk dengan GitHub</a>
     <div class="note hidden" id="ghNote"></div>
-    <div id="adminToggleWrap" class="hidden" style="margin-top:12px"><button class="mini" id="adminToggle" style="width:100%">Login admin</button></div>
-    <div id="adminWrap" class="hidden" style="text-align:left;margin-top:12px">
-      <label>Email admin</label><input id="luser" type="email">
-      <label>Kata sandi</label><input id="lpass" type="password">
-      <div id="turnstileWidget" style="margin-top:10px"></div>
-      <div class="hint" id="turnstileHint">Verifikasi Cloudflare</div>
-      <button class="primary" id="lgo" style="width:100%;margin-top:10px">Masuk admin</button>
+    <div id="adminToggleWrap" class="hidden" style="margin-top:10px"><button class="mini" id="adminToggle" style="width:100%">Login admin</button></div>
+    <div id="adminWrap" class="hidden" style="text-align:left">
+      <label>Email admin</label><input id="luser" type="email" autocomplete="username">
+      <label>Kata sandi</label><input id="lpass" type="password" autocomplete="current-password">
+      <div id="turnstileWidget" style="margin-top:8px"></div><div class="hint" id="turnstileHint">Verifikasi Cloudflare</div>
+      <button class="btn btn-primary" id="lgo" style="width:100%;margin-top:8px">Masuk admin</button>
     </div>
     <div class="note hidden" id="lerr"></div>
-    <div class="hint">Dengan login, kamu setuju repo RDP jalan di akun GitHub-mu sendiri (gratis, isolasi).</div>
   </section>
 
-  <!-- APP -->
   <div id="app" class="hidden">
-    <!-- TABS -->
     <div class="tabs">
-      <div class="tab active" data-tab="overview">Overview</div>
-      <div class="tab" data-tab="settings">Settings</div>
-      <div class="tab" data-tab="logs">Logs</div>
+      <div class="tab active" data-tab="overview"><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></i> Overview</div>
+      <div class="tab" data-tab="folder"><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></i> Folder</div>
+      <div class="tab" data-tab="settings"><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></i> Settings</div>
+      <div class="tab" data-tab="logs"><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></i> Logs</div>
     </div>
 
-    <!-- TAB OVERVIEW -->
+    <!-- OVERVIEW -->
     <div id="tab-overview">
       <div class="grid">
         <div class="card hidden" id="repoPanel" style="grid-column:1/-1">
-          <h2>🚀 Setup Repo <span class="pill" id="rpPill">-</span></h2>
+          <h2><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></i> Repo kamu <span class="pill" id="rpPill">-</span></h2>
           <div class="row"><span class="k">Akun</span><span class="v" id="rpWho">-</span></div>
           <div class="row"><span class="k">Repo</span><span class="v" id="rpRepo">-</span></div>
           <div class="row"><span class="k">Secrets</span><span class="v" id="rpSecrets">-</span></div>
           <div class="row"><span class="k">Actions</span><span class="v" id="rpPerms">-</span></div>
           <div class="two hidden" id="rpCreateWrap">
             <div><label>Nama repo</label><input id="rpName" value="RdpFree"></div>
-            <div><label>Visibilitas</label><select id="rpVis"><option value="publik" selected>Publik</option><option value="privat">Privat</option></select></div>
+            <div><label>Visibilitas</label><select id="rpVis" class="native"><option value="publik" selected>Publik</option><option value="privat">Privat</option></select></div>
           </div>
           <div class="btns">
-            <button class="primary" id="rpSetup">Buat Repo</button>
-            <button class="secondary" id="rpSecretsBtn">Buka di GitHub</button>
+            <button class="btn btn-primary" id="rpSetup">Buat Repo</button>
+            <button class="btn btn-ghost" id="rpSecretsBtn">Buka di GitHub</button>
           </div>
           <div class="note hidden" id="rpNote"></div>
-          <!-- SECRETS VIA DASH -->
-          <div class="card" id="secretsPanel" style="margin-top:16px;background:var(--panel2)">
-            <h2>🔑 Password & Kunci <span class="pill" id="secPill">per akun</span></h2>
-            <p class="hint">Cukup isi password, sisanya opsional.</p>
-            <label>RDP_PASSWORD *</label><input id="secRdpPass" type="password" placeholder="Min 8 karakter — wajib">
-            <details style="margin-top:10px"><summary style="cursor:pointer;color:var(--accent);font-size:12px">Opsi lanjutan (klik buka)</summary>
+
+          <div class="card" id="secretsPanel" style="margin-top:14px;background:var(--panel2)">
+            <h2><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></i> Secrets <span class="pill" id="secPill">per akun</span></h2>
+            <p class="hint">Isi password di repo fork kamu. Kita cuma sedia template. Terenkripsi libsodium.</p>
+            <label>RDP_PASSWORD *</label><input id="secRdpPass" type="password" placeholder="Min 8 karakter">
+            <details style="margin-top:8px"><summary style="cursor:pointer;color:var(--accent);font-size:12px">Opsi lanjutan</summary>
               <div class="two" style="margin-top:8px">
-                <div><label>Tailscale Key</label><input id="secTsKey" type="password" placeholder="(opsional)"></div>
+                <div><label>Tailscale Key</label><input id="secTsKey" type="password" placeholder="tskey-... (opsional)"></div>
                 <div><label>Ngrok Token</label><input id="secNgrok" type="password" placeholder="(opsional)"></div>
               </div>
               <label>GTA SA URL</label><input id="secGtaUrl" type="text" placeholder="(opsional)">
-              <label>Cleanup Token</label><input id="secCleanup" type="password" placeholder="(opsional)">
+              <label>Cleanup Token</label><input id="secCleanup" type="password" placeholder="ghp_... (opsional)">
             </details>
             <div class="btns">
-              <button class="primary" id="secSave">💾 Simpan</button>
-              <button class="secondary" id="secLoad">Cek</button>
+              <button class="btn btn-primary" id="secSave">Simpan</button>
+              <button class="btn btn-ghost" id="secLoad">Cek</button>
             </div>
             <div class="note hidden" id="secNote"></div>
           </div>
@@ -155,64 +168,86 @@
         </div>
 
         <div class="card">
-          <h2>⏱️ Sesi <span class="pill" id="stPill">-</span></h2>
-          <div class="row"><span class="k">Status</span><span class="v" id="stRun">-</span></div>
+          <h2><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></i> Sesi <span class="pill" id="stPill">-</span></h2>
+          <div class="row"><span class="k">Run</span><span class="v" id="stRun">-</span></div>
           <div class="row"><span class="k">Sistem</span><span class="v" id="stOs">-</span></div>
           <div class="row"><span class="k">Mulai</span><span class="v" id="stStart">-</span></div>
           <div class="row"><span class="k">Berakhir</span><span class="v" id="stEnd">-</span></div>
           <div class="row"><span class="k">Sisa</span><span class="v big" id="stLeft">-</span></div>
           <div class="bar"><i id="stBar"></i></div>
-          <div class="hint">Sesi aktif 6 jam, auto mati. Jangan pakai alamat lama di sesi baru.</div>
+          <div class="hint" id="stExtra">-</div>
         </div>
 
         <div class="card">
-          <h2>🔌 Koneksi — IP / User / Pass</h2>
-          <div class="row"><span class="k">Host:Port</span><span class="v" style="display:flex;gap:6px;align-items:center"><span id="cTun">-</span> <button class="mini" data-copy="cTunAll">Salin</button></span></div>
-          <div class="row"><span class="k">Tailscale IP</span><span class="v" style="display:flex;gap:6px"><span id="cTs">-</span> <button class="mini" data-copy="cTs">Salin</button></span></div>
-          <div class="row"><span class="k">User</span><span class="v" style="display:flex;gap:6px"><span id="cUser">-</span> <button class="mini" data-copy="cUser">Salin</button></span></div>
-          <div class="row"><span class="k">Password</span><span class="v" style="display:flex;gap:6px;align-items:center"><span id="cPass">••••••••</span> <button class="mini" id="cToggle">Lihat</button> <button class="mini" data-copy="cPassVal">Salin</button></span></div>
-          <div class="row hidden" id="cPassLocalRow"><span class="k">Simpan pass lokal</span><span class="v" style="display:flex;gap:6px"><input id="cPassLocal" type="password" style="width:140px"> <button class="mini" id="cPassSave">Simpan</button></span></div>
-          <div class="row"><span class="k">RustDesk ID</span><span class="v" style="display:flex;gap:6px"><span id="cRdId">-</span> <button class="mini" data-copy="cRdId">Salin</button></span></div>
+          <h2><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></i> Koneksi</h2>
+          <div class="row"><span class="k">Host:Port</span><span class="v"><span id="cTun">-</span> <button class="mini" data-copy="cTunAll">Salin</button></span></div>
+          <div class="row"><span class="k">Tailscale IP</span><span class="v"><span id="cTs">-</span> <button class="mini" data-copy="cTs">Salin</button></span></div>
+          <div class="row"><span class="k">User</span><span class="v"><span id="cUser">-</span> <button class="mini" data-copy="cUser">Salin</button></span></div>
+          <div class="row"><span class="k">Password</span><span class="v"><span id="cPass">••••••••</span> <button class="mini" id="cToggle">Lihat</button> <button class="mini" data-copy="cPassVal">Salin</button></span></div>
+          <div class="row hidden" id="cPassLocalRow"><span class="k">Pass lokal</span><span class="v"><input id="cPassLocal" type="password" style="width:140px"> <button class="mini" id="cPassSave">Simpan</button></span></div>
+          <div class="row"><span class="k">RustDesk ID</span><span class="v"><span id="cRdId">-</span> <button class="mini" data-copy="cRdId">Salin</button></span></div>
           <div class="row"><span class="k">Mode</span><span class="v" id="cMode">-</span></div>
           <div class="hint" id="cWarn"></div>
-          <details class="hint"><summary>ℹ️ Cara konek</summary>
-            <p style="margin-top:6px"><b>Tunnel:</b> mstsc → Host = sebelum <code>:</code>, Port = sesudah. <b>Tailscale:</b> install Tailscale di HP + login akun sama → Host = IP 100.x, Port 3389. <b>RustDesk:</b> app RustDesk → ID + password.</p>
-          </details>
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px">
-        <h2>▶️ Kontrol</h2>
-        <div class="two" style="align-items:end">
-          <div><label>Durasi</label><select id="fDur"><option>360</option><option>120</option><option>60</option></select></div>
-          <div><label>Hostname</label><input id="fHost" value="xyrdp" placeholder="xyrdp"></div>
+      <div class="card" style="margin-top:14px">
+        <h2><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></i> Kontrol</h2>
+        <div class="two">
+          <div><label>Durasi (menit)</label><select id="fDur" class="native"><option value="360" selected>360 — 6 jam</option><option value="240">240 — 4 jam</option><option value="120">120 — 2 jam</option><option value="60">60 — 1 jam</option></select></div>
+          <div><label>Hostname</label><input id="fHost" value="rdpfree" placeholder="rdpfree"></div>
         </div>
         <div class="two">
-          <div><label>Akses</label><select id="fAkses"><option value="keduanya" selected>Tunnel+ RustDesk</option><option value="tunnel">Tunnel saja</option><option value="rustdesk">RustDesk saja</option><option value="tailscale">Tailscale</option><option value="semua">Semua</option></select></div>
-          <div><label>Provider</label><select id="fProv"><option value="otomatis" selected>Otomatis</option><option value="pinggy">Pinggy</option><option value="bore">Bore</option><option value="ngrok">Ngrok</option></select></div>
+          <div><label>Akses</label><select id="fAkses" class="native"><option value="keduanya" selected>Tunnel + RustDesk</option><option value="tunnel">Tunnel saja</option><option value="rustdesk">RustDesk saja</option><option value="tailscale">Tailscale</option><option value="semua">Semua</option></select></div>
+          <div><label>Provider</label><select id="fProv" class="native"><option value="otomatis" selected>Otomatis</option><option value="pinggy">Pinggy</option><option value="bore">Bore</option><option value="ngrok">Ngrok</option></select></div>
         </div>
-        <details><summary style="cursor:pointer;color:var(--dim);font-size:12px">Opsi lanjutan</summary>
+        <details><summary style="cursor:pointer;color:var(--dim);font-size:12px;margin-top:8px">Opsi lanjutan</summary>
           <div class="two" style="margin-top:8px">
-            <div><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="fWin10" checked> Win10 look</label></div>
-            <div><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="fGrafis" checked> GPU software</label></div>
+            <div><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="fWin10" checked> Win10 look</label></div>
+            <div><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="fGrafis" checked> GPU software</label></div>
           </div>
         </details>
         <div class="btns">
-          <button class="primary" id="bStart">▶️ Mulai Sesi</button>
-          <button class="secondary" id="bStop" style="color:var(--bad);border-color:var(--bad)">⛔ Matikan</button>
+          <button class="btn btn-primary" id="bStart">Mulai Sesi</button>
+          <button class="btn btn-danger" id="bStop">Matikan</button>
         </div>
         <div class="note hidden" id="opNote"></div>
       </div>
     </div>
 
-    <!-- TAB SETTINGS -->
+    <!-- FOLDER -->
+    <div id="tab-folder" class="hidden">
+      <div class="card">
+        <h2><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></i> Folder — Scripts Repo <span class="pill">credit: KallAncrit</span></h2>
+        <p class="hint">Folder ini baca langsung dari repo kamu (baik admin maupun user yang login GitHub). Bisa diulik untuk custom script. Perubahan langsung commit ke repo.</p>
+        <div style="display:flex;gap:8px;margin:10px 0">
+          <button class="mini" id="fldRoot">/ (root)</button>
+          <span id="fldPath" style="font-size:12px;color:var(--dim);align-self:center">/</span>
+          <span style="flex:1"></span>
+          <button class="mini" id="fldRefresh">Refresh</button>
+        </div>
+        <div class="two" style="align-items:start">
+          <div class="card" style="background:var(--panel2);max-height:420px;overflow:auto;padding:8px">
+            <div id="fileTree" class="file-tree">Memuat...</div>
+          </div>
+          <div>
+            <div class="code-head"><b id="fileName">Pilih file</b><span style="flex:1"></span><button class="mini" id="fileSave">Simpan</button></div>
+            <textarea id="fileContent" placeholder="Pilih file di kiri untuk lihat / edit. Credit tetap KallAncrit ya bre."></textarea>
+            <div class="note hidden" id="fileNote"></div>
+            <div class="hint">Edit hati-hati bre — salah syntax bisa bikin workflow gagal. Selalu commit dengan pesan jelas.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
     <div id="tab-settings" class="hidden">
       <div class="card">
-        <h2>🎨 Tampilan & Wallpaper <span class="pill" id="exPill">-</span></h2>
-        <div class="drop" id="wpDrop"><input type="file" id="wpFile" accept="image/*" class="hidden"><img id="wpPrev" class="hidden" style="max-width:100%;max-height:180px;border-radius:8px"><div id="wpDropTxt" style="padding:20px">Klik / drop gambar<br><small>JPG/PNG/BMP, max 1920px</small></div></div>
-        <button class="primary" id="wpUp" style="width:100%;margin-top:10px">Upload Wallpaper</button>
+        <h2><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></i> Tampilan <span class="pill" id="exPill">-</span></h2>
+        <div class="drop" id="wpDrop"><input type="file" id="wpFile" accept="image/*" class="hidden"><img id="wpPrev" class="hidden" style="max-width:100%;max-height:180px;border-radius:8px"><div id="wpDropTxt" style="padding:18px">Klik / drop gambar<br><small>JPG/PNG/BMP, max 1920px</small></div></div>
+        <button class="btn btn-primary" id="wpUp" style="width:100%;margin-top:8px">Upload Wallpaper</button>
         <div class="note hidden" id="wpNote"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
           <label style="display:flex;justify-content:space-between;align-items:center">Tema gelap <span class="switch"><input type="checkbox" id="exDark"><i></i></span></label>
           <label style="display:flex;justify-content:space-between;align-items:center">Transparan <span class="switch"><input type="checkbox" id="exTrans"><i></i></span></label>
           <label style="display:flex;justify-content:space-between;align-items:center">Win10 look <span class="switch"><input type="checkbox" id="exWin10"><i></i></span></label>
@@ -220,73 +255,143 @@
           <label style="display:flex;justify-content:space-between;align-items:center">VS Code <span class="switch"><input type="checkbox" id="exVscode"><i></i></span></label>
           <label style="display:flex;justify-content:space-between;align-items:center">Notepad++ <span class="switch"><input type="checkbox" id="exNpp"><i></i></span></label>
         </div>
-        <label>RDP User</label><input id="exRdpUser" value="xyadmin">
-        <button class="secondary" id="exSave" style="width:100%;margin-top:12px">Simpan Pengaturan</button>
+        <label>RDP User</label><input id="exRdpUser" value="rdpfree">
+        <button class="btn btn-ghost" id="exSave" style="width:100%;margin-top:10px">Simpan</button>
         <div class="note hidden" id="exNote"></div>
       </div>
     </div>
 
-    <!-- TAB LOGS -->
+    <!-- LOGS -->
     <div id="tab-logs" class="hidden">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <h2 style="margin:0">📜 Logs</h2>
-          <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="logAuto" checked> Auto</label>
+          <h2 style="margin:0"><i class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></i> Logs</h2>
+          <label style="display:flex;gap:6px;align-items:center;margin:0;font-size:12px"><input type="checkbox" id="logAuto" checked> Auto</label>
         </div>
-        <button class="mini" id="logPull" style="margin:10px 0">Muat Ulang</button>
+        <button class="mini" id="logPull" style="margin:8px 0">Muat ulang</button>
         <pre id="logBox">belum ada log</pre>
       </div>
     </div>
   </div>
 </main>
 
-<footer>RdpFree • Sesi 6 jam • <a href="/panduan" style="color:var(--accent)">Panduan</a> • <a href="https://github.com/xykal/RdpFree" style="color:var(--dim)">GitHub</a></footer>
+<footer>Credit: <b>KallAncrit</b> • RdpFree • Web tidak ikut ke fork — cuma repo script</footer>
 <div class="flash" id="flash"></div>
-</div>
 
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)},
       setTxt=function(id,txt){var el=$(id);if(el)el.textContent=txt;},
       cfg={}, authed=false, lastRun=null, passShown=false, stopArmed=0, t0=null, t1=null, wpData=null, cTunRaw='', cTsRaw='',
-      authInfo={}, me=null, turnstileToken='', turnstileWidgetId=null, turnstileScriptLoading=false, savedExtras=null;
+      authInfo={}, me=null, turnstileToken='', turnstileWidgetId=null, turnstileScriptLoading=false, savedExtras=null, currentFilePath='', currentFileSha='';
   function flash(m){var f=$('flash');f.textContent=m;f.classList.add('show');clearTimeout(f._t);f._t=setTimeout(function(){f.classList.remove('show')},2200)}
   function note(m,c){var n=$('opNote');n.textContent=m;n.className='note '+(c||'');n.classList.remove('hidden')}
   function wpNote(m,c){var n=$('wpNote');n.textContent=m;n.className='note '+(c||'');n.classList.remove('hidden')}
   function exNote(m,c){var n=$('exNote');n.textContent=m;n.className='note '+(c||'');n.classList.remove('hidden')}
+  function fileNote(m,c){var n=$('fileNote');n.textContent=m;n.className='note '+(c||'');n.classList.remove('hidden')}
   function api(p,m,b){var o={method:m||'GET',headers:{'Content-Type':'application/json'}};if(b)o.body=JSON.stringify(b);return fetch('/api'+p,o).then(function(r){return r.json().then(function(j){if(r.status===401&&j&&j.need_login){authed=false;$('app').classList.add('hidden');$('loginBox').classList.remove('hidden');}if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})})}
-  function enterApp(){$('loginBox').classList.add('hidden');$('app').classList.remove('hidden');authed=true;poll();pullLogs();loadExtras()}
+  function enterApp(){$('loginBox').classList.add('hidden');$('app').classList.remove('hidden');authed=true;poll();pullLogs();loadExtras();loadFolder('')}
+  // custom select
+  function initCustomSelects(){
+    document.querySelectorAll('select.native').forEach(function(sel){
+      if(sel.dataset.customized) return; sel.dataset.customized='1';
+      var wrapper=document.createElement('div'); wrapper.className='custom-select';
+      var trigger=document.createElement('div'); trigger.className='select-trigger';
+      var label=document.createElement('span'); label.textContent=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].textContent:'';
+      var arrow=document.createElement('span'); arrow.className='arrow'; arrow.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>';
+      trigger.appendChild(label); trigger.appendChild(arrow);
+      var opts=document.createElement('div'); opts.className='select-options';
+      Array.from(sel.options).forEach(function(opt,i){
+        var o=document.createElement('div'); o.className='select-option'+(i===sel.selectedIndex?' active':''); o.textContent=opt.textContent; o.dataset.value=opt.value;
+        o.addEventListener('click',function(e){e.stopPropagation(); sel.selectedIndex=i; sel.dispatchEvent(new Event('change',{bubbles:true})); label.textContent=opt.textContent; opts.querySelectorAll('.select-option').forEach(function(x){x.classList.remove('active')}); o.classList.add('active'); wrapper.classList.remove('open')});
+        opts.appendChild(o);
+      });
+      trigger.addEventListener('click',function(e){e.stopPropagation(); document.querySelectorAll('.custom-select.open').forEach(function(x){if(x!==wrapper) x.classList.remove('open')}); wrapper.classList.toggle('open')});
+      sel.addEventListener('change',function(){label.textContent=sel.options[sel.selectedIndex].textContent; opts.querySelectorAll('.select-option').forEach(function(x,idx){x.classList.toggle('active', idx===sel.selectedIndex)})});
+      wrapper.appendChild(trigger); wrapper.appendChild(opts);
+      sel.parentNode.insertBefore(wrapper, sel); wrapper.appendChild(sel);
+    });
+    document.addEventListener('click',function(){document.querySelectorAll('.custom-select.open').forEach(function(x){x.classList.remove('open')})});
+  }
   // tabs
-  document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['overview','settings','logs'].forEach(function(id){$(`tab-${id}`).classList.toggle('hidden', t.dataset.tab!==id)})})})
+  document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['overview','folder','settings','logs'].forEach(function(id){var el=$('tab-'+id); if(el) el.classList.toggle('hidden', t.dataset.tab!==id)}); if(t.dataset.tab==='folder') loadFolder(currentFolder||'')})});
+  var currentFolder='';
+  function loadFolder(path){
+    currentFolder=path||'';
+    $('fldPath').textContent='/'+currentFolder;
+    $('fileTree').textContent='Memuat...';
+    api('/repo/contents?path='+encodeURIComponent(path)).then(function(r){
+      var data=r.data; var html='';
+      if(path){ html+='<div class="file-item" data-path="'+ (path.split('/').slice(0,-1).join('/')) +'" data-type="dir"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></i> .. (naik)</div>'; }
+      if(!Array.isArray(data)){ data=[data]; }
+      // jangan tampilkan folder web di user fork (sudah dihapus, tapi filter juga)
+      data = data.filter(function(f){ return f.name!=='web' || f.path==='web' }); // keep root web hidden? actually hide web completely for user
+      // if user, hide web folder
+      if(me && me.mode==='user'){ data = data.filter(function(f){ return f.path!=='web' && !f.path.startsWith('web/') && f.path!=='deploy/vercel' && !f.path.startsWith('deploy/vercel'); }); }
+      data.sort(function(a,b){ if(a.type!==b.type) return a.type==='dir'?-1:1; return a.name.localeCompare(b.name)});
+      data.forEach(function(f){
+        var isDir=f.type==='dir';
+        var icon=isDir?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+        html+='<div class="file-item" data-path="'+f.path+'" data-type="'+f.type+'"><i>'+icon+'</i> '+f.name+(isDir?'/':'')+'</div>';
+      });
+      $('fileTree').innerHTML=html||'<div class="hint">Kosong</div>';
+      $('fileTree').querySelectorAll('.file-item').forEach(function(el){
+        el.addEventListener('click',function(){
+          var p=el.dataset.path, t=el.dataset.type;
+          if(t==='dir'){ loadFolder(p); }
+          else { openFile(p); }
+        });
+      });
+    }).catch(function(e){ $('fileTree').innerHTML='<div class="note bad">'+e.message+'</div>'; });
+  }
+  function openFile(path){
+    $('fileName').textContent=path;
+    $('fileContent').value='Memuat...'; currentFilePath=path; currentFileSha='';
+    api('/repo/file?path='+encodeURIComponent(path)).then(function(r){
+      $('fileContent').value=r.content||''; currentFileSha=r.sha||''; fileNote('Terbuka: '+path+' ('+(r.size||0)+' bytes)','ok');
+    }).catch(function(e){ fileNote(e.message,'bad'); $('fileContent').value=''; });
+  }
+  $('fileSave').addEventListener('click',function(){
+    if(!currentFilePath){ fileNote('Pilih file dulu','bad'); return; }
+    var content=$('fileContent').value;
+    var b=$('fileSave'); b.disabled=true; fileNote('Menyimpan...','');
+    api('/repo/file','PUT',{path:currentFilePath, content:content, sha:currentFileSha, message:'update '+currentFilePath+' via dash — credit KallAncrit'}).then(function(r){
+      fileNote('✅ Tersimpan commit '+ (r.commit||'').slice(0,7),'ok'); flash('Tersimpan'); if(r.sha) currentFileSha=r.sha; loadFolder(currentFolder);
+    }).catch(function(e){ fileNote('Gagal: '+e.message,'bad'); }).finally(function(){b.disabled=false});
+  });
+  $('fldRoot').addEventListener('click',function(){ loadFolder(''); });
+  $('fldRefresh').addEventListener('click',function(){ loadFolder(currentFolder); });
   function renderMe(m){me=m;var isUser=(m.mode==='user');$('repoPanel').classList.toggle('hidden',!isUser);$('bLogout').classList.toggle('hidden',!!m.local_mode);
-    if(isUser){$('repoTop').innerHTML='<b>'+m.login+'</b> • '+m.owner+'/'+m.repo;$('rpWho').textContent=m.login; $('rpRepo').innerHTML='<a href="'+m.repo_url+'" target="_blank">'+m.owner+'/'+m.repo+'</a>'; var miss=m.missing_required||[]; $('rpSecrets').innerHTML=(miss.length?'<span class="pill err">'+miss.join(', ')+'</span>':'<span class="pill ok">lengkap</span>'); $('rpPerms').innerHTML=(m.actions_enabled===false?'<span class="pill err">mati</span>':'<span class="pill ok">aktif</span>'); var paused=!!m.rdp_start_paused; $('rpPill').textContent=paused?'jeda':(m.ready?'siap':'perlu secret'); $('rpPill').className='pill '+(paused?'err':m.ready?'ok':'mid'); $('rpCreateWrap').classList.toggle('hidden',paused||!!m.repo_exists); $('rpSetup').disabled=paused; $('rpSetup').textContent=paused?'Dijeda':(m.repo_exists?'Periksa':'Buat Repo'); var pb=$('pauseBanner'); if(pb) pb.classList.toggle('hidden',!paused); $('bStart').disabled=paused; $('rpWarn').textContent=paused?'Jeda aktif — hubungi admin':''; var lp='';try{lp=localStorage.getItem('xyrdp_pass_'+m.owner+'_'+m.repo)||''}catch(e){} $('cPassLocalRow').classList.toggle('hidden',!isUser); if(isUser){cfg.rdp_password=lp; $('cPass').textContent=lp?(passShown?lp:'••••••••'):'(dari secret)'; $('cPassLocal').value=lp;}}else{$('repoTop').innerHTML='<b>'+m.owner+'/'+m.repo+'</b>'; $('cPassLocalRow').classList.add('hidden');}}
-  function refreshMe(){return api('/me').then(function(m){renderMe(m);return m}).catch(function(){})}
-  function showLogin(st){$('app').classList.add('hidden');$('loginBox').classList.remove('hidden');authInfo=st||{};var oauth=!!(st&&st.oauth_ready);$('ghLogin').style.display=oauth?'':'none'; var adminAvail=!!(st&&st.admin_login);$('adminToggleWrap').classList.toggle('hidden',!adminAvail); var err=new URLSearchParams(location.search).get('err'); if(err){var n=$('lerr');n.textContent=err;n.className='note bad';n.classList.remove('hidden');}}
-  function doSetup(){if(!me||me.rdp_start_paused!==false){$('rpNote').textContent='Jeda aktif';$('rpNote').classList.remove('hidden');return} var b=$('rpSetup');b.disabled=true;var noteEl=$('rpNote');noteEl.textContent='Membuat...';noteEl.classList.remove('hidden'); api('/setup','POST',{name:$('rpName').value.trim(),private:$('rpVis').value==='privat'}).then(function(r){noteEl.textContent=(r.notes||[]).join(' • ');noteEl.className='note ok';return refreshMe()}).catch(function(e){noteEl.textContent='Gagal: '+e.message;noteEl.className='note bad'}).finally(function(){b.disabled=false})}
+    if(isUser){$('repoTop').innerHTML='<span class="badge-me">'+(m.avatar?'<img src="'+m.avatar+'">':'')+'<b>'+m.login+'</b></span> '+m.owner+'/'+m.repo; $('rpWho').textContent=m.login; $('rpRepo').innerHTML='<a href="'+m.repo_url+'" target="_blank">'+m.owner+'/'+m.repo+'</a>'; var miss=m.missing_required||[]; $('rpSecrets').innerHTML=(miss.length?'<span class="pill err">'+miss.join(', ')+'</span>':'<span class="pill ok">lengkap</span>'); $('rpPerms').innerHTML=(m.actions_enabled===false?'<span class="pill err">mati</span>':'<span class="pill ok">aktif</span>'); var paused=!!m.rdp_start_paused; $('rpPill').textContent=paused?'jeda':(m.ready?'siap':'perlu secret'); $('rpPill').className='pill '+(paused?'err':m.ready?'ok':'mid'); $('rpCreateWrap').classList.toggle('hidden',paused||!!m.repo_exists); $('rpSetup').disabled=paused; $('rpSetup').textContent=paused?'Dijeda':(m.repo_exists?'Periksa':'Buat Repo'); $('bStart').disabled=paused; var lp='';try{lp=localStorage.getItem('xyrdp_pass_'+m.owner+'_'+m.repo)||''}catch(e){} $('cPassLocalRow').classList.toggle('hidden',!isUser); if(isUser){cfg.rdp_password=lp; $('cPass').textContent=lp?(passShown?lp:'••••••••'):'(dari secret)'; $('cPassLocal').value=lp;}}else{$('repoTop').innerHTML='<b>'+m.owner+'/'+m.repo+'</b>';}}
+  function refreshMe(){return api('/me').then(function(m){renderMe(m);initCustomSelects();return m}).catch(function(){})}
+  function showLogin(st){$('app').classList.add('hidden');$('loginBox').classList.remove('hidden');var oauth=!!(st&&st.oauth_ready);$('ghLogin').style.display=oauth?'':'none';}
+  function doSetup(){if(!me||me.rdp_start_paused!==false){$('rpNote').textContent='Jeda aktif';$('rpNote').classList.remove('hidden');return} var b=$('rpSetup');b.disabled=true;var n=$('rpNote');n.textContent='Membuat...';n.classList.remove('hidden'); api('/setup','POST',{name:$('rpName').value.trim(),private:$('rpVis').value==='privat'}).then(function(r){n.textContent=(r.notes||[]).join(' • ');n.className='note ok';return refreshMe()}).catch(function(e){n.textContent='Gagal: '+e.message;n.className='note bad'}).finally(function(){b.disabled=false})}
   $('rpSetup').addEventListener('click',doSetup);
   $('rpSecretsBtn').addEventListener('click',function(){var u=(me&&me.secrets_url)||''; if(u)window.open(u,'_blank')});
   function secNote(m,c){var n=$('secNote');n.textContent=m;n.className='note '+(c||'');n.classList.remove('hidden')}
   $('secLoad').addEventListener('click',function(){api('/secrets').then(function(r){secNote('Secrets: '+(r.secrets||[]).join(', ')||'kosong','ok')}).catch(function(e){secNote(e.message,'bad')})});
-  $('secSave').addEventListener('click',function(){var p={};var rd=$('secRdpPass').value.trim();if(rd)p.RDP_PASSWORD=rd;var ts=$('secTsKey').value.trim();if(ts)p.TAILSCALE_AUTH_KEY=ts;var ng=$('secNgrok').value.trim();if(ng)p.NGROK_AUTHTOKEN=ng;var gt=$('secGtaUrl').value.trim();if(gt)p.GTA_SA_URL=gt;var cl=$('secCleanup').value.trim();if(cl)p.CLEANUP_TOKEN=cl;if(!p.RDP_PASSWORD){secNote('Isi RDP_PASSWORD','bad');return}if(p.RDP_PASSWORD.length<8){secNote('Min 8','bad');return}var b=$('secSave');b.disabled=true;secNote('Menyimpan...','');api('/secrets','POST',p).then(function(r){secNote('✅ '+(r.results||[]).map(x=>x.name).join(', '),'ok');flash('Tersimpan');$('secRdpPass').value=''}).catch(function(e){secNote(e.message,'bad')}).finally(function(){b.disabled=false})});
+  $('secSave').addEventListener('click',function(){var p={};var rd=$('secRdpPass').value.trim();if(rd)p.RDP_PASSWORD=rd;var ts=$('secTsKey').value.trim();if(ts)p.TAILSCALE_AUTH_KEY=ts;var ng=$('secNgrok').value.trim();if(ng)p.NGROK_AUTHTOKEN=ng;var gt=$('secGtaUrl').value.trim();if(gt)p.GTA_SA_URL=gt;var cl=$('secCleanup').value.trim();if(cl)p.CLEANUP_TOKEN=cl;if(!p.RDP_PASSWORD){secNote('Isi RDP_PASSWORD','bad');return}if(p.RDP_PASSWORD.length<8){secNote('Min 8','bad');return}var b=$('secSave');b.disabled=true;secNote('Menyimpan...','');api('/secrets','POST',p).then(function(r){secNote('✅ '+(r.results||[]).map(x=>x.name).join(', '),'ok');flash('Tersimpan')}).catch(function(e){secNote(e.message,'bad')}).finally(function(){b.disabled=false})});
   $('cPassSave').addEventListener('click',function(){var v=$('cPassLocal').value;try{localStorage.setItem('xyrdp_pass_'+me.owner+'_'+me.repo,v)}catch(e){} cfg.rdp_password=v; $('cPass').textContent=v?(passShown?v:'••••••••'):'(dari secret)'; flash('Tersimpan lokal')});
   $('bLogout').addEventListener('click',function(){fetch('/api/auth/logout',{method:'POST'}).finally(function(){location.href='/'})});
   $('adminToggle').addEventListener('click',function(){$('adminWrap').classList.remove('hidden')});
   $('lgo').addEventListener('click',function(){var u=$('luser').value,p=$('lpass').value;fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,pass:p,turnstile:turnstileToken})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error);return j})}).then(function(){return refreshMe().then(function(){return api('/config')}).then(function(c){cfg=c;enterApp()})}).catch(function(e){var n=$('lerr');n.textContent=e.message;n.className='note bad';n.classList.remove('hidden')})});
   function fmt(iso){if(!iso)return '-';var d=new Date(iso);return d.toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
   function setPill(t,c){var e=$('stPill');e.textContent=t;e.className='pill '+(c||'')}
-  function poll(){return api('/status').then(function(s){if(!authed)return;var r=s.run,g=s.session;if(r)lastRun=r.id;var txt='NONAKTIF',cls='';if(g&&g.active){txt='AKTIF';cls='ok'}else if(r&&r.status==='queued'){txt='ANTRI';cls='mid'}else if(r&&r.status==='in_progress'){txt='SIAPKAN';cls='mid'}else if(r&&r.conclusion==='failure'){txt='GAGAL';cls='err'} setPill(txt,cls);var d=$('hdot');d.className='dot '+(cls==='ok'?'on':cls==='mid'?'mid':'err');if(r){$('stRun').textContent='#'+r.id; $('stRun').href=r.html_url||'#'} var st=g?g.started_at:null,en=g?g.expires_at:null; $('stOs').textContent=(g&&g.os?g.os.replace(/^Microsoft /,''):'-'); $('stStart').textContent=fmt(st); $('stEnd').textContent=fmt(en); var a=g&&g.akses?g.akses:null; setTxt('cMode',a?(a.mode||'-'):'-'); var rdId=a&&a.rustdesk?a.rustdesk.id:''; setTxt('cRdId',rdId||'-'); var tun=a&&a.tunnel?a.tunnel.address:''; setTxt('cTun',tun||'-'); cTunRaw=tun; var ts=a&&a.tailscale?a.tailscale:null; cTsRaw=(ts&&ts.ip)?ts.ip:''; setTxt('cTs',ts&&ts.status==='ok'?ts.ip:'-'); var t0=st?Date.parse(st):null,t1=en?Date.parse(en):null; if(t1){var ms=t1-Date.now();var s=Math.floor(ms/1000);if(s>0){var h=Math.floor(s/3600),m=Math.floor(s%3600/60); $('stLeft').textContent=(h?h+'j ':'')+String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); if(t0) $('stBar').style.width=(100*(1-ms/(t1-t0))).toFixed(1)+'%'}else{$('stLeft').textContent='00:00'}}; var warn=$('cWarn'); if(warn){var w=''; if(!g||!g.active)w='⚠️ Belum ada sesi aktif — start dulu.'; else if(!tun&&!cTsRaw) w='⏳ Tunnel/IP lagi disiapkan...'; else if(g&&g.active) w='✅ Siap konek pakai Host:Port atau Tailscale IP + user/pass di bawah.'; warn.textContent=w} }).catch(function(){})}
-  setInterval(poll,10000); setInterval(function(){if(authed)poll()},10000);
+  function poll(){return api('/status').then(function(s){if(!authed)return;var r=s.run,g=s.session;if(r)lastRun=r.id;var txt='NONAKTIF',cls='';if(g&&g.active){txt='AKTIF';cls='ok'}else if(r&&r.status==='queued'){txt='ANTRI';cls='mid'}else if(r&&r.status==='in_progress'){txt='SIAPKAN';cls='mid'} setPill(txt,cls);var d=$('hdot');d.className='dot '+(cls==='ok'?'on':cls==='mid'?'mid':'err');if(r){$('stRun').textContent='#'+r.id; $('stRun').href=r.html_url||'#'} var st=g?g.started_at:null,en=g?g.expires_at:null; $('stOs').textContent=(g&&g.os?g.os.replace(/^Microsoft /,''):'-'); $('stStart').textContent=fmt(st); $('stEnd').textContent=fmt(en); var a=g&&g.akses?g.akses:null; var rdId=a&&a.rustdesk?a.rustdesk.id:''; setTxt('cRdId',rdId||'-'); var tun=a&&a.tunnel?a.tunnel.address:''; setTxt('cTun',tun||'-'); cTunRaw=tun; var ts=a&&a.tailscale?a.tailscale:null; cTsRaw=(ts&&ts.ip)?ts.ip:''; setTxt('cTs',ts&&ts.status==='ok'?ts.ip:'-'); if(en){var ms=Date.parse(en)-Date.now(); if(ms>0){var s=Math.floor(ms/1000),h=Math.floor(s/3600); $('stLeft').textContent=(h?h+'j ':'')+String(Math.floor(s%3600/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); if(st) $('stBar').style.width=(100*(1-ms/(Date.parse(en)-Date.parse(st)))).toFixed(1)+'%' }} var w=$('cWarn'); if(w){ var txt2=''; if(!g||!g.active) txt2='Belum ada sesi aktif — start dulu.'; else if(!tun&&!cTsRaw) txt2='Tunnel/IP disiapkan...'; else txt2='Siap konek.'; w.textContent=txt2} }).catch(function(){})}
+  setInterval(poll,10000);
   function pullLogs(manual){if(!lastRun){if(manual)flash('Belum ada run');return} api('/logs?run_id='+lastRun).then(function(r){$('logBox').textContent=r.log||'belum ada';}).catch(function(){})}
   $('logPull').addEventListener('click',function(){pullLogs(true)}); setInterval(function(){if($('logAuto').checked)pullLogs(false)},30000);
-  function loadExtras(){api('/extras').then(function(c){$('exDark').checked=!!c.config.dark_theme; $('exTrans').checked=!!c.config.translucent; $('exWin10').checked=c.config.win10_look!==false; $('exXy').checked=c.config.xydesk_host!==false; $('exVscode').checked=!!c.config.vscode; $('exNpp').checked=!!c.config.notepadpp; $('exRdpUser').value=c.config.rdp_user||'xyadmin'; if(c.config.wallpaper){$('wpPrev').src=c.wallpaper_url; $('wpPrev').classList.remove('hidden');} })}
-  function pickWallpaper(f){if(!f)return;var rd=new FileReader(); rd.onload=function(){var img=new Image(); img.onload=function(){var cv=document.createElement('canvas');var max=1920,w=img.width,h=img.height; if(w>max||h>max){var s=Math.min(max/w,max/h); w=Math.round(w*s);h=Math.round(h*s)} cv.width=w;cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h); wpData=cv.toDataURL('image/jpeg',0.85); $('wpPrev').src=wpData; $('wpPrev').classList.remove('hidden'); wpNote('Siap upload','ok')}; img.src=rd.result}; rd.readAsDataURL(f)}
-  var wpData=null; $('wpDrop').addEventListener('click',function(){$('wpFile').click()}); $('wpFile').addEventListener('change',function(){pickWallpaper(this.files[0])}); $('wpDrop').addEventListener('dragover',function(e){e.preventDefault()}); $('wpDrop').addEventListener('drop',function(e){e.preventDefault();pickWallpaper(e.dataTransfer.files[0])}); $('wpUp').addEventListener('click',function(){if(!wpData){wpNote('Pilih dulu','bad');return} var b=this;b.disabled=true; api('/wallpaper','POST',{image:wpData}).then(function(){wpNote('OK','ok');flash('Wallpaper OK')}).catch(function(e){wpNote(e.message,'bad')}).finally(function(){b.disabled=false})});
-  $('exSave').addEventListener('click',function(){var p={translucent:$('exTrans').checked,win10_look:$('exWin10').checked,xydesk_host:$('exXy').checked,dark_theme:$('exDark').checked,vscode:$('exVscode').checked,notepadpp:$('exNpp').checked,rdp_user:$('exRdpUser').value}; api('/extras','POST',p).then(function(){exNote('Tersimpan','ok')}).catch(function(e){exNote(e.message,'bad')})});
-  $('bStart').addEventListener('click',function(){var b=$('bStart');b.disabled=true; api('/start','POST',{durasi:$('fDur').value,hostname:$('fHost').value,akses:$('fAkses').value,tunnel_provider:$('fProv').value}).then(function(){flash('Start OK');}).catch(function(e){note(e.message,'bad')}).finally(function(){b.disabled=false})});
-  $('bStop').addEventListener('click',function(){var b=$('bStop');if(!stopArmed){stopArmed=setTimeout(function(){stopArmed=0;b.textContent='Matikan'},3000);b.textContent='Yakin?';return} clearTimeout(stopArmed);stopArmed=0; api('/stop','POST',{}).then(function(){flash('Stop OK')}).catch(function(e){note(e.message,'bad')})});
+  function loadExtras(){api('/extras').then(function(c){$('exDark').checked=!!c.config.dark_theme; $('exTrans').checked=!!c.config.translucent; $('exWin10').checked=c.config.win10_look!==false; $('exXy').checked=c.config.xydesk_host!==false; $('exVscode').checked=!!c.config.vscode; $('exNpp').checked=!!c.config.notepadpp; $('exRdpUser').value=c.config.rdp_user||'rdpfree';})}
+  function enterApp(){$('loginBox').classList.add('hidden');$('app').classList.remove('hidden');authed=true;poll();pullLogs();loadExtras();initCustomSelects();loadFolder('')}
+  // init selects on load
+  document.addEventListener('DOMContentLoaded',initCustomSelects);
+  $('wpDrop').addEventListener('click',function(){$('wpFile').click()}); var wpData=null; $('wpFile').addEventListener('change',function(){var f=this.files[0]; if(!f) return; var rd=new FileReader(); rd.onload=function(){var img=new Image(); img.onload=function(){var cv=document.createElement('canvas');var max=1920,w=img.width,h=img.height; if(w>max||h>max){var s=Math.min(max/w,max/h); w=Math.round(w*s);h=Math.round(h*s)} cv.width=w;cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h); wpData=cv.toDataURL('image/jpeg',0.85); $('wpPrev').src=wpData; $('wpPrev').classList.remove('hidden');}; img.src=rd.result}; rd.readAsDataURL(f)}); $('wpDrop').addEventListener('dragover',function(e){e.preventDefault()}); $('wpDrop').addEventListener('drop',function(e){e.preventDefault();var f=e.dataTransfer.files[0]; if(f){var rd2=new FileReader(); rd2.onload=function(){wpData=rd2.result; $('wpPrev').src=wpData; $('wpPrev').classList.remove('hidden')}; rd2.readAsDataURL(f)}}); $('wpUp').addEventListener('click',function(){if(!wpData){return} var b=this;b.disabled=true; api('/wallpaper','POST',{image:wpData}).then(function(){flash('Wallpaper OK')}).catch(function(e){}).finally(function(){b.disabled=false})});
+  $('exSave').addEventListener('click',function(){var p={translucent:$('exTrans').checked,win10_look:$('exWin10').checked,xydesk_host:$('exXy').checked,dark_theme:$('exDark').checked,vscode:$('exVscode').checked,notepadpp:$('exNpp').checked,rdp_user:$('exRdpUser').value}; api('/extras','POST',p).then(function(){flash('Tersimpan')})});
+  $('bStart').addEventListener('click',function(){var b=$('bStart');b.disabled=true; api('/start','POST',{durasi:$('fDur').value,hostname:$('fHost').value,akses:$('fAkses').value,tunnel_provider:$('fProv').value}).then(function(){flash('Start OK')}).catch(function(e){var n=$('opNote');n.textContent=e.message;n.className='note bad';n.classList.remove('hidden')}).finally(function(){b.disabled=false})});
+  $('bStop').addEventListener('click',function(){var b=$('bStop');if(!stopArmed){stopArmed=setTimeout(function(){stopArmed=0;b.textContent='Matikan'},3000);b.textContent='Yakin?';return} clearTimeout(stopArmed);stopArmed=0; api('/stop','POST',{}).then(function(){flash('Stop OK')})});
   $('cToggle').addEventListener('click',function(){passShown=!passShown; $('cPass').textContent=passShown?cfg.rdp_password:'••••••••'; this.textContent=passShown?'Sembunyi':'Lihat'});
   document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var k=b.dataset.copy,txt='';if(k==='cTunAll')txt=cTunRaw;else if(k==='cTs')txt=cTsRaw;else if(k==='cUser')txt=$('cUser').textContent;else if(k==='cRdId')txt=$('cRdId').textContent;else if(k==='cPassVal')txt=cfg.rdp_password; navigator.clipboard.writeText(txt).then(function(){b.textContent='OK';setTimeout(function(){b.textContent='Salin'},1000)})})});
-  function boot(){fetch('/api/auth/status').then(function(r){return r.json()}).then(function(st){if(!st||!st.mode){$('loginBox').classList.remove('hidden'); var n=$('ghNote'); if(st&&st.oauth_ready) n.textContent='Login GitHub untuk fork.'; return} refreshMe().then(function(){return api('/config').then(function(c){cfg=c;enterApp()})})})}
+  function boot(){fetch('/api/auth/status').then(function(r){return r.json()}).then(function(st){if(!st||!st.mode){$('loginBox').classList.remove('hidden'); return} refreshMe().then(function(){return api('/config').then(function(c){cfg=c;enterApp()})})})}
   boot();
 })();
 </script>

@@ -1,4 +1,4 @@
-name: XyRDP — RDP baru
+name: XyRDP-SAMP — RDP + GTA SA-MP + Storage Booster
 on:
   workflow_dispatch:
     inputs:
@@ -20,7 +20,7 @@ on:
       hostname:
         description: "Hostname sesi (dapat suffix nomor run, mis: xyrdp-42)"
         required: false
-        default: "xyrdp"
+        default: "xyrdp-samp"
         type: string
       rdp_user:
         description: "Username login RDP (3–20 karakter, huruf/angka/_/-)"
@@ -30,7 +30,7 @@ on:
       akses:
         description: "Jalur akses: tailscale (IP 100.x, paling andal), tunnel RDP, RustDesk, atau kombinasi"
         required: false
-        default: "tailscale"
+        default: "keduanya"
         type: choice
         options:
           - "keduanya"
@@ -48,6 +48,35 @@ on:
           - "pinggy"
           - "bore"
           - "ngrok"
+      storage_boost:
+        description: "⚡ Storage Boost: bebaskan 45-75GB (70GB -> 120GB+ free) dengan hapus Android/Haskell/CodeQL/cache"
+        required: false
+        default: "ya"
+        type: choice
+        options:
+          - "ya"
+          - "tidak"
+      samp:
+        description: "🎮 GTA SAMP: pasang SA-MP client + dependensi DirectX/VC++ (butuh GTA_SA_URL atau upload manual)"
+        required: false
+        default: "ya"
+        type: choice
+        options:
+          - "ya"
+          - "tidak"
+      samp_extra:
+        description: "🎮 Extra SAMP: SilentPatch + WidescreenFix (rekomendasi ya untuk SAMP)"
+        required: false
+        default: "tidak"
+        type: choice
+        options:
+          - "ya"
+          - "tidak"
+      gta_sa_url:
+        description: "(OPSIONAL) URL direct ZIP GTA SA portable milikmu (Google Drive direct / Dropbox / S3). Kosong = upload manual via RDP"
+        required: false
+        default: ""
+        type: string
       win10:
         description: "Tweak tampilan Windows 10 (Server Manager mati, personalisasi, wallpaper, label)"
         required: false
@@ -73,7 +102,7 @@ on:
           - "ya"
           - "tidak"
       grafis:
-        description: "GPU software: Mesa3D llvmpipe (OpenGL 4.5+/4.6 core) + lavapipe Vulkan + loader LunarG. Runner GitHub tidak punya GPU fisik"
+        description: "GPU software: Mesa3D llvmpipe (OpenGL 4.5+/4.6) + lavapipe Vulkan — WAJIB ya untuk GTA SAMP"
         required: false
         default: "software"
         type: choice
@@ -102,12 +131,7 @@ concurrency:
 
 jobs:
   rdp:
-    # PAUSE: job baru tidak boleh mengambil GitHub-hosted runner.
-    # Job yang telah berjalan sebelumnya tidak terpengaruh dan tidak dibatalka
-    # windows-2022 = Server 2022 (UI/kernel Windows 10 21H2). Jangan pakai
-    # windows-latest: sejak Juni 2026 label itu = Windows Server 2025 (UI Win11).
     runs-on: windows-2022
-    # Batas keras job runner hosted = 360 menit. Jangan naikkan.
     timeout-minutes: 360
 
     env:
@@ -123,29 +147,39 @@ jobs:
       RD_SERVER: ${{ inputs.rd_server }}
       RDP_USER: ${{ inputs.rdp_user || 'xyadmin' }}
       RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
-      # ngrok (opsional): akun gratis -> authtoken -> secret repo. Kosong = pakai bore.pub
       NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
-      # Tailscale: jalur akses paling andal dari runner GitHub (IP 100.x).
-      # Dipakai kalau input akses = tailscale / semua (tidak dipakai di default).
       TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
-      # PAT scope repo — buat hapus run lama (opsional; kosong = cleanup dilewati)
       CLEANUP_TOKEN: ${{ secrets.CLEANUP_TOKEN }}
       KEEP_RUNS: "3"
-      # NB: runner >=2.3xx tidak lagi inject GITHUB_TOKEN ke env langkah;
-      # harus dieksplisitkan supaya publish-status.ps1 bisa push.
       GITHUB_TOKEN: ${{ github.token }}
+      # --- SAMP MOD ---
+      STORAGE_BOOST: ${{ inputs.storage_boost }}
+      SAMP: ${{ inputs.samp }}
+      SAMP_EXTRA: ${{ inputs.samp_extra }}
+      GTA_SA_URL: ${{ inputs.gta_sa_url }}
+      # juga izinkan override via secrets untuk URL panjang
+      GTA_SA_URL_SECRET: ${{ secrets.GTA_SA_URL }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Info lingkungan (OS + versi)
+      - name: Info lingkungan (OS + versi + disk awal)
         timeout-minutes: 5
         shell: pwsh
         run: |
           $os = Get-CimInstance Win32_OperatingSystem
-          Write-Host "[XyRDP] OS runner : $($os.Caption) build $($os.Version)"
-          Write-Host "[XyRDP] Catatan    : UI/kernel sama dengan Windows 10 21H2; tweak Win10 dijalankan terpisah"
+          Write-Host "[XyRDP-SAMP] OS runner : $($os.Caption) build $($os.Version)"
+          Write-Host "[XyRDP-SAMP] Storage awal:"
+          Get-CimInstance Win32_LogicalDisk | ForEach-Object { Write-Host "  $($_.DeviceID) $([math]::Round($_.Size/1GB,1))GB total / $([math]::Round($_.FreeSpace/1GB,1))GB free" }
+          Write-Host "[XyRDP-SAMP] Catatan: storage_boost=$env:STORAGE_BOOST samp=$env:SAMP samp_extra=$env:SAMP_EXTRA"
+
+      - name: ⚡ Boost Storage (225GB -> lega 120GB+ free)
+        if: ${{ inputs.storage_boost != 'tidak' }}
+        timeout-minutes: 15
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/optimize-storage.ps1
 
       - name: Setup dasar (user admin + RDP 3389)
         timeout-minutes: 15
@@ -164,7 +198,7 @@ jobs:
         shell: pwsh
         run: ./scripts/setup-xydesk.ps1
 
-      - name: Setup grafis (GPU software - Mesa3D llvmpipe + lavapipe)
+      - name: Setup grafis (GPU software - Mesa3D llvmpipe + lavapipe) — WAJIB untuk SAMP
         if: ${{ inputs.grafis != 'tidak' }}
         timeout-minutes: 12
         continue-on-error: true
@@ -178,7 +212,17 @@ jobs:
         shell: pwsh
         run: ./scripts/setup-extras.ps1
 
-      - name: Setup akses (RustDesk + tunnel RDP) — tanpa Tailscale
+      - name: 🎮 Setup GTA SAMP (SA-MP + DirectX + VC++)
+        if: ${{ inputs.samp != 'tidak' }}
+        timeout-minutes: 40
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          # fallback: jika input gta_sa_url kosong tapi secret GTA_SA_URL ada, pakai secret
+          if (-not $env:GTA_SA_URL -and $env:GTA_SA_URL_SECRET) { $env:GTA_SA_URL = $env:GTA_SA_URL_SECRET }
+          ./scripts/setup-samp.ps1
+
+      - name: Setup akses (RustDesk + tunnel RDP)
         timeout-minutes: 25
         shell: pwsh
         run: ./scripts/setup-akses.ps1
@@ -188,6 +232,19 @@ jobs:
         timeout-minutes: 10
         shell: pwsh
         run: ./scripts/publish-status.ps1 -Active $true
+
+      - name: Info SAMP & Storage akhir (ringkasan)
+        timeout-minutes: 5
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Write-Host "=== RINGKASAN STORAGE & SAMP ==="
+          Get-CimInstance Win32_LogicalDisk | ForEach-Object { Write-Host "  $($_.DeviceID) $([math]::Round($_.Size/1GB,1))GB total / $([math]::Round($_.FreeSpace/1GB,1))GB free" }
+          if (Test-Path 'C:\Games\GTA San Andreas\gta_sa.exe') { Write-Host "  GTA SA: ADA di C:\Games\GTA San Andreas" } elseif (Test-Path 'D:\Games\GTA San Andreas\gta_sa.exe') { Write-Host "  GTA SA: ADA di D:\Games\GTA San Andreas" } else { Write-Host "  GTA SA: BELUM (upload manual / cek GTA_SA_URL)" }
+          if (Test-Path 'C:\Games\GTA San Andreas\samp.exe') { Write-Host "  SAMP: ADA (samp.exe)" } elseif (Test-Path 'D:\Games\GTA San Andreas\samp.exe') { Write-Host "  SAMP: ADA di D:\Games" } else { Write-Host "  SAMP: cek log setup-samp" }
+          $st = Get-Content out/rdp-status.json -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
+          if ($st.storage) { Write-Host "  Storage boost: $($st.storage.before_gb)GB -> $($st.storage.after_gb)GB (+$($st.storage.gained_gb)GB)" }
+          if ($st.samp) { Write-Host "  SAMP status: $($st.samp.status) - $($st.samp.note)" }
 
       - name: Tahan sesi sampai durasi habis
         shell: pwsh

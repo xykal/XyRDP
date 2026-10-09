@@ -71,34 +71,60 @@ function Install-LightshotWinget {
   try {
     $o = & winget install -e --id Skillbrains.Lightshot --accept-source-agreements --accept-package-agreements --disable-interactivity 2>&1 | Out-String
     Log "  winget: $(Log-Tail $o 1)"
-    return $true
+    Start-Sleep -Seconds 3
+    if (Find-Lightshot) { Log '  winget sukses (Lightshot ditemukan)'; return $true }
+    Log '  winget selesai tapi Lightshot belum ditemukan, coba direct...'
+    return $false
   } catch { Log "  winget error: $($_.Exception.Message)"; return $false }
+}
+
+function Install-LightshotChoco {
+  $choco = Get-Command choco.exe -ErrorAction SilentlyContinue
+  if (-not $choco) { Log '  choco tidak tersedia'; return $false }
+  try {
+    Log '  coba choco install lightshot...'
+    $o = & $choco.Source install lightshot -y --no-progress 2>&1 | Out-String
+    Log "  choco: $(Log-Tail $o 1)"
+    Start-Sleep -Seconds 4
+    if (Find-Lightshot) { Log '  choco sukses'; return $true }
+    return $false
+  } catch { Log "  choco error: $($_.Exception.Message)"; return $false }
 }
 
 function Install-LightshotDirect {
   $exe = Join-Path $env:RUNNER_TEMP 'setup-lightshot.exe'
   try {
     Log '  unduh setup-lightshot.exe (app.prntscr.com)...'
-    if (-not (Get-File 'https://app.prntscr.com/build/setup-lightshot.exe' $exe 180)) { Log '  unduh gagal'; return $false }
+    if (-not (Get-File 'https://app.prntscr.com/build/setup-lightshot.exe' $exe 180)) {
+      Log '  unduh dari prntscr gagal, coba mirror GitHub...'
+      if (-not (Get-File 'https://github.com/skillbrains/lightshot-installer/releases/latest/download/setup-lightshot.exe' $exe 180)) { Log '  unduh gagal semua mirror'; return $false }
+    }
+    if ((Get-Item $exe).Length -lt 500KB) { Log '  file installer terlalu kecil, gagal'; return $false }
     Start-Process -FilePath $exe -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-' -Wait
-    Start-Sleep -Seconds 4
+    Start-Sleep -Seconds 6
     return $true
   } catch { Log "  install langsung gagal: $($_.Exception.Message)"; return $false }
 }
 
 $resLightshot = 'skip'
 if ($cfg.lightshot) {
-  Log 'LIGHTSHOT: cek / install...'
+  Log 'LIGHTSHOT: cek / install (winget -> choco -> direct)...'
   $lsExe = Find-Lightshot
   if (-not $lsExe) { Install-LightshotWinget | Out-Null; $lsExe = Find-Lightshot }
+  if (-not $lsExe) { Install-LightshotChoco | Out-Null; $lsExe = Find-Lightshot }
   if (-not $lsExe) { Install-LightshotDirect | Out-Null; $lsExe = Find-Lightshot }
+  # final check: coba cari lagi via registry
+  if (-not $lsExe) { Start-Sleep -Seconds 2; $lsExe = Find-Lightshot }
   if ($lsExe) {
     Log "  terpasang: $lsExe"
     Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Run' 'Lightshot' $lsExe 'String' | Out-Null
-    try { Start-Process -FilePath $lsExe -ErrorAction SilentlyContinue } catch {}
+    # ensure firewall allow
+    try { New-NetFirewallRule -DisplayName 'Lightshot' -Direction Inbound -Program $lsExe -Action Allow -ErrorAction SilentlyContinue | Out-Null } catch {}
+    try { Start-Process -FilePath $lsExe -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; $proc=Get-Process -Name 'Lightshot' -ErrorAction SilentlyContinue; if($proc){Log '  Lightshot proses jalan'} else {Log '  Lightshot terpasang tapi proses belum jalan (akan auto-run saat login)'} } catch {}
+    # fix: Lightshot kadang butuh Visual C++ redist, sudah diinstall di setup-samp, tapi cek
     $resLightshot = 'ok'
   } else {
-    Log '  GAGAL memasang Lightshot (tidak kritis, sesi tetap jalan)'
+    Log '  GAGAL memasang Lightshot (tidak kritis, sesi tetap jalan) - cek log winget/choco'
     $resLightshot = 'gagal'
   }
 }
@@ -124,21 +150,48 @@ function Install-TranslucentTBPortable {
   try {
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     Log '  unduh TranslucentTB portable (GitHub releases)...'
-    if (-not (Get-File 'https://github.com/TranslucentTB/TranslucentTB/releases/latest/download/TranslucentTB-portable-x64.zip' $zip 180)) { return $false }
-    if ((Get-Item $zip).Length -lt 300KB) { Log '  zip tidak valid'; return $false }
+    $urls = @(
+      'https://github.com/TranslucentTB/TranslucentTB/releases/latest/download/TranslucentTB-portable-x64.zip',
+      'https://github.com/TranslucentTB/TranslucentTB/releases/download/2024.1/TranslucentTB-portable-x64.zip'
+    )
+    $ok=$false
+    foreach($u in $urls){
+      if(Get-File $u $zip 180){ if((Get-Item $zip).Length -gt 300KB){ $ok=$true; Log "  unduh sukses dari $u"; break } else { Log "  zip dari $u terlalu kecil"; Remove-Item $zip -Force -ErrorAction SilentlyContinue } }
+    }
+    if(-not $ok){ Log '  unduh gagal semua mirror'; return $false }
+    # clean old
+    if(Test-Path $dir){ Get-ChildItem $dir -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue }
     Expand-Archive -Path $zip -DestinationPath $dir -Force
-    return $true
+    # verify exe exists
+    if(-not (Test-Path (Join-Path $dir 'TranslucentTB.exe'))){
+      $found=Get-ChildItem $dir -Recurse -Filter 'TranslucentTB.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+      if($found){ Log "  ditemukan di $($found.DirectoryName)" }
+    }
+    return (Test-Path (Join-Path $dir 'TranslucentTB.exe')) -or (Find-TranslucentTB)
   } catch { Log "  portable gagal: $($_.Exception.Message)"; return $false }
 }
 
 function Install-TranslucentTBWinget {
-  if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { return $false }
-  foreach ($id in @('TranslucentTB.TranslucentTB', 'CharlesMilette.TranslucentTB')) {
+  if (Get-Command winget -ErrorAction SilentlyContinue) {
+    foreach ($id in @('TranslucentTB.TranslucentTB', 'CharlesMilette.TranslucentTB')) {
+      try {
+        $o = & winget install -e --id $id --accept-source-agreements --accept-package-agreements --disable-interactivity 2>&1 | Out-String
+        Log "  winget ($id): $(Log-Tail $o 1)"
+        Start-Sleep -Seconds 3
+        if (Find-TranslucentTB) { Log "  winget $id sukses"; return $true }
+      } catch { Log "  winget error ($id): $($_.Exception.Message)" }
+    }
+  }
+  # fallback choco
+  $choco = Get-Command choco.exe -ErrorAction SilentlyContinue
+  if ($choco) {
     try {
-      $o = & winget install -e --id $id --accept-source-agreements --accept-package-agreements --disable-interactivity 2>&1 | Out-String
-      Log "  winget ($id): $(Log-Tail $o 1)"
-      if (Find-TranslucentTB) { return $true }
-    } catch { Log "  winget error ($id): $($_.Exception.Message)" }
+      Log '  coba choco install translucenttb...'
+      $o2 = & $choco.Source install translucenttb -y --no-progress 2>&1 | Out-String
+      Log "  choco: $(Log-Tail $o2 1)"
+      Start-Sleep -Seconds 3
+      if (Find-TranslucentTB) { Log '  choco sukses'; return $true }
+    } catch { Log "  choco error: $($_.Exception.Message)" }
   }
   return $false
 }
@@ -157,19 +210,28 @@ if ($cfg.translucent) {
     $mode = $cfg.translucent_mode
     if (@('normal', 'opaque', 'clear', 'blur', 'acrylic', 'transparent') -notcontains $mode) { $mode = 'clear' }
     $ttbDir = Split-Path $ttbExe -Parent
+    # always enable native transparency
+    Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'EnableTransparency' 1 'DWord' | Out-Null
+    try { Set-RegBoth 'Software\Microsoft\Windows\DWM' 'EnableAeroPeek' 1 'DWord' | Out-Null } catch {}
     if ($ttbDir -like 'C:\Tools*') {
-      $json = "{ `"desktop_appearance`": { `"accent`": `"$mode`", `"color`": `"#00000000`" }, `"hide_tray`": false, `"disable_saving`": false }"
-      try { Set-Content -Path (Join-Path $ttbDir 'settings.json') -Value $json -Encoding utf8 -ErrorAction Stop; Log "  settings.json -> mode=$mode" }
+      $json = "{ \"desktop_appearance\": { \"accent\": \"$mode\", \"color\": \"#00000000\" }, \"hide_tray\": false, \"disable_saving\": false, \"dynamic\": { \"enabled\": true } }"
+      try { Set-Content -Path (Join-Path $ttbDir 'settings.json') -Value $json -Encoding utf8 -ErrorAction Stop; Log "  settings.json -> mode=$mode (hous translucent fix: EnableTransparency + AeroPeek)" }
       catch { Log "  settings.json gagal ditulis: $($_.Exception.Message)" }
-    } else { Log "  (build MSIX/Store — mode '$mode' diatur via tray icon; translucency default tetap aktif)" }
+    } else { Log "  (build MSIX/Store — mode '$mode' diatur via tray icon; translucency native tetap aktif)" }
     Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Run' 'TranslucentTB' $ttbExe 'String' | Out-Null
+    # ensure firewall allow & kill old instance then start
+    try { Get-Process -Name 'TranslucentTB' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1 } catch {}
     try {
-      Start-Process -FilePath $ttbExe -ErrorAction SilentlyContinue; Start-Sleep -Seconds 3
-      if (Get-Process -Name 'TranslucentTB' -ErrorAction SilentlyContinue) { Log '  proses TranslucentTB berjalan (tray)' }
-    } catch {}
+      Start-Process -FilePath $ttbExe -WorkingDirectory $ttbDir -ErrorAction SilentlyContinue; Start-Sleep -Seconds 4
+      $proc=Get-Process -Name 'TranslucentTB' -ErrorAction SilentlyContinue
+      if ($proc) { Log "  proses TranslucentTB berjalan (tray) PID $($proc.Id) - hous translucent OK" }
+      else { Log '  proses TranslucentTB belum terlihat (mungkin butuh login ulang, tapi taskbar sudah transparan via registry)' }
+    } catch { Log "  start TranslucentTB gagal: $($_.Exception.Message)" }
     $resTrans = 'ok'
   } else {
-    Log '  TranslucentTB gagal dipasang — efek transparansi native tetap aktif'
+    Log '  TranslucentTB gagal dipasang — efek transparansi native (registry) tetap aktif sebagai fallback'
+    # fallback: ensure native transparency tetap
+    Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'EnableTransparency' 1 'DWord' | Out-Null
     $resTrans = 'sebagian'
   }
 }

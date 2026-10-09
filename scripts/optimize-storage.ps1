@@ -106,6 +106,16 @@ try {
 
 # ---------- 2. Toolcache besar ----------
 $totalFreed += Remove-Tree 'C:\hostedtoolcache\windows\stack' 'Haskell Stack'
+# HAPUS UNITY HUB & R (request: bebasin storage)
+$totalFreed += Remove-Tree 'C:\Program Files\Unity Hub' 'Unity Hub'
+$totalFreed += Remove-Tree 'C:\Program Files\Unity' 'Unity Editor'
+$totalFreed += Remove-Tree 'C:\hostedtoolcache\windows\R' 'R language'
+$totalFreed += Remove-Tree 'C:\Program Files\R' 'R Program Files'
+$totalFreed += Remove-Tree 'C:\R' 'R root'
+try { & winget uninstall --id Unity.UnityHub --exact --silent --accept-source-agreements 2>&1 | Out-Null } catch {}
+try { & winget uninstall --id RProject.R --exact --silent 2>&1 | Out-Null } catch {}
+try { & choco uninstall unityhub -y --no-progress 2>&1 | Out-Null } catch {}
+try { & choco uninstall r.project -y --no-progress 2>&1 | Out-Null } catch {}
 # Hapus versi Node/Python/Go lama kecuali yang sedang dipakai runner sekarang
 # Kita SIMPAN folder yang sedang aktif (cek PATH), hapus sisanya lebih aman
 # Strategi: hapus semua hostedtoolcache kecuali folder yang baru dipakai? Lebih simple: hapus Android & Haskell saja yang paling besar & tidak dibutuhkan buat SAMP.

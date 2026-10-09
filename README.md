@@ -1,7 +1,7 @@
-# XyRDP-SAMP — RDP Gratis + GTA SA:MP + Storage Lega (70GB → 120GB+)
+# RdpFree — RDP Gratis 6 Jam (Storage Lega + SAMP Support)
 
 > **Fork modifikasi dari [xykal/XyRDP](https://github.com/xykal/XyRDP.git)**  
-> Mod by Dev: Support **GTA San Andreas Multiplayer (SAMP)** + **Storage Booster** (otomatis bebaskan 45-75GB). Runner `windows-2022` tetap 6 jam, RDP via RustDesk / Tunnel / Tailscale.
+> Mod: RDP Gratis 6 Jam — Storage Booster + SAMP ready (tanpa embel SAMP di nama) (otomatis bebaskan 45-75GB). Runner `windows-2022` tetap 6 jam, RDP via RustDesk / Tunnel / Tailscale.
 
 [![RDP](https://img.shields.io/badge/RDP-windows--2022-blue)](https://github.com/xykal/XyRDP)
 [![SAMP](https://img.shields.io/badge/GTA-SAMP%200.3.7--R5-green)](https://sa-mp.com)
@@ -28,7 +28,7 @@
 
 ## 🎯 Kenapa Mod Ini?
 
-| Masalah Original | Solusi XyRDP-SAMP |
+| Masalah Original | Solusi RdpFree |
 |---|---|
 | **GTA SAMP tidak bisa:** tidak ada DirectX 9, VC++, DirectPlay, SAMP client | **Script `setup-samp.ps1` baru** — auto install DirectX 9 + VC++ 2015-2022 + DirectPlay + SA-MP 0.3.7-R5 + patch & shortcut |
 | **Storage 225GB tapi free cuma ~70GB** (habis untuk Android SDK 15GB, Haskell 5GB, CodeQL 3GB, dotnet SDK lama 6GB, cache 10GB) | **Script `optimize-storage.ps1` baru** — hapus toolcache tidak terpakai di step paling awal → **free jadi 110-140GB** |
@@ -100,8 +100,8 @@ Tool `Optimize Storage` ini **TIDAK menghapus** yang dibutuhkan RDP/GTA:
 ### Langkah 1 — Fork Repo
 1. Buka https://github.com/xykal/XyRDP
 2. Klik **Fork** → **Create fork** (jangan centang *copy main branch only* kalau mau semua branch).  
-   *Atau fork repo mod ini langsung jika kamu sudah di XyRDP-SAMP.*
-3. Hasil: `https://github.com/USERNAME/XyRDP` (atau `XyRDP-SAMP`) milikmu.
+   *Atau fork repo mod ini langsung jika kamu sudah di RdpFree.*
+3. Hasil: `https://github.com/USERNAME/XyRDP` (atau `RdpFree`) milikmu.
 
 ### Langkah 2 — Aktifkan Actions
 1. Di repo hasil fork → tab **Actions** → klik **I understand my workflows, go ahead and enable them**.  
@@ -144,7 +144,7 @@ Edit file `assets/rdp-extras.json` di repo fork kamu (via web editor) untuk set 
 Commit langsung ke `main`.
 
 ### Langkah 5 — Jalankan Workflow
-1. Tab **Actions** → klik workflow **XyRDP-SAMP — RDP + GTA SA-MP + Storage Booster** (atau `XyRDP — RDP baru` jika pakai nama lama).
+1. Tab **Actions** → klik workflow **RdpFree — RDP + GTA SA-MP + Storage Booster** (atau `XyRDP — RDP baru` jika pakai nama lama).
 2. Klik **Run workflow** → isi input:
    - `durasi_menit`: `360` (6 jam max)
    - `storage_boost`: `ya` (wajib ya biar lega)
@@ -287,7 +287,7 @@ Runner GitHub **TIDAK punya GPU fisik** (hanya `Microsoft Basic Render Driver - 
 ## 📁 Struktur Project
 
 ```
-XyRDP-SAMP/
+RdpFree/
 ├── .github/workflows/rdp-6h.yml   # Workflow mod (storage + samp + grafis)
 ├── scripts/
 │   ├── optimize-storage.ps1       # ⭐ BARU — boost 70GB->120GB+
@@ -390,4 +390,4 @@ Workflow akan publish ke branch `status` → file `rdp-status.json` berisi:
 
 **Butuh bantuan?** Buka Issues di repo fork kamu atau DM dev. Selamat main SAMP di RDP! 🎮✨
 
-*Mod by Dev — XyRDP-SAMP v1.0 (Okt 2026) — Storage Booster + SAMP Ready*
+*Mod by Dev — RdpFree v1.0 (Okt 2026) — Storage Booster + SAMP Ready*

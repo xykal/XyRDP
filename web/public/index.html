@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>XyRDP — RDP Tailscale & Tunnel</title>
+<title>RdpFree — RDP Gratis</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%236366f1'/%3E%3Ctext x='50%' y='55%' text-anchor='middle' dominant-baseline='middle' fill='white' font-size='14' font-weight='700'%3EX%3C/text%3E%3C/svg%3E">
 <style>
   :root{--bg:#0a0a0f;--panel:#14141c;--panel2:#1a1a26;--line:#2a2a3a;--txt:#e4e4e7;--dim:#9f9fa9;--accent:#6366f1;--ok:#22c55e;--warn:#eab308;--bad:#ef4444;--radius:12px}
@@ -126,7 +126,7 @@
           <div class="row"><span class="k">Secrets</span><span class="v" id="rpSecrets">-</span></div>
           <div class="row"><span class="k">Actions</span><span class="v" id="rpPerms">-</span></div>
           <div class="two hidden" id="rpCreateWrap">
-            <div><label>Nama repo</label><input id="rpName" value="XyRDP"></div>
+            <div><label>Nama repo</label><input id="rpName" value="RdpFree"></div>
             <div><label>Visibilitas</label><select id="rpVis"><option value="publik" selected>Publik</option><option value="privat">Privat</option></select></div>
           </div>
           <div class="btns">
@@ -137,14 +137,16 @@
           <!-- SECRETS VIA DASH -->
           <div class="card" id="secretsPanel" style="margin-top:16px;background:var(--panel2)">
             <h2>🔑 Password & Kunci <span class="pill" id="secPill">per akun</span></h2>
-            <p class="hint">Isi di sini, auto terenkripsi ke GitHub. Kita cuma sedia template — password milik kamu.</p>
-            <label>RDP_PASSWORD *</label><input id="secRdpPass" type="password" placeholder="Min 8 karakter">
-            <div class="two">
-              <div><label>Tailscale Key</label><input id="secTsKey" type="password" placeholder="tskey-... (opsional)"></div>
-              <div><label>Ngrok Token</label><input id="secNgrok" type="password" placeholder="(opsional)"></div>
-            </div>
-            <label>GTA SA URL</label><input id="secGtaUrl" type="text" placeholder="Direct link ZIP (opsional)">
-            <label>Cleanup Token</label><input id="secCleanup" type="password" placeholder="ghp_... (opsional)">
+            <p class="hint">Cukup isi password, sisanya opsional.</p>
+            <label>RDP_PASSWORD *</label><input id="secRdpPass" type="password" placeholder="Min 8 karakter — wajib">
+            <details style="margin-top:10px"><summary style="cursor:pointer;color:var(--accent);font-size:12px">Opsi lanjutan (klik buka)</summary>
+              <div class="two" style="margin-top:8px">
+                <div><label>Tailscale Key</label><input id="secTsKey" type="password" placeholder="(opsional)"></div>
+                <div><label>Ngrok Token</label><input id="secNgrok" type="password" placeholder="(opsional)"></div>
+              </div>
+              <label>GTA SA URL</label><input id="secGtaUrl" type="text" placeholder="(opsional)">
+              <label>Cleanup Token</label><input id="secCleanup" type="password" placeholder="(opsional)">
+            </details>
             <div class="btns">
               <button class="primary" id="secSave">💾 Simpan</button>
               <button class="secondary" id="secLoad">Cek</button>
@@ -191,10 +193,12 @@
           <div><label>Akses</label><select id="fAkses"><option value="keduanya" selected>Tunnel+ RustDesk</option><option value="tunnel">Tunnel saja</option><option value="rustdesk">RustDesk saja</option><option value="tailscale">Tailscale</option><option value="semua">Semua</option></select></div>
           <div><label>Provider</label><select id="fProv"><option value="otomatis" selected>Otomatis</option><option value="pinggy">Pinggy</option><option value="bore">Bore</option><option value="ngrok">Ngrok</option></select></div>
         </div>
-        <div class="two">
-          <div><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="fWin10" checked> Win10 look</label></div>
-          <div><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="fGrafis" checked> GPU software (untuk SAMP)</label></div>
-        </div>
+        <details><summary style="cursor:pointer;color:var(--dim);font-size:12px">Opsi lanjutan</summary>
+          <div class="two" style="margin-top:8px">
+            <div><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="fWin10" checked> Win10 look</label></div>
+            <div><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="fGrafis" checked> GPU software</label></div>
+          </div>
+        </details>
         <div class="btns">
           <button class="primary" id="bStart">▶️ Mulai Sesi</button>
           <button class="secondary" id="bStop" style="color:var(--bad);border-color:var(--bad)">⛔ Matikan</button>
@@ -238,9 +242,9 @@
   </div>
 </main>
 
-<footer>XyRDP • Sesi 6 jam • <a href="/panduan" style="color:var(--accent)">Panduan</a> • <a href="https://github.com/xykal/XyRDP" style="color:var(--dim)">GitHub</a></footer>
+<footer>RdpFree • Sesi 6 jam • <a href="/panduan" style="color:var(--accent)">Panduan</a> • <a href="https://github.com/xykal/RdpFree" style="color:var(--dim)">GitHub</a></footer>
 <div class="flash" id="flash"></div>
-<div class="welcome-overlay" id="guideWelcome"><div class="welcome-card"><h3 style="color:var(--accent);font-size:12px;letter-spacing:.1em">XyRDP • RDP Gratis</h3><h2 style="margin:8px 0">Mulai RDP di akun kamu sendiri</h2><p class="hint">Fork → isi password → start → konek pakai IP/user/pass. 6 jam per sesi.</p><div class="btns"><a href="/panduan" class="primary" style="text-decoration:none;text-align:center;padding:12px;border-radius:8px">Panduan</a><button id="guideContinue" class="secondary">Mengerti</button></div></div></div>
+<div class="welcome-overlay" id="guideWelcome"><div class="welcome-card"><h3 style="color:var(--accent);font-size:12px;letter-spacing:.1em">RdpFree • RDP Gratis</h3><h2 style="margin:8px 0">Mulai RDP di akun kamu sendiri</h2><p class="hint">Fork → isi password → start → konek pakai IP/user/pass. 6 jam per sesi.</p><div class="btns"><a href="/panduan" class="primary" style="text-decoration:none;text-align:center;padding:12px;border-radius:8px">Panduan</a><button id="guideContinue" class="secondary">Mengerti</button></div></div></div>
 
 <script>
 (function(){

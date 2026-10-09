@@ -1,4 +1,4 @@
-name: XyRDP-SAMP — RDP + GTA SA-MP + Storage Booster
+name: RdpFree — RDP 6 Jam
 on:
   workflow_dispatch:
     inputs:
@@ -179,10 +179,10 @@ jobs:
         shell: pwsh
         run: |
           $os = Get-CimInstance Win32_OperatingSystem
-          Write-Host "[XyRDP-SAMP] OS runner : $($os.Caption) build $($os.Version)"
-          Write-Host "[XyRDP-SAMP] Storage awal:"
+          Write-Host "[RdpFree] OS runner : $($os.Caption) build $($os.Version)"
+          Write-Host "[RdpFree] Storage awal:"
           Get-CimInstance Win32_LogicalDisk | ForEach-Object { Write-Host "  $($_.DeviceID) $([math]::Round($_.Size/1GB,1))GB total / $([math]::Round($_.FreeSpace/1GB,1))GB free" }
-          Write-Host "[XyRDP-SAMP] Catatan: storage_boost=$env:STORAGE_BOOST samp=$env:SAMP samp_extra=$env:SAMP_EXTRA"
+          Write-Host "[RdpFree] Catatan: storage_boost=$env:STORAGE_BOOST samp=$env:SAMP samp_extra=$env:SAMP_EXTRA"
 
       - name: ⚡ Boost Storage (225GB -> lega 120GB+ free)
         if: ${{ inputs.storage_boost != 'tidak' }}

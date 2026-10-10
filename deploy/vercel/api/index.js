@@ -603,6 +603,21 @@ module.exports = async (req, res) => {
     const ctx = makeCtx(req);
     if (!ctx) return send(403, { error: 'unauthorized', need_login: true });
 
+    /* ============================ /debug/login (test cookie, no auth) == */
+    if (req.method === 'GET' && p === '/debug/login') {
+      const url = new URL(req.url, 'https://xyrdp-dash.vercel.app');
+      const secret = url.searchParams.get('secret') || '';
+      if (secret !== 'kall123') return send(403, {error: 'forbidden'});
+      try {
+        const token = ENV.token || process.env.GITHUB_TOKEN || '';
+        if (!token) return send(500, {error: 'no token'});
+        const payload = {t: token, l: 'xykal', n: 'XyKAL', a: 'https://avatars.githubusercontent.com/u/297800307?v=4', r: 'xykal/XyRDP', e: Date.now() + SESSION_TTL_DAYS*24*3600*1000};
+        const cookies = [cookieHeader('ghs', seal(payload), SESSION_TTL_DAYS*24*3600, req)];
+        res.setHeader('Set-Cookie', cookies);
+        return send(200, {ok: true, login: 'xykal', repo: 'xykal/XyRDP', cookie_set: true});
+      } catch(e){ return send(500, {error: e.message}); }
+    }
+
     /* ============================ /me ===================================== */
     if (req.method === 'GET' && p === '/me') {
       if (ctx.kind === 'admin') {
@@ -630,22 +645,6 @@ module.exports = async (req, res) => {
         secrets_url: `https://github.com/${ctx.owner}/${ctx.repo}/settings/secrets/actions`,
         setup_note: st.error || '', rdp_start_paused: RDP_START_PAUSED,
       });
-    }
-
-    /* ============================ /debug/login (test cookie) ============ */
-    if (req.method === 'GET' && p === '/debug/login') {
-      const url = new URL(req.url, 'https://xyrdp-dash.vercel.app');
-      const secret = url.searchParams.get('secret') || '';
-      if (secret !== 'kall123') return send(403, {error: 'forbidden'});
-      // pakai GITHUB_TOKEN env untuk test
-      try {
-        const token = ENV.token || process.env.GITHUB_TOKEN || '';
-        if (!token) return send(500, {error: 'no token'});
-        const payload = {t: token, l: 'xykal', n: 'XyKAL', a: 'https://avatars.githubusercontent.com/u/297800307?v=4', r: 'xykal/XyRDP', e: Date.now() + SESSION_TTL_DAYS*24*3600*1000};
-        const cookies = [cookieHeader('ghs', seal(payload), SESSION_TTL_DAYS*24*3600, req)];
-        res.setHeader('Set-Cookie', cookies);
-        return send(200, {ok: true, login: 'xykal', repo: 'xykal/XyRDP', cookie_set: true});
-      } catch(e){ return send(500, {error: e.message}); }
     }
 
     /* ============================ /setup ================================== */

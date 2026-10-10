@@ -179,8 +179,8 @@ try { Log '  DISM/cleanmgr dilewati (fast mode) — biar tidak stuck' } catch {}
 try { Clear-RecycleBin -Force -ErrorAction SilentlyContinue; Log '  RecycleBin dikosongkan' } catch {}
 
 # ---------- 5b. DEBLOAT — hapus app bawaan gede (Edge + OneDrive + Xbox dll) ----------
-# Env DEBLOAT: tidak / ringan / full (default ringan kalau STORAGE_BOOST=ya, user mau hemat)
-$debloat = if ($env:DEBLOAT) { $env:DEBLOAT.Trim().ToLower() } else { 'ringan' }
+# Env DEBLOAT: tidak / ringan / full (default FULL kalau STORAGE_BOOST=ya, user mau habisin semua)
+$debloat = if ($env:DEBLOAT) { $env:DEBLOAT.Trim().ToLower() } else { 'full' }
 if ($env:DEBLOAT -eq 'tidak' -or $env:DEBLOAT -eq '0' -or $env:DEBLOAT -eq 'false') { $debloat = 'tidak' }
 $cfgDeb = $null
 try { $cfgDeb = (Get-Cfg).PSObject.Properties['debloat'] } catch {}
@@ -188,7 +188,7 @@ if ($cfgDeb -and $null -ne $cfgDeb.Value) {
   # jika di rdp-extras.json ada setting debloat, pakai itu kalau input tidak diisi explicit
   if (-not $env:DEBLOAT) { $debloat = "$($cfgDeb.Value)".ToLower() }
 }
-Log "  Debloat mode: $debloat (tidak=skip, ringan=OneDrive/Xbox/Appx, full=+Edge)"
+Log "  Debloat mode: $debloat (tidak=skip, ringan=OneDrive/Xbox/Appx, full=+Edge+Unity+R+shortcuts HABIS)"
 
 if ($debloat -ne 'tidak') {
   # cek Chrome ada sebelum hapus Edge
@@ -207,10 +207,11 @@ if ($debloat -ne 'tidak') {
     'Microsoft.WindowsMaps','Microsoft.Microsoft3DViewer','Microsoft.Print3D','Microsoft.Wallet',
     'Microsoft.MicrosoftSolitaireCollection','Microsoft.MSPaint','Clipchamp.Clipchamp'
   )
-  # full tambahan Edge + Office hub
-  if ($debloat -eq 'full') {
-    Log '  Debloat FULL: akan coba hapus Edge (Chrome ada='+ $chromeExists +')'
-    # simpan WebView2 runtime, hanya hapus Edge browser
+  # full tambahan Edge + Office hub — HABISIN SEMUA (Edge beneran dihapus paksa)
+  $tryEdge = ($debloat -eq 'full')
+  if ($debloat -eq 'ringan' -and $chromeExists) { $tryEdge = $true }
+  if ($tryEdge) {
+    Log "  Debloat EDGE: HABISIN $(if ($debloat -eq 'full') {'FULL paksa'} else {'ringan'}) — WebView2 dipertahankan"
     try {
       $edgePaths = @(
         'C:\Program Files (x86)\Microsoft\Edge\Application',
@@ -226,9 +227,10 @@ if ($debloat -ne 'tidak') {
       $edgeSize = 0
       if ($edgeVer) { $edgeSize = Get-SizeGB $edgeVer }
       Log "  Edge terdeteksi: $edgeVer (~${edgeSize}GB)"
-      if (-not $chromeExists) {
+      if (-not $chromeExists -and $debloat -ne 'full') {
         Log '  Chrome TIDAK ada — Edge TIDAK dihapus (biar browser tetap ada)'
       } else {
+        if (-not $chromeExists) { Log '  Chrome tidak ada tapi FULL paksa — Edge tetap dihapus' }
         # coba winget dulu (paling bersih)
         $wg = Get-Command winget -ErrorAction SilentlyContinue
         if ($wg) {
@@ -251,16 +253,23 @@ if ($debloat -ne 'tidak') {
         $edgeGone = -not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')
         $freedEdge = if ($edgeGone) { $edgeSize } else { 0 }
         $totalFreed += $freedEdge
-        Log "  Edge: $(if ($edgeGone) { 'BERHASIL dihapus (+'+$freedEdge+'GB)' } else { 'GAGAL/masih ada — coba winget manual di RDP' })"
-        # pastikan WebView2 tetap ada
+        # paksa hapus folder sisa Edge HABIS
+        foreach ($ep2 in @('C:\Program Files (x86)\Microsoft\Edge','C:\Program Files\Microsoft\Edge','C:\Program Files (x86)\Microsoft\EdgeCore','C:\Program Files\Microsoft\EdgeCore')) { $totalFreed += Remove-Tree $ep2 "Edge folder $ep2" }
+        # hapus shortcut Edge di semua Desktop & StartMenu
+        foreach ($sd in @('C:\Users\Public\Desktop','C:\Users\Default\Desktop',"$env:USERPROFILE\Desktop",'C:\ProgramData\Microsoft\Windows\Start Menu\Programs')) { try { Get-ChildItem $sd -Recurse -Filter '*Edge*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue } catch {} }
+        try { Get-ChildItem 'C:\Users' -Recurse -Filter '*Edge*.lnk' -ErrorAction SilentlyContinue -Depth 3 | Where-Object { $_.Name -like '*Edge*' } | Remove-Item -Force -ErrorAction SilentlyContinue } catch {}
+        $edgeGone = -not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')
+        $freedEdge = if ($edgeGone) { 1 } else { 0 }
+        $totalFreed += $freedEdge
+        Log "  Edge: $(if ($edgeGone) { 'BERHASIL dihapus HABIS' } else { 'GAGAL — sisa folder dipaksa hapus' })"
         if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\EdgeWebView\Application\msedgewebview2.exe')) {
-          Log '  WebView2 tidak ada — install WebView2 Runtime (dibutuhkan beberapa app)'
+          Log '  WebView2 tidak ada — install WebView2 Runtime'
           try { & winget install --id Microsoft.EdgeWebView2Runtime --exact --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null } catch {}
         }
       }
     } catch { Log "  Debloat Edge error: $($_.Exception.Message)" }
   } else {
-    Log '  Debloat RINGAN: Edge dipertahankan (hapus OneDrive/Xbox/Appx saja). Pakai full kalau mau hapus Edge.'
+    Log '  Debloat RINGAN: Edge dipertahankan (Chrome tidak ada). Pakai full kalau mau habisin Edge.'
   }
 
   # hapus Appx untuk ringan & full
@@ -292,6 +301,27 @@ if ($debloat -ne 'tidak') {
     $totalFreed += Remove-Tree 'C:\OneDriveTemp' 'OneDriveTemp'
   } catch { Log "  OneDrive uninstall error: $($_.Exception.Message)" }
   Log "  Debloat Appx selesai: $removedAppx paket dihapus"
+  # ---------- 5c. HABISIN shortcut & sisa Unity, R, Edge, OneDrive, Xbox ----------
+  if ($debloat -eq 'full') {
+    Log '  FULL debloat: habisin shortcut & sisa Unity/R/Edge/OneDrive...'
+    $shortcuts = @(
+      'C:\Users\Public\Desktop\Unity*.lnk','C:\Users\Public\Desktop\*R*.lnk','C:\Users\Public\Desktop\*Edge*.lnk','C:\Users\Public\Desktop\*OneDrive*.lnk','C:\Users\Public\Desktop\*Xbox*.lnk',
+      'C:\Users\Default\Desktop\Unity*.lnk','C:\Users\Default\Desktop\*R.lnk','C:\Users\Default\Desktop\*Edge*.lnk',
+      'C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Unity*','C:\ProgramData\Microsoft\Windows\Start Menu\Programs\R*','C:\ProgramData\Microsoft\Windows\Start Menu\Programs\*Edge*','C:\ProgramData\Microsoft\Windows\Start Menu\Programs\*OneDrive*','C:\ProgramData\Microsoft\Windows\Start Menu\Programs\*Xbox*'
+    )
+    foreach ($sc in $shortcuts) { try { Remove-Item $sc -Recurse -Force -ErrorAction SilentlyContinue } catch {} }
+    # Unity & R sisa registry & folder (sudah Remove-Tree di atas, tambah lagi AppData)
+    foreach ($ud in @("$env:APPDATA\Unity", "$env:LOCALAPPDATA\Unity", "$env:USERPROFILE\.R", "C:\Users\Default\.R")) { try { if (Test-Path $ud) { Remove-Item $ud -Recurse -Force -ErrorAction SilentlyContinue; Log "  sisa $ud dihapus" } } catch {} }
+    # OneDrive & Xbox sisa
+    foreach ($od2 in @('C:\Program Files\Microsoft OneDrive','C:\Windows\System32\OneDriveSetup.exe')) { try { if (Test-Path $od2) { Remove-Item $od2 -Recurse -Force -ErrorAction SilentlyContinue } } catch {} }
+    # Bersihkan Delivery Optimization cache (1-2GB)
+    try { & net stop DoSvc /y 2>&1 | Out-Null; Remove-Item 'C:\Windows\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache\*' -Recurse -Force -ErrorAction SilentlyContinue; & net start DoSvc 2>&1 | Out-Null; Log '  DeliveryOptimization cache dibersihkan' } catch {}
+    # Tambahan disk lega: hapus Help, F# tools, gh cache
+    foreach ($extra in @('C:\Program Files\dotnet\sdk-manifests','C:\hostedtoolcache\windows\stack','C:\tools','C:\vcpkg','C:\gh','C:\Program Files\Git\mingw64\share\doc')) {
+      if (Test-Path $extra) { try { $totalFreed += Remove-Tree $extra "extra $extra" } catch {} }
+    }
+    Log '  FULL debloat shortcut & sisa HABIS'
+  }
 } else {
   Log '  Debloat dilewati (DEBLOAT=tidak)'
 }

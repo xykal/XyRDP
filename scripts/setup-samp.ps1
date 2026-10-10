@@ -117,29 +117,49 @@ function Install-VCRedist {
 }
 try { Install-VCRedist; $statusSamp.vcredist='ok' } catch { $statusSamp.vcredist='gagal' }
 
-# DirectX End-User Runtime (June 2010) — web installer kecil
+# DirectX End-User Runtime (June 2010) — web installer kecil (ANTI DxError)
+# Runner sudah DirectX12, Jun2010 cuma untuk D3DX9_xx.dll legacy GTA SA. Kalau gagal, WARP + d3d9on12 tetap jalan.
 try {
-  $dx = Join-Path $env:RUNNER_TEMP 'dxwebsetup.exe'
-  if (Get-File 'https://download.microsoft.com/download/8/4/A/84A35BF1-DAFE-4AE8-82AF-AD2AE20B6B14/directx_Jun2010_redist.exe' $dx 300) {
-    $dxDir = Join-Path $env:RUNNER_TEMP 'dx9'
-    New-Item -ItemType Directory -Path $dxDir -Force | Out-Null
-    Start-Process -FilePath $dx -ArgumentList "/C /T:$dxDir /Q" -Wait -ErrorAction SilentlyContinue
-    $setup = Join-Path $dxDir 'DXSETUP.exe'
-    if (Test-Path $setup) {
-      Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -ErrorAction SilentlyContinue
-      Log '  DirectX9 runtime: installed'
-      $statusSamp.directx='ok'
-    } else {
-      # fallback dxwebsetup
-      $dxweb = Join-Path $env:RUNNER_TEMP 'dxweb.exe'
-      if (Get-File 'https://download.microsoft.com/download/1/7/1/1718CCC4-6315-4D8E-9543-8E28A4E18C4C/dxwebsetup.exe' $dxweb 180) {
-        Start-Process -FilePath $dxweb -ArgumentList '/Q' -Wait -ErrorAction SilentlyContinue
-        Log '  DirectX web setup attempted'
-        $statusSamp.directx='ok'
+  # cek jika d3dx9 sudah ada -> skip install biar gak DxError
+  $hasD3dx = Test-Path 'C:\Windows\System32\d3dx9_43.dll'
+  if ($hasD3dx) { Log '  DirectX9: d3dx9_43.dll sudah ada -> skip Jun2010 (pakai bawaan + WARP)'; $statusSamp.directx='ok (sudah ada)' }
+  else {
+    $dx = Join-Path $env:RUNNER_TEMP 'dx_Jun2010.exe'
+    if (Get-File 'https://download.microsoft.com/download/8/4/A/84A35BF1-DAFE-4AE8-82AF-AD2AE20B6B14/directx_Jun2010_redist.exe' $dx 300) {
+      $dxDir = Join-Path $env:RUNNER_TEMP 'dx9'
+      New-Item -ItemType Directory -Path $dxDir -Force | Out-Null
+      # extract dengan log
+      $ext = Start-Process -FilePath $dx -ArgumentList "/C","/T:$dxDir","/Q" -Wait -PassThru -ErrorAction SilentlyContinue
+      Log "  DirectX extract exit $($ext.ExitCode) -> $dxDir"
+      $setup = Join-Path $dxDir 'DXSETUP.exe'
+      if (Test-Path $setup) {
+        # silent dengan log ke file, biar DxError ketahuan tapi gak popup
+        $logDx = Join-Path $env:RUNNER_TEMP 'dxsetup.log'
+        $proc = Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -PassThru -ErrorAction SilentlyContinue
+        $exit = $proc.ExitCode
+        # baca log DirectX bawaan
+        $dxLog = 'C:\Windows\Logs\DirectX.log'
+        $tail = ''
+        try { if (Test-Path $dxLog) { $tail = (Get-Content $dxLog -Tail 15 -ErrorAction SilentlyContinue) -join ' | ' } } catch {}
+        if ($exit -eq 0 -or (Test-Path 'C:\Windows\System32\d3dx9_43.dll')) {
+          Log "  DirectX9 runtime: installed (exit $exit) $tail"
+          $statusSamp.directx='ok'
+        } else {
+          Log "  DirectX9 DXSETUP exit $exit (DxError?) -> fallback WARP. Log: $tail — skip tidak fatal"
+          $statusSamp.directx='skip (DxError fallback WARP)'
+        }
+      } else {
+        Log "  DXSETUP.exe tidak ditemukan setelah extract — coba dxwebsetup fallback"
+        $dxweb = Join-Path $env:RUNNER_TEMP 'dxweb.exe'
+        if (Get-File 'https://download.microsoft.com/download/1/7/1/1718CCC4-6315-4D8E-9543-8E28A4E18C4C/dxwebsetup.exe' $dxweb 180) {
+          $pw = Start-Process -FilePath $dxweb -ArgumentList '/Q' -Wait -PassThru -ErrorAction SilentlyContinue
+          Log "  DirectX web setup exit $($pw.ExitCode) (fallback)"
+          $statusSamp.directx='ok (web fallback)'
+        } else { $statusSamp.directx='skip (web gagal)' }
       }
-    }
-  } else { Log '  DirectX9 redist download gagal — skip (WARP tetap ada)'; $statusSamp.directx='skip' }
-} catch { Log "  DirectX gagal: $($_.Exception.Message)"; $statusSamp.directx='gagal' }
+    } else { Log '  DirectX9 redist download gagal — skip (WARP tetap ada, GTA SA tetap jalan software)'; $statusSamp.directx='skip' }
+  }
+} catch { Log "  DirectX gagal (tidak fatal, WARP backup): $($_.Exception.Message)"; $statusSamp.directx='skip (exception fallback WARP)' }
 
 # .NET 3.5 untuk beberapa asi loader (opsional)
 try { Enable-WindowsOptionalFeature -Online -FeatureName NetFx3 -All -NoRestart -ErrorAction SilentlyContinue | Out-Null; Log '  .NET 3.5 enabled' } catch {}

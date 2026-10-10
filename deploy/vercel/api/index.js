@@ -409,6 +409,19 @@ module.exports = async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
     const p = url.pathname.replace(/^\/api\/?/, '/');
+    // CORS for APK + ad
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Ad-Verified, X-Xy-Ad');
+      res.writeHead(204, SECURITY_HEADERS);
+      return res.end();
+    }
+    if (p.startsWith('/ad') || p.startsWith('/apk')) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Ad-Verified, X-Xy-Ad');
+    }
 
     // ---- halaman: selalu boleh (berisi layar login tanpa data sensitif) ----
     // SPA routes: /id/home, /en/home, /id/folder etc — auto detect, rounded-full super UI
@@ -507,6 +520,26 @@ module.exports = async (req, res) => {
       const sid = seal({ k: 'admin', v: adminCredVersion(), e: Date.now() + ADMIN_TTL_SECONDS * 1000 });
       res.writeHead(200, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookieHeader('sid', sid, ADMIN_TTL_SECONDS) }, SECURITY_HEADERS));
       return res.end(JSON.stringify({ ok: true }));
+    }
+
+    /* ============================ AD GATE (1x watch) ===================== */
+    // POST /ad/verify -> set cookie ad_verified=1 (30 days), works even without full ctx but prefers ctx
+    if ((req.method === 'POST' || req.method === 'GET') && p === '/ad/verify') {
+      const body = await readBody(req).catch(()=>({}));
+      // simple verify: client watched 15s; we trust client + set cookie; APK can send X-Ad-Verified
+      res.setHeader('Set-Cookie', cookieHeader('ad_verified', '1', 60*60*24*30));
+      // also set local flag via header for APK
+      return send(200, { ok: true, unlocked: true, via: 'cookie', at: Date.now() });
+    }
+    if (req.method === 'GET' && p === '/ad/status') {
+      const c = readCookies(req);
+      const unlocked = c.ad_verified === '1' || (req.headers['x-ad-verified'] === '1');
+      return send(200, { unlocked: !!unlocked });
+    }
+    // APK helper: /apk/create alias to /start but with JSONP/CORS
+    if (req.method === 'GET' && p === '/apk') {
+      // serve minimal apk page info
+      return send(200, { ok: true, apk: true, dash: 'https://'+req.headers.host, need_ad: !(readCookies(req).ad_verified==='1'), guide: 'Buka WebView ke /id/home?apk=1, panggil POST /api/ad/verify setelah rewarded ad, lalu POST /api/start' });
     }
 
     /* ============================ GATE ==================================== */
@@ -667,6 +700,20 @@ module.exports = async (req, res) => {
     /* ============================ /start ================================== */
     if (req.method === 'POST' && p === '/start') {
       if (RDP_START_PAUSED) return send(423, { error: RDP_PAUSE_MESSAGE, paused: true });
+      // AD GATE: user must watch 1x ad (admin bypass). Check cookie or header X-Ad-Verified
+      {
+        const c0 = readCookies(req);
+        const hasAd = c0.ad_verified === '1' || req.headers['x-ad-verified'] === '1' || req.headers['x-xy-ad'] === '1';
+        // allow bypass via query ?ad=1 for APK debug
+        const urlHasAd = p.includes('?') && false;
+        const ctxTmp = makeCtx(req);
+        if (ctxTmp && ctxTmp.kind === 'user' && !hasAd) {
+          // also allow if local dev env
+          if (process.env.AD_GATE_DISABLED !== '1') {
+            return send(402, { error: 'Tonton iklan 1x untuk buka Create RDP — gratis selamanya setelah itu. Panggil POST /api/ad/verify setelah nonton.', need_ad: true, ad_url: '/api/ad/verify' });
+          }
+        }
+      }
       if (ctx.kind === 'user') {
         const st = await repoState(ctx);
         if (st.error === 'token') return send(401, { error: 'Token GitHub kamu sudah tidak berlaku — login lagi.', need_login: true });

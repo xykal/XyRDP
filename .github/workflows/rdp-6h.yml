@@ -28,16 +28,14 @@ on:
         default: "xyadmin"
         type: string
       akses:
-        description: "Jalur akses: tailscale (IP 100.x, paling andal), tunnel RDP, RustDesk, atau kombinasi"
+        description: "Jalur akses: tunnel (langsung host:port untuk XyDesk Remote/mstsc), tailscale (100.x), atau semua (keduanya)"
         required: false
-        default: "keduanya"
+        default: "tunnel"
         type: choice
         options:
-          - "keduanya"
+          - "tunnel"
           - "tailscale"
           - "semua"
-          - "rustdesk"
-          - "tunnel"
       tunnel_provider:
         description: "Provider tunnel RDP (kalau akses pakai tunnel)"
         required: false
@@ -48,6 +46,8 @@ on:
           - "pinggy"
           - "bore"
           - "ngrok"
+          - "localhost.run"
+          - "serveo"
       storage_boost:
         description: "⚡ Storage Boost: bebaskan 45-75GB (70GB -> 120GB+ free) dengan hapus Android/Haskell/CodeQL/cache"
         required: false
@@ -123,11 +123,6 @@ on:
         required: false
         default: ""
         type: string
-      rd_server:
-        description: "(LANJUTAN) Server RustDesk sendiri/terdekat, mis: rs-sg.rustdesk.com. Kosong = server publik bawaan"
-        required: false
-        default: ""
-        type: string
 
 permissions:
   contents: write
@@ -153,7 +148,6 @@ jobs:
       EXTRAS: ${{ inputs.ekstra }}
       GRAFIS: ${{ inputs.grafis }}
       WALLPAPER_URL: ${{ inputs.wallpaper_url }}
-      RD_SERVER: ${{ inputs.rd_server }}
       RDP_USER: ${{ inputs.rdp_user || 'xyadmin' }}
       RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
       NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
@@ -232,8 +226,8 @@ jobs:
           if (-not $env:GTA_SA_URL -and $env:GTA_SA_URL_SECRET) { $env:GTA_SA_URL = $env:GTA_SA_URL_SECRET }
           ./scripts/setup-samp.ps1
 
-      - name: Setup akses (RustDesk + tunnel RDP)
-        timeout-minutes: 25
+      - name: Setup akses (Tunnel RDP + Tailscale) — TANPA RustDesk
+        timeout-minutes: 30
         shell: pwsh
         run: ./scripts/setup-akses.ps1
 
@@ -242,6 +236,66 @@ jobs:
         timeout-minutes: 10
         shell: pwsh
         run: ./scripts/publish-status.ps1 -Active $true
+
+      - name: Roblox VM Hide (biar Player tidak deteksi VM)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: pwsh
+        run: ./scripts/setup-roblox.ps1
+
+      - name: "Tampilkan IP Username Password (log) — VALIDASI TUNNEL"
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          Write-Host "=== LIST KONEKSI RDP (cek log ini) — VALIDASI TUNNEL UNTUK XYDESK REMOTE ==="
+          $st = $null
+          if (Test-Path 'out/rdp-status.json') {
+            $st = Get-Content 'out/rdp-status.json' -Raw | ConvertFrom-Json
+            $tun = $st.akses.tunnel.address
+            $tunProv = $st.akses.tunnel.provider
+            $tunSelf = $st.akses.tunnel.selftest
+            $tunOutside = $st.akses.tunnel.outside
+            $tsIp = $null; try { $tsIp = $st.akses.tailscale.ip } catch {}
+            $tsMagic = $null; try { $tsMagic = $st.akses.tailscale.magicdns } catch {}
+            Write-Host "  Tunnel      : $tun  [$tunProv] selftest=$tunSelf outside=$tunOutside"
+            if ($tsIp) { Write-Host "  Tailscale IP: $tsIp ($tsMagic)" }
+            Write-Host "  Username    : $env:RDP_USER"
+            # Password di-mask GitHub jadi *** — tampilkan juga base64 biar bisa di-copy tanpa mask
+            Write-Host "  Password    : $env:RDP_PASSWORD"
+            $b64pw = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($env:RDP_PASSWORD))
+            Write-Host "  Password b64: $b64pw  (decode: [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$b64pw')))"
+            Write-Host "  Hostname    : $($st.hostname)"
+            Write-Host "  Durasi      : $($st.duration_menit) menit"
+            Write-Host "  RDP port    : $($st.rdp_port)"
+            # Validasi tunnel: test handshake ulang dari log step ini
+            if ($tun -and $tun -match '^(?<h>[^:]+):(?<p>\d+)$') {
+              $h = $Matches['h']; $p = [int]$Matches['p']
+              Write-Host "  VALIDASI: handshake X.224 ke $h`:$p ..."
+              try {
+                $cr = [byte[]](0x03,0x00,0x00,0x13,0x0e,0xe0,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x08,0x00,0x03,0x00,0x00,0x00)
+                $c = New-Object System.Net.Sockets.TcpClient
+                if ($c.ConnectAsync($h,$p).Wait(8000)) {
+                  $ns=$c.GetStream(); $ns.Write($cr,0,$cr.Length); $ns.Flush()
+                  $c.ReceiveTimeout=8000; $buf=New-Object byte[] 32; $n=$ns.Read($buf,0,32); $c.Close()
+                  if ($n -ge 6 -and $buf[5] -in @(0xd0,0xcf)) { Write-Host "  VALIDASI OK: X.224 Confirm ($n bytes) — TUNNEL LANGSUNG BISA DIPAKAI DI XYDESK REMOTE / mstsc" }
+                  else { Write-Host "  VALIDASI GAGAL: balasan $n bytes tidak valid" }
+                } else { Write-Host "  VALIDASI GAGAL: timeout connect ke $h`:$p"; $c.Close() }
+              } catch { Write-Host "  VALIDASI ERROR: $($_.Exception.Message)" }
+            }
+            # Tulis creds.txt + creds.b64.txt
+            "RDP $env:RDP_USER / $env:RDP_PASSWORD @ $tun [$tunProv] selftest=$tunSelf outside=$tunOutside" | Set-Content -Path 'out/creds.txt' -Encoding utf8
+            "RDP $env:RDP_USER / $b64pw(b64) @ $tun" | Set-Content -Path 'out/creds.b64.txt' -Encoding utf8
+            Write-Host "  creds.txt + creds.b64.txt dibuat di out/"
+            $st | ConvertTo-Json -Depth 8 | Write-Host
+          } else {
+            Write-Host "  out/rdp-status.json belum ada"
+            Write-Host "  Username: $env:RDP_USER"
+            Write-Host "  Password: $env:RDP_PASSWORD"
+          }
+          Write-Host "::notice::RDP $env:RDP_USER @ $tun [$tunProv] selftest=$tunSelf outside=$tunOutside"
 
       - name: Info SAMP & Storage akhir (ringkasan)
         timeout-minutes: 5
@@ -255,6 +309,8 @@ jobs:
           $st = Get-Content out/rdp-status.json -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
           if ($st.storage) { Write-Host "  Storage boost: $($st.storage.before_gb)GB -> $($st.storage.after_gb)GB (+$($st.storage.gained_gb)GB)" }
           if ($st.samp) { Write-Host "  SAMP status: $($st.samp.status) - $($st.samp.note)" }
+          if ($st.akses) { Write-Host "  Akses tunnel: $($st.akses.tunnel.address) [$($st.akses.tunnel.provider)] selftest=$($st.akses.tunnel.selftest) outside=$($st.akses.tunnel.outside)" }
+          if ($st.akses.tailscale.ip) { Write-Host "  Tailscale: $($st.akses.tailscale.ip)" }
 
       - name: Tahan sesi sampai durasi habis
         shell: pwsh

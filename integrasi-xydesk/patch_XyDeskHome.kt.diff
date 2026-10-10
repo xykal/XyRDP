@@ -1,0 +1,40 @@
+*** XyDeskHome.kt — tambah card RDP Gratis di Beranda ***
+--- a/client/Android/Studio/app/src/main/kotlin/id/xydesk/remote/ui/XyDeskHome.kt
++++ b/client/Android/Studio/app/src/main/kotlin/id/xydesk/remote/ui/XyDeskHome.kt
+@@ -148,6 +148,9 @@ fun XyDeskHome(
+     val appPrefs = remember { AppPrefs(context) }
++    // State untuk RDP Gratis
++    var showRdpFree by remember { mutableStateOf(false) }
++    var rdpAdUnlocked by remember { mutableStateOf(appPrefs.rdpFreeAdUnlocked) }
+     var drawerOpen by remember { mutableStateOf(false) }
+
+@@ -460,6 +463,18 @@ fun XyDeskHome(
+                         }
+                     }
++                    // === RDP Gratis 6 Jam — Card di paling atas ===
++                    item {
++                        XyFreeRdpCard(
++                            unlocked = rdpAdUnlocked,
++                            onCreate = {
++                                if (rdpAdUnlocked) showRdpFree = true
++                                else {
++                                    // tampilkan rewarded ad, onReward -> unlock
++                                    // XyRdpAdHelper.loadRewarded(...) { showRdpFree = true; appPrefs.rdpFreeAdUnlocked = true; rdpAdUnlocked = true }
++                                    // fallback mock:
++                                    appPrefs.rdpFreeAdUnlocked = true; rdpAdUnlocked = true; showRdpFree = true
++                                }
++                            }
++                        )
++                    }
+                     // Daftar perangkat
+                     items(favorites) { profile ->
+
+@@ -540,6 +555,9 @@ fun XyDeskHome(
+                     }
+                 }
++                if (showRdpFree) {
++                    XyFreeRdpScreen(onBack = { showRdpFree = false }, onConnectProfile = { p -> connect(p) })
++                }
+             }
+         }
+     }

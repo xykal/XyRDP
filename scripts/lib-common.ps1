@@ -431,8 +431,6 @@ function Get-GhAssetUrl([string]$Repo, [string]$NameRegex) {
 
 # fallback URL keras (kalau API tidak bisa dipakai sama sekali)
 $script:XyFallbackUrls = @{
-  'rustdesk/rustdesk.msi' = 'https://github.com/rustdesk/rustdesk/releases/download/1.5.0/rustdesk-1.5.0-x86_64.msi'
-  'rustdesk/rustdesk.exe' = 'https://github.com/rustdesk/rustdesk/releases/download/1.5.0/rustdesk-1.5.0-x86_64.exe'
   'ekzhang/bore.zip'      = 'https://github.com/ekzhang/bore/releases/download/v0.6.0/bore-v0.6.0-x86_64-pc-windows-msvc.zip'
 }
 

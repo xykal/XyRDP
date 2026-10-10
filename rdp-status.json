@@ -1,5 +1,5 @@
 {
-  "active": true,
+  "active": false,
   "hostname": "xyrdp-test-82",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
@@ -52,14 +52,19 @@
     "vulkan": "llvmpipe (LLVM 23.1.2, 256 bits) (PHYSICAL_DEVICE_TYPE_CPU)",
     "debug": ""
   },
+  "memory": {
+    "total_mb": 16379,
+    "available_mb": 13968,
+    "measured": "akhir setup"
+  },
   "akses": {
     "mode": "keduanya",
     "rustdesk": {
       "status": "gagal",
       "service": null,
-      "id": "",
       "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
-      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password"
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password",
+      "id": ""
     },
     "tailscale": {
       "status": "skip",
@@ -73,19 +78,15 @@
     "tunnel": {
       "status": "ok",
       "provider": "pinggy",
-      "host": "nirow-134-33-68-240.run.pinggy-free.link",
-      "port": 45729,
-      "address": "nirow-134-33-68-240.run.pinggy-free.link:45729",
       "rdp_local": "127.0.0.1 -> terbuka",
-      "selftest": "ok",
       "outside": "gagal (0/6 node luar bisa tersambung)",
       "note2": "Tunnel hidup di VM tetapi TERBUKTI tidak terbuka dari luar — pakai jalur RustDesk untuk sesi ini",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin"
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin",
+      "selftest": "gagal",
+      "host": "",
+      "port": 0,
+      "address": ""
     }
   },
-  "memory": {
-    "total_mb": 16379,
-    "available_mb": 13968,
-    "measured": "akhir setup"
-  }
+  "stopped_at": "2026-10-10T10:19:59Z"
 }

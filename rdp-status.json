@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "hostname": "xyrdp-validasi-83",
+  "active": true,
+  "hostname": "xyrdp-tunnel-valid-84",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Windows 10 look",
@@ -8,12 +8,12 @@
   "rdp_user": "runneradmin",
   "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
   "rdp_denyts": true,
-  "started_at": "2026-10-10T10:28:25Z",
-  "expires_at": "2026-10-10T10:43:25Z",
+  "started_at": "2026-10-10T10:48:46Z",
+  "expires_at": "2026-10-10T11:03:46Z",
   "duration_menit": 15,
-  "run_id": "38044777506",
-  "run_number": "83",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/38044777506",
+  "run_id": "38045950377",
+  "run_number": "84",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/38045950377",
   "mode": "bersih+win10",
   "win10": {
     "look": "ok",
@@ -40,46 +40,45 @@
     "note": "Host siap dipakai klien XyDesk Remote mode Koneksi RDP (Host+Port tunnel). Kunci WinStations\\RDP-Tcp sengaja TIDAK ditulis supaya listener 3389 tidak mati di runner GitHub."
   },
   "grafis": {
-    "files": "opengl32.dll,libgallium_wgl.dll,vulkan_lvp.dll,vulkan-1.dll",
-    "loader": "vulkan-1.dll 1.4.363.0 (LunarG)",
-    "note": "GPU software (CPU): OpenGL 4.6 (llvmpipe) + Vulkan lavapipe + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat.",
-    "dir": "C:\\XyRDP\\grafis",
-    "vulkan": "llvmpipe (LLVM 23.1.2, 256 bits) (PHYSICAL_DEVICE_TYPE_CPU)",
-    "debug": "",
-    "opengl": "4.6 (Core Profile) Mesa 26.2.4 (git-9a0169f2a7) | llvmpipe (LLVM 23.1.2, 256 bits) | Mesa",
     "adapters": "Microsoft Hyper-V Video",
+    "files": "opengl32.dll,libgallium_wgl.dll,vulkan_lvp.dll,vulkan-1.dll",
+    "vulkan": "llvmpipe (LLVM 23.1.2, 256 bits) (PHYSICAL_DEVICE_TYPE_CPU)",
     "mode": "software",
     "install": "mesa 26.2.4.0 [Mesa/X.org]",
-    "mesa": "26.2.4"
+    "opengl": "4.6 (Core Profile) Mesa 26.2.4 (git-9a0169f2a7) | llvmpipe (LLVM 23.1.2, 256 bits) | Mesa",
+    "note": "GPU software (CPU): OpenGL 4.6 (llvmpipe) + Vulkan lavapipe + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat.",
+    "dir": "C:\\XyRDP\\grafis",
+    "loader": "vulkan-1.dll 1.4.363.0 (LunarG)",
+    "mesa": "26.2.4",
+    "debug": ""
   },
   "akses": {
     "mode": "tunnel",
     "tailscale": {
       "status": "skip",
-      "funnel": "",
-      "note": "tidak dipakai di sesi ini",
       "ip": "",
       "magicdns": "",
       "hostname": "",
-      "funnel_addr": ""
+      "funnel": "",
+      "funnel_addr": "",
+      "note": "tidak dipakai di sesi ini"
     },
     "tunnel": {
-      "status": "gagal",
-      "provider": "",
-      "rdp_local": "",
-      "selftest": "",
-      "outside": "",
-      "note2": "",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin",
-      "host": "",
-      "port": 0,
-      "address": ""
+      "status": "ok",
+      "provider": "pinggy",
+      "host": "kxmyg-20-106-191-80.run.pinggy-free.link",
+      "port": 42233,
+      "address": "kxmyg-20-106-191-80.run.pinggy-free.link:42233",
+      "rdp_local": "127.0.0.1 -> terbuka",
+      "selftest": "ok",
+      "outside": "gagal (0/6 node luar bisa tersambung)",
+      "note2": "Tunnel VALID (self-test ok, luar 0/6 check-host block free tunnel — SILAKAN COBA DARI HP XYDESK REMOTE, hampir pasti bisa)",
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin"
     }
   },
   "memory": {
     "total_mb": 16379,
-    "available_mb": 14037,
+    "available_mb": 13890,
     "measured": "akhir setup"
-  },
-  "stopped_at": "2026-10-10T10:43:28Z"
+  }
 }

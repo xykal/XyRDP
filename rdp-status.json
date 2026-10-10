@@ -1,5 +1,5 @@
 {
-  "active": true,
+  "active": false,
   "hostname": "xyrdp-validasi-83",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
@@ -56,29 +56,30 @@
     "mode": "tunnel",
     "tailscale": {
       "status": "skip",
+      "funnel": "",
+      "note": "tidak dipakai di sesi ini",
       "ip": "",
       "magicdns": "",
       "hostname": "",
-      "funnel": "",
-      "funnel_addr": "",
-      "note": "tidak dipakai di sesi ini"
+      "funnel_addr": ""
     },
     "tunnel": {
       "status": "gagal",
       "provider": "",
-      "host": "",
-      "port": 0,
-      "address": "",
       "rdp_local": "",
       "selftest": "",
       "outside": "",
       "note2": "",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin"
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin",
+      "host": "",
+      "port": 0,
+      "address": ""
     }
   },
   "memory": {
     "total_mb": 16379,
     "available_mb": 14037,
     "measured": "akhir setup"
-  }
+  },
+  "stopped_at": "2026-10-10T10:43:28Z"
 }

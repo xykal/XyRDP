@@ -1,5 +1,5 @@
 {
-  "active": true,
+  "active": false,
   "hostname": "xyrdp-6jam-86",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
@@ -61,25 +61,26 @@
     "mode": "semua",
     "tailscale": {
       "status": "ok",
-      "ip": "100.81.185.63",
-      "magicdns": "xyrdp-6jam-86.tail01cd7c.ts.net.",
-      "hostname": "xyrdp-6jam-86",
       "funnel": "ok",
-      "funnel_addr": "xyrdp-6jam-86.tail01cd7c.ts.net:10000",
-      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.81.185.63 Port=3389 di XyDesk Remote (atau mstsc). Funnel: xyrdp-6jam-86.tail01cd7c.ts.net:10000"
+      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.81.185.63 Port=3389 di XyDesk Remote (atau mstsc). Funnel: xyrdp-6jam-86.tail01cd7c.ts.net:10000",
+      "ip": "",
+      "magicdns": "",
+      "hostname": "",
+      "funnel_addr": ""
     },
     "tunnel": {
       "status": "ok",
       "provider": "pinggy",
-      "host": "kxjqy-135-119-39-208.run.pinggy-free.link",
-      "port": 46347,
-      "address": "kxjqy-135-119-39-208.run.pinggy-free.link:46347",
       "rdp_local": "127.0.0.1 -> terbuka",
       "outside": "gagal (0/6 node luar bisa tersambung)",
       "note2": "Tunnel VALID (self-test ok, luar 0/6 check-host block free tunnel — SILAKAN COBA DARI HP XYDESK REMOTE, hampir pasti bisa)",
       "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin",
-      "selftest": "gagal"
+      "selftest": "gagal",
+      "host": "",
+      "port": 0,
+      "address": ""
     }
   },
-  "heartbeat_at": "2026-10-10T16:48:31Z"
+  "heartbeat_at": "2026-10-10T16:48:31Z",
+  "stopped_at": "2026-10-10T17:03:45Z"
 }

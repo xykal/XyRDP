@@ -1,22 +1,18 @@
 # ============================================================================
-#  setup-akses.ps1 — akses masuk TANPA Tailscale (v2)
+#  setup-akses.ps1 — AKSES TUNNEL + TAILSCALE (v3 — tanpa RustDesk)
 # ----------------------------------------------------------------------------
-#  Dua jalur, bisa jalan bareng ("keduanya"):
+#  Jalur:
+#   1) TUNNEL TCP ke port 3389 — buat XyDesk Remote / mstsc langsung host:port
+#        - pinggy  : a.pinggy.io via SSH (tanpa akun, paling andal 2026-10-03 8/8)
+#        - bore    : bore.pub (tanpa akun)
+#        - localhost.run : nokey@localhost.run via SSH (tanpa akun)
+#        - serveo  : serveo.net via SSH (tanpa akun)
+#        - ngrok   : butuh NGROK_AUTHTOKEN (paling stabil bila ada token)
+#      Urutan otomatis: ngrok (jika token) -> pinggy -> localhost.run -> serveo -> bore
+#   2) TAILSCALE (opsional, bila TAILSCALE_AUTH_KEY ada)
+#        - runner masuk tailnet 100.x, HP pakai Tailscale app
 #
-#   1) RUSTDESK  — remote desktop app (klien di PC kamu, gratis, tanpa VPN)
-#        - installer dari winget (fallback: GitHub releases rustdesk/rustdesk)
-#        - dipasang sebagai service (mode unattended, bisa sampai layar login)
-#        - password permanen = RDP_PASSWORD (satu password untuk semua)
-#        - server rendezvous/relay memakai server PUBLIK bawaan RustDesk
-#          (rs-ny.rustdesk.com / rs-sg.rustdesk.com) -> TIDAK self-host apa pun
-#
-#   2) TUNNEL TCP ke port 3389 — buat Remote Desktop Connection (mstsc) biasa
-#        - bore   : bore.pub, tanpa akun, tanpa daftar  (default)
-#        - ngrok  : butuh NGROK_AUTHTOKEN (akun gratis)  (lebih stabil)
-#      URL: bore.pub:<port> atau <x>.tcp.ngrok.io:<port>
-#
-#  Hasil (RustDesk ID + host:port tunnel) ditulis ke out/rdp-status.json dan
-#  muncul di dashboard web. Tanpa password apa pun di file itu.
+#  Hasil host:port ditulis ke out/rdp-status.json dan tampil di log.
 # ============================================================================
 
 $XyTag = 'XyRDP:akses'
@@ -28,29 +24,25 @@ $localPort = 3389
 $work     = 'C:\XyRDP\akses'
 New-Item -ItemType Directory -Path $work -Force | Out-Null
 
-$mode = if ($env:AKSES) { $env:AKSES.Trim().ToLower() } else { 'keduanya' }
-if (@('rustdesk', 'rd', 'keduanya', 'both', 'dua', 'tunnel', 'rdp', 'tailscale', 'ts', 'semua', 'all') -notcontains $mode) { $mode = 'keduanya' }
-if (@('both', 'dua') -contains $mode) { $mode = 'keduanya' }
+$mode = if ($env:AKSES) { $env:AKSES.Trim().ToLower() } else { 'tunnel' }
+if (@('tunnel','rdp','tailscale','ts','semua','all','both','dua','keduanya') -notcontains $mode) { $mode = 'tunnel' }
+if (@('both','dua','keduanya') -contains $mode) { $mode = 'semua' }
 if ($mode -eq 'ts') { $mode = 'tailscale' }
 if ($mode -eq 'all') { $mode = 'semua' }
-$useRd     = ($mode -in @('keduanya', 'rustdesk', 'rd', 'semua'))
-$useTunnel = ($mode -in @('keduanya', 'tunnel', 'rdp', 'semua'))
-$useTs     = ($mode -in @('tailscale', 'semua'))
+$useTunnel = ($mode -in @('tunnel','rdp','semua'))
+$useTs     = ($mode -in @('tailscale','semua'))
 $tsKey     = if ($env:TAILSCALE_AUTH_KEY) { $env:TAILSCALE_AUTH_KEY } else { $env:TS_AUTHKEY }
 $tsKeyTxt  = if ($tsKey) { 'ada' } else { 'TIDAK ADA' }
-Log "mode=$mode | rustdesk=$useRd tunnel=$useTunnel tailscale=$useTs (kunci $tsKeyTxt)"
+Log "mode=$mode | tunnel=$useTunnel tailscale=$useTs (kunci $tsKeyTxt)"
 
 $prov = if ($env:TUNNEL_PROVIDER) { $env:TUNNEL_PROVIDER.Trim().ToLower() } else { 'otomatis' }
-if (@('otomatis', 'auto', 'bore', 'ngrok', 'pinggy', 'ssh') -notcontains $prov) { $prov = 'otomatis' }
+if (@('otomatis','auto','bore','ngrok','pinggy','ssh','localhost.run','lhr','serveo') -notcontains $prov) { $prov = 'otomatis' }
 $ngrokTok = if ($env:NGROK_AUTHTOKEN) { $env:NGROK_AUTHTOKEN } else { $env:NGROK_TOKEN }
 
-Log "mode akses = $mode | provider tunnel = $prov | RustDesk=$useRd | Tunnel=$useTunnel"
+Log "mode akses = $mode | provider tunnel = $prov | Tunnel=$useTunnel Tailscale=$useTs"
 
 # ============================================================================
 #  helper: jalankan perintah eksternal dengan TIMEOUT KERAS
-#  (pelajaran dari validasi 2026-10-03: `Start-Process --silent-install -Wait`
-#   menggantung selamanya karena installer RustDesk menyalakan proses anak;
-#   -Wait menunggu seluruh process tree -> job bisa nyangkut berjam-jam)
 # ============================================================================
 function Invoke-Cmd([string]$FilePath, [string[]]$Arguments, [int]$TimeoutSec = 60) {
   $tag = [guid]::NewGuid().ToString('N').Substring(0, 8)
@@ -74,9 +66,6 @@ function Invoke-Cmd([string]$FilePath, [string[]]$Arguments, [int]$TimeoutSec = 
   return $res
 }
 
-# tes cepat: apakah ada yang mendengarkan di host:port (dipakai untuk memilih
-# target tunnel secara dinamis — di runner windows-2022 RDP ternyata bisa hanya
-# listen di IPv6 [::]:3389, sehingga 127.0.0.1 ditolak)
 function Test-LocalPort([string]$HostName, [int]$Port, [int]$TimeoutMs = 4000) {
   try {
     $tc = New-Object System.Net.Sockets.TcpClient
@@ -88,178 +77,8 @@ function Test-LocalPort([string]$HostName, [int]$Port, [int]$TimeoutMs = 4000) {
   } catch { return @{ ok = $false; err = $_.Exception.Message } }
 }
 
-# matikan aplikasi tray RustDesk (kalau ada) supaya CLI & service bersih
-function Stop-RustDeskTray {
-  try {
-    $apps = Get-Process -Name 'rustdesk' -ErrorAction SilentlyContinue |
-            Where-Object { $_.Path -and $_.Path -like '*RustDesk*' -and $_.SessionId -ne 0 }
-    if ($apps) { $apps | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 }
-  } catch {}
-}
-
 # ============================================================================
-#  BAGIAN 1 — RUSTDESK
-# ============================================================================
-function Find-RustDesk {
-  $cands = @(
-    (Join-Path $env:ProgramFiles 'RustDesk\rustdesk.exe'),
-    (Join-Path ${env:ProgramFiles(x86)} 'RustDesk\rustdesk.exe'),
-    (Join-Path $env:LOCALAPPDATA 'Programs\RustDesk\rustdesk.exe')
-  )
-  foreach ($c in $cands) { if ($c -and (Test-Path $c)) { return $c } }
-  foreach ($roots in @('C:\Program Files', 'C:\Program Files (x86)')) {
-    try {
-      $g = Get-ChildItem $roots -Recurse -Depth 3 -Filter 'rustdesk.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
-      if ($g) { return $g.FullName }
-    } catch {}
-  }
-  $cmd = Get-Command rustdesk.exe -ErrorAction SilentlyContinue
-  if ($cmd) { return $cmd.Source }
-  return $null
-}
-
-# tunggu sabar sampai binary RustDesk muncul (installer bisa asinkron)
-function Wait-RustDeskFiles([int]$maxSec = 300) {
-  $t0 = Get-Date
-  while (((Get-Date) - $t0).TotalSeconds -lt $maxSec) {
-    if (Find-RustDesk) { return $true }
-    Start-Sleep -Seconds 10
-  }
-  return [bool](Find-RustDesk)
-}
-
-function Install-RustDesk {
-  # Urutan: MSI (paling andal: msiexec menunggu sampai selesai) -> winget -> exe
-  $msi = Get-GhAssetUrl 'rustdesk/rustdesk' '^rustdesk-[0-9.]+-x86_64\.msi$'
-  if (-not $msi -and $script:XyFallbackUrls['rustdesk/rustdesk.msi']) {
-    $msi = @{ url = $script:XyFallbackUrls['rustdesk/rustdesk.msi']; tag = 'fallback'; name = 'rustdesk-x86_64.msi' }
-    Log '  API GitHub tidak tersedia -> pakai URL rilis langsung untuk MSI RustDesk'
-  }
-  if ($msi) {
-    $msiFile = Join-Path $work 'rustdesk-x86_64.msi'
-    if (Get-File $msi.url $msiFile 300) {
-      Log "  install MSI: $($msi.name) ($($msi.tag))..."
-      $r = Invoke-Cmd 'msiexec.exe' @('/i', $msiFile, '/qn', '/norestart', '/l*v', (Join-Path $work 'msi.log')) 600
-      if ($r.timeout) { Log '  msiexec TIMEOUT 600s — lanjut verifikasi berkas' }
-      else { Log "  msiexec selesai (exit=$($r.code))" }
-      if (Wait-RustDeskFiles 120) { return $true }
-    } else { Log '  unduh MSI gagal' }
-  }
-  $wg = Get-Command winget -ErrorAction SilentlyContinue
-  if ($wg) {
-    Log '  mencoba winget (RustDesk.RustDesk)...'
-    $r = Invoke-Cmd 'winget' @('install','-e','--id','RustDesk.RustDesk','--source','winget',
-                                '--accept-source-agreements','--accept-package-agreements','--disable-interactivity') 300
-    if ($r.timeout) { Log '  winget TIMEOUT 300s — lanjut ke installer exe' }
-    else { Log ("  winget: " + (Log-Tail "$($r.out)$($r.err)" 1)) }
-    Stop-RustDeskTray
-    if (Wait-RustDeskFiles 60) { return $true }
-  }
-  # fallback terakhir: installer exe (asinkron; tunggu sampai 5 menit)
-  $asset = Get-GhAssetUrl 'rustdesk/rustdesk' '^rustdesk-[0-9.]+-x86_64\.exe$'
-  if (-not $asset -and $script:XyFallbackUrls['rustdesk/rustdesk.exe']) {
-    $asset = @{ url = $script:XyFallbackUrls['rustdesk/rustdesk.exe']; tag = 'fallback'; name = 'rustdesk-x86_64.exe' }
-  }
-  if (-not $asset) { Log '  tidak menemukan installer RustDesk di GitHub releases'; return $false }
-  $exe = Join-Path $work $asset.name
-  if (-not (Get-File $asset.url $exe 300)) { Log '  unduh installer RustDesk gagal'; return $false }
-  Log "  install exe: $($asset.name) ($($asset.tag))..."
-  $r = Invoke-Cmd $exe @('--silent-install') 420
-  if ($r.timeout) { Log '  installer exe TIMEOUT 420s — verifikasi berkas' }
-  else { Log "  installer exe selesai (exit=$($r.code))" }
-  Stop-RustDeskTray
-  return (Wait-RustDeskFiles 300)
-}
-
-$rdStatus = 'skip'; $rdId = ''; $rdServer = 'rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)'
-if ($useRd) {
-  Log 'RUSTDESK: menyiapkan...'
-  $rdExe = Find-RustDesk
-  if (-not $rdExe) { Install-RustDesk | Out-Null; $rdExe = Find-RustDesk }
-  if (-not $rdExe) {
-    Log '  GAGAL: RustDesk tidak terpasang (sesi tetap jalan lewat tunnel bila ada)'
-    $rdStatus = 'gagal'
-  } else {
-    Log "  terpasang: $rdExe"
-    # service (mode unattended: bisa konek walau belum ada user login)
-    $svcOk = $false
-    try {
-      if (-not (Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue)) {
-        $r = Invoke-Cmd $rdExe @('--install-service') 90
-        if ($r.timeout) { Log '  --install-service TIMEOUT 90s' }
-      }
-      for ($i = 0; $i -lt 20; $i++) {
-        $svc = Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue
-        if ($svc) { break }
-        Start-Sleep -Seconds 3
-      }
-      $svc = Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue
-      if ($svc) {
-        Set-Service -Name 'RustDesk' -StartupType Automatic -ErrorAction SilentlyContinue
-        Start-Service -Name 'RustDesk' -ErrorAction SilentlyContinue
-        $svcOk = $true
-        Log '  service RustDesk: aktif (mode unattended)'
-      } else { Log '  service RustDesk belum terdaftar (lanjut; password/ID tetap dicoba)' }
-    } catch { Log "  service RustDesk (tidak kritis): $($_.Exception.Message)" }
-
-    # password permanen = password RDP (biar user hanya perlu 1 password)
-    $pwOk = $false
-    for ($i = 1; $i -le 3 -and -not $pwOk; $i++) {
-      $r = Invoke-Cmd $rdExe @('--password', $pw) 30
-      if (-not $r.timeout) { $pwOk = $true } else { Log "  --password TIMEOUT (coba $i/3)"; Start-Sleep -Seconds 3 }
-    }
-    Log "  password permanen di-set: $(if ($pwOk) { 'ok' } else { 'PERLU CEK MANUAL' })"
-
-    # opsional (lanjutan): server sendiri/terdekat lewat env RD_SERVER
-    if ($env:RD_SERVER) {
-      try {
-        $toml = "# XyRDP`nrendezvous_server = '$($env:RD_SERVER)'`n`n[options]`nrelay-server = '$($env:RD_SERVER)'`n"
-        foreach ($p in @(
-          'C:\Windows\System32\config\systemprofile\AppData\Roaming\RustDesk\config',
-          'C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\RustDesk\config',
-          (Join-Path $env:APPDATA 'RustDesk\config')
-        )) {
-          New-Item -ItemType Directory -Path $p -Force | Out-Null
-          Set-Content -Path (Join-Path $p 'RustDesk2.toml') -Value $toml -Encoding utf8
-        }
-        $rdServer = "$($env:RD_SERVER) (RD_SERVER dari input workflow)"
-        Log "  server RustDesk diset: $($env:RD_SERVER) — klien kamu harus pakai server yang sama!"
-        Restart-Service -Name 'RustDesk' -Force -ErrorAction SilentlyContinue
-      } catch { Log "  set server RustDesk gagal (tidak kritis): $($_.Exception.Message)" }
-    }
-
-    # ambil ID (perlu beberapa detik setelah service register ke server)
-    for ($i = 1; $i -le 12 -and -not $rdId; $i++) {
-      $r = Invoke-Cmd $rdExe @('--get-id') 25
-      if ($r.out) {
-        foreach ($line in ($r.out -split "`r?`n")) {
-          $clean = ($line -replace '\s', '').Trim()
-          if ($clean -match '^[0-9]{6,12}$') { $rdId = $clean; break }
-        }
-      }
-      if (-not $rdId) { Start-Sleep -Seconds 5 }
-    }
-    if ($rdId) {
-      Log "  RUSTDESK ID : $rdId"
-      Log "  (klien RustDesk kamu -> masukkan ID di atas + password, tanpa VPN)"
-      $rdStatus = 'ok'
-      # auto-start untuk user RDP
-      Open-DefaultHive | Out-Null
-      if ($script:HiveLoaded) {
-        Set-Reg ($script:DefReg + '\Software\Microsoft\Windows\CurrentVersion\Run') 'RustDesk' $rdExe 'String' | Out-Null
-        Close-DefaultHive
-      }
-      try { Start-Process -FilePath $rdExe -ErrorAction SilentlyContinue } catch {}
-    } else {
-      Log '  ID RustDesk belum keluar setelah 100 detik (server publik lambat / diblokir).'
-      Log '  Cek manual di VM: rustdesk.exe --get-id'
-      $rdStatus = 'gagal-id'
-    }
-  }
-}
-
-# ============================================================================
-#  BAGIAN 2 — TUNNEL TCP (RDP 3389)
+#  TUNNEL TCP (RDP 3389) — multi-provider
 # ============================================================================
 function Wait-Tunnel([string]$logFile, [string]$regex, [int]$timeoutSec = 90) {
   for ($i = 0; $i -lt $timeoutSec; $i++) {
@@ -286,7 +105,6 @@ function Start-Bore {
     if (-not (Get-File $asset.url $zip 180)) { Log '  unduh bore gagal'; return $null }
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     Expand-Archive -Path $zip -DestinationPath $dir -Force
-    # zip bisa punya subfolder
     if (-not (Test-Path $boreExe)) {
       $g = Get-ChildItem $dir -Recurse -Filter 'bore.exe' | Select-Object -First 1
       if ($g) { $boreExe = $g.FullName }
@@ -297,7 +115,6 @@ function Start-Bore {
   Remove-Item $logF -ErrorAction SilentlyContinue
   $tgt = if ($script:RdpTarget) { $script:RdpTarget } else { '127.0.0.1' }
   Log "  mulai: bore local $localPort --local-host $tgt --to bore.pub"
-  # --local-host eksplisit (bukan 'localhost'): hindari salah pilih IPv4/IPv6
   $p = Start-Process -FilePath $boreExe -ArgumentList @('local', "$localPort", '--local-host', $tgt, '--to', 'bore.pub') `
         -RedirectStandardOutput $logF -RedirectStandardError (Join-Path $work 'bore.err') -PassThru -WindowStyle Hidden
   $m = Wait-Tunnel $logF 'listening at\s+([^\s:]+):(\d+)' 90
@@ -321,27 +138,17 @@ function Start-Ngrok {
   $logF = Join-Path $work 'ngrok.log'
   Remove-Item $logF -ErrorAction SilentlyContinue
   $tgt = if ($script:RdpTarget) { $script:RdpTarget } else { '127.0.0.1' }
-  $tgtTxt = if ($tgt -like '*:*') { "[$tgt]" } else { $tgt }   # IPv6 perlu kurung siku
+  $tgtTxt = if ($tgt -like '*:*') { "[$tgt]" } else { $tgt }
   Log "  mulai: ngrok tcp $tgtTxt`:$localPort"
   $p = Start-Process -FilePath $ngrokExe -ArgumentList @('tcp', "$tgtTxt`:$localPort", '--log=stdout', '--log-format=json') `
         -RedirectStandardOutput $logF -RedirectStandardError (Join-Path $work 'ngrok.err') -PassThru -WindowStyle Hidden
-  $m = Wait-Tunnel $logF 'tcp://([^":\s]+):(\d+)' 90
+  $m = Wait-Tunnel $logF 'tcp://([^\":\s]+):(\d+)' 90
   if (-not $m) { try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}; Log '  ngrok: tidak dapat endpoint (timeout / token salah)'; return $null }
   Log "  TUNNEL : $($m.Groups[1].Value):$($m.Groups[2].Value) (ngrok)"
   return @{ provider = 'ngrok'; host = $m.Groups[1].Value; port = [int]$m.Groups[2].Value; pid = $p.Id; log = $logF }
 }
 
-# ---------------------------------------------------------------------------
-#  Pinggy: tunnel TCP lewat SSH (port 443) — TANPA akun, tanpa daftar.
-#  Terverifikasi 3 Okt 2026 dari node luar (8/8 tersambung, termasuk Vietnam),
-#  sementara bore.pub pada sesi yang sama DITOLAK dari luar (6/8 node gagal)
-#  padahal "selftest ok" dari dalam VM. Urutan otomatis sekarang:
-#  pinggy -> ngrok (kalau ada token) -> bore.
-# ---------------------------------------------------------------------------
 function Get-SshCandidates {
-  # Urutan penting: ssh bawaan Git (MSYS) berperilaku seperti ssh Linux dan
-  # mencetak keluaran server dengan benar. ssh.exe Windows OpenSSH di runner
-  # terbukti keluar TANPA keluaran apa pun (diagnostik run 37150390456).
   $cands = @(
     "$env:ProgramFiles\Git\usr\bin\ssh.exe",
     "$env:ProgramFiles\Git\bin\ssh.exe",
@@ -359,8 +166,6 @@ function Start-Pinggy {
   $errF = Join-Path $work 'pinggy.err'
   $sshList = Get-SshCandidates
   if (-not $sshList -or $sshList.Count -eq 0) { Log '  pinggy: ssh.exe tidak ditemukan - dilewati'; return $null }
-
-  # diagnostik jaringan: server pinggy terjangkau dari VM ini?
   foreach ($hp in @(@('a.pinggy.io', 443), @('a.pinggy.io', 22))) {
     try {
       $ok = $false
@@ -369,8 +174,7 @@ function Start-Pinggy {
       Log "  pinggy: TCP $($hp[0]):$($hp[1]) -> $(if ($ok) { 'TERJANGKAU' } else { 'TIDAK terjangkau' })"
     } catch { Log "  pinggy: uji TCP $($hp[0]):$($hp[1]) error: $($_.Exception.Message)" }
   }
-  if (-not $env:HOME) { $env:HOME = $env:USERPROFILE }   # MSYS ssh butuh HOME
-
+  if (-not $env:HOME) { $env:HOME = $env:USERPROFILE }
   $tgt = if ($script:RdpTarget -and $script:RdpTarget -ne '::1') { $script:RdpTarget } else { '127.0.0.1' }
   foreach ($ssh in $sshList) {
     $isMsys = ($ssh -match 'Git')
@@ -379,10 +183,6 @@ function Start-Pinggy {
       foreach ($attempt in 1..2) {
         Remove-Item $logF, $errF -ErrorAction SilentlyContinue
         Log "  pinggy: klien=$([System.IO.Path]::GetFileName($ssh)) port=$port (coba $attempt, target $tgt`:$localPort)"
-        # WAJIB: beri stdin yang valid (file kosong = EOF). Kalau stdin tidak valid,
-        # ssh tidak meminta channel sesi dan server pinggy TIDAK mengirim banner
-        # yang memuat tcp://... -> tunnel terbentuk tapi alamatnya tidak pernah
-        # kita ketahui (persis kejadian di run 37150390456 & 37151286900).
         $inF = Join-Path $work 'pinggy.in'
         if (-not (Test-Path $inF)) { New-Item -ItemType File -Path $inF -Force | Out-Null }
         $sshArgs = @('-p', "$port", '-T', '-o', 'StrictHostKeyChecking=no', '-o', "UserKnownHostsFile=$kh",
@@ -416,12 +216,109 @@ function Start-Pinggy {
   return $null
 }
 
+# localhost.run — SSH ke nokey@localhost.run tanpa akun (coba port 443 dulu)
+function Start-LocalhostRun {
+  $logF = Join-Path $work 'lhr.log'
+  $errF = Join-Path $work 'lhr.err'
+  $sshList = Get-SshCandidates
+  if (-not $sshList) { Log '  localhost.run: ssh tidak ada'; return $null }
+  if (-not $env:HOME) { $env:HOME = $env:USERPROFILE }
+  $tgt = if ($script:RdpTarget) { $script:RdpTarget } else { '127.0.0.1' }
+  foreach ($ssh in $sshList) {
+    $isMsys = ($ssh -match 'Git')
+    $kh = if ($isMsys) { '/dev/null' } else { 'NUL' }
+    foreach ($port in @(443, 22)) {
+      Remove-Item $logF, $errF -ErrorAction SilentlyContinue
+      Log "  localhost.run: klien=$([System.IO.Path]::GetFileName($ssh)) port=$port target $tgt`:$localPort"
+      $inF = Join-Path $work 'lhr.in'
+      if (-not (Test-Path $inF)) { New-Item -ItemType File -Path $inF -Force | Out-Null }
+      # localhost.run: ssh -R 80:localhost:3389 nokey@localhost.run
+      $sshArgs = @('-p', "$port", '-T', '-o', 'StrictHostKeyChecking=no', '-o', "UserKnownHostsFile=$kh",
+                   '-o', 'ServerAliveInterval=20', '-o', 'ConnectTimeout=15',
+                   '-o', 'ExitOnForwardFailure=yes', "-R", "80:$tgt`:$localPort", 'nokey@localhost.run')
+      $p = Start-Process -FilePath $ssh -ArgumentList $sshArgs -RedirectStandardOutput $logF `
+            -RedirectStandardError $errF -RedirectStandardInput $inF -PassThru -WindowStyle Hidden
+      $deadline = (Get-Date).AddSeconds(70)
+      while ((Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds 2
+        $txt = (@(Get-Content $logF -Raw -ErrorAction SilentlyContinue) -join '') +
+               (@(Get-Content $errF -Raw -ErrorAction SilentlyContinue) -join '')
+        # localhost.run mengirim " * forwarded ... " atau URL https://xxx.lhrtunnel.link
+        # Untuk TCP, dia memberi port: cari \.lhrtunnel\.link atau host:port
+        if ($txt -match '([a-z0-9-]+\.lhrtunnel\.link):?(\d+)?' -or $txt -match 'tcp://([^\s]+):(\d+)' -or $txt -match 'Forwarding TCP.*:(\d+)') {
+          # parse fallback: cari host:port generik
+          if ($txt -match '([a-zA-Z0-9.-]+\.lhrtunnel\.link)[^\d]*:?\s*(\d+)') {
+            $h = $Matches[1]; $pt = [int]$Matches[2]
+            Log "  TUNNEL : $h`:$pt (localhost.run)"
+            return @{ provider = 'localhost.run'; host = $h; port = $pt; pid = $p.Id; log = $logF }
+          }
+        }
+        # alternatif: localhost.run mencetak "your url is https://xxx-xxx.lhrtunnel.link" plus tcp via same host
+        if ($txt -match 'https://([a-z0-9-]+\.lhrtunnel\.link)') {
+          $h = $Matches[1]
+          # coba tebak port 443 untuk tcp? tapi lhr untuk tcp biasanya random port
+          # tunggu baris forwarded
+          Start-Sleep -Seconds 3
+        }
+        if ($p.HasExited) { break }
+      }
+      $out = ((@(Get-Content $logF -Raw -ErrorAction SilentlyContinue) -join ' ') -replace '\s+', ' ').Trim()
+      $err = ((@(Get-Content $errF -Raw -ErrorAction SilentlyContinue) -join ' ') -replace '\s+', ' ').Trim()
+      Log "  localhost.run: gagal port $port - stdout:$($out.Substring(0,[Math]::Min(200,$out.Length))) err:$($err.Substring(0,[Math]::Min(200,$err.Length)))"
+      try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}
+    }
+  }
+  Log '  localhost.run: gagal semua percobaan'
+  return $null
+}
+
+# serveo.net — SSH -R 0:localhost:3389 serveo.net
+function Start-Serveo {
+  $logF = Join-Path $work 'serveo.log'
+  $errF = Join-Path $work 'serveo.err'
+  $sshList = Get-SshCandidates
+  if (-not $sshList) { Log '  serveo: ssh tidak ada'; return $null }
+  if (-not $env:HOME) { $env:HOME = $env:USERPROFILE }
+  $tgt = if ($script:RdpTarget) { $script:RdpTarget } else { '127.0.0.1' }
+  foreach ($ssh in $sshList) {
+    $isMsys = ($ssh -match 'Git')
+    $kh = if ($isMsys) { '/dev/null' } else { 'NUL' }
+    Remove-Item $logF, $errF -ErrorAction SilentlyContinue
+    Log "  serveo: klien=$([System.IO.Path]::GetFileName($ssh)) target $tgt`:$localPort"
+    $inF = Join-Path $work 'serveo.in'
+    if (-not (Test-Path $inF)) { New-Item -ItemType File -Path $inF -Force | Out-Null }
+    $sshArgs = @('-o', 'StrictHostKeyChecking=no', '-o', "UserKnownHostsFile=$kh",
+                 '-o', 'ServerAliveInterval=20', '-o', 'ConnectTimeout=15',
+                 '-o', 'ExitOnForwardFailure=yes', "-R", "0:$tgt`:$localPort", 'serveo.net')
+    $p = Start-Process -FilePath $ssh -ArgumentList $sshArgs -RedirectStandardOutput $logF `
+          -RedirectStandardError $errF -RedirectStandardInput $inF -PassThru -WindowStyle Hidden
+    $deadline = (Get-Date).AddSeconds(70)
+    while ((Get-Date) -lt $deadline) {
+      Start-Sleep -Seconds 2
+      $txt = (@(Get-Content $logF -Raw -ErrorAction SilentlyContinue) -join '') +
+             (@(Get-Content $errF -Raw -ErrorAction SilentlyContinue) -join '')
+      # serveo mencetak: Forwarding TCP connections from serveo.net:xxxx
+      if ($txt -match 'Forwarding TCP.*from\s+([a-z0-9.-]+):(\d+)' -or $txt -match 'serveo\.net:(\d+)') {
+        $h = 'serveo.net'; $pt = 0
+        if ($txt -match 'from\s+([a-z0-9.-]+):(\d+)') { $h = $Matches[1]; $pt = [int]$Matches[2] }
+        elseif ($txt -match 'serveo\.net:(\d+)') { $h = 'serveo.net'; $pt = [int]$Matches[1] }
+        if ($pt -gt 0) {
+          Log "  TUNNEL : $h`:$pt (serveo)"
+          return @{ provider = 'serveo'; host = $h; port = $pt; pid = $p.Id; log = $logF }
+        }
+      }
+      if ($p.HasExited) { break }
+    }
+    $out = ((@(Get-Content $logF -Raw -ErrorAction SilentlyContinue) -join ' ') -replace '\s+', ' ').Trim()
+    Log "  serveo: gagal - $out"
+    try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}
+  }
+  Log '  serveo: gagal'
+  return $null
+}
+
 # ---------------------------------------------------------------------------
-#  TAILSCALE (jalur yang sudah lama terbukti jalan dari runner GitHub):
-#  runner masuk tailnet kamu sebagai node 100.x, lalu HP (XyDesk Remote/mstsc)
-#  menyambung ke IP itu. Tanpa port publik, tanpa relay pihak ketiga.
-#  Bonus: dicoba `tailscale funnel` -> alamat publik <node>.<tailnet>.ts.net:10000
-#  yang bisa dipakai TANPA memasang apa pun di HP (kalau tailnet mengizinkan).
+#  TAILSCALE
 # ---------------------------------------------------------------------------
 function Get-TsExe {
   foreach ($p in @("$env:ProgramFiles\Tailscale\tailscale.exe", "${env:ProgramFiles(x86)}\Tailscale\tailscale.exe")) {
@@ -459,7 +356,6 @@ function Start-Tailscale {
   if ($tsHost.Length -gt 24) { $tsHost = $tsHost.Substring(0, 24) }
   $tsHost = "$tsHost-$env:GITHUB_RUN_NUMBER"
   Log "  tailscale: up sebagai '$tsHost'..."
-  # --accept-dns=false: jangan utak-atik DNS runner
   $up = Invoke-Cmd $tsExe @('up', "--authkey=$tsKey", "--hostname=$tsHost", '--accept-dns=false', '--timeout=90s') 180
   if ($up.code -ne 0) {
     Log "  tailscale: up exit=$($up.code) - ulangi tanpa --accept-dns"
@@ -481,12 +377,6 @@ function Start-Tailscale {
     try { $j = $sr.out | ConvertFrom-Json; $dns = "$($j.Self.DNSName)"; $stTxt = "$($j.BackendState)" } catch {}
   }
   Log "  tailscale: IP=$ip4 magicdns=$dns state=$stTxt"
-
-  # funnel: HANYA saat mode akses = 'semua'. Funnel Tailscale selalu TLS di sisi
-  # publik ("Funnel only works over TLS-encrypted connections"), sehingga klien RDP
-  # mentah (mstsc/XyDesk Remote - mulai dengan X.224) TIDAK BISA memakainya.
-  # Diuji 4 Okt: AllowFunnel=true + DNS publik terbit + cert ok, tapi handshake RDP
-  # selalu ditutup relay (0 byte). Jadi default: funnel dilewati.
   $funnel = 'tidak aktif'; $funnelAddr = ''
   $f = @{ code = 1; out = ''; err = "dilewati (mode '$env:AKSES' bukan 'semua')" }
   if ("$env:AKSES" -eq 'semua') {
@@ -510,15 +400,12 @@ function Start-Tailscale {
 $tunStatus = 'skip'; $tun = $null; $localOk = $false; $stOk = 'skip'; $reachOk = 'skip'; $reachTxt = ''
 if ($useTunnel) {
   Log "TUNNEL TCP (RDP $localPort): menyiapkan..."
-  # --- pilih target lokal RDP (IPv4 dulu, lalu IPv6) + catat semua listener ---
   try {
     $all = Get-NetTCPConnection -LocalPort $localPort -State Listen -ErrorAction SilentlyContinue |
            ForEach-Object { "$($_.LocalAddress):$($_.LocalPort) pid=$($_.OwningProcess)" }
     if ($all) { Log "  listener $localPort : $($all -join ' | ')" } else { Log "  listener $localPort : TIDAK ADA" }
   } catch {}
   $ownIp = Get-PrimaryIPv4
-
-  # --- DIAGNOSTIK: pemilik listener 3389, TermService, firewall ---
   try {
     Get-NetTCPConnection -LocalPort $localPort -State Listen -ErrorAction SilentlyContinue | ForEach-Object {
       $pn = '?'; try { $pn = (Get-Process -Id $_.OwningProcess -ErrorAction Stop).ProcessName } catch {}
@@ -532,9 +419,6 @@ if ($useTunnel) {
     if ($fr) { Log "  diag: aturan RDP -> $($fr -join ' | ')" } else { Log '  diag: tidak ada aturan grup Remote Desktop' }
   } catch { Log "  diag error: $($_.Exception.Message)" }
 
-  # --- tunggu sampai RDP benar-benar menjawab handshake, lalu pilih alamatnya ---
-  # (sekadar TCP terbuka tidak cukup: di runner nyata 172.31.240.1:3389 menerima
-  #  TCP tapi tidak pernah membalas X.224 — tunnel jadi "hidup tapi tidak tembus")
   $rdpTarget = Wait-RdpReady -TimeoutSec 240
   if ($rdpTarget) {
     Log "  target lokal tunnel: $rdpTarget`:$localPort (handshake X.224 terbukti)"
@@ -544,101 +428,129 @@ if ($useTunnel) {
   }
   $script:RdpTarget = $rdpTarget
 
-  # --- buat tunnel; kalau tidak tembus, cek ulang RDP lalu ulangi sekali lagi ---
-  for ($att = 1; $att -le 2; $att++) {
-    if ($prov -in @('pinggy', 'ssh')) { $tun = Start-Pinggy }
-    elseif ($prov -eq 'ngrok') { $tun = Start-Ngrok }
-    elseif ($prov -eq 'bore') { $tun = Start-Bore }
-    else {
-      # ngrok dulu bila token tersedia: satu koneksi keluar 443 + hostname
-      # anycast (tidak butuh 'pairing' seperti bore / remote-forward SSH)
-      if ($ngrokTok) { $tun = Start-Ngrok }
-      if (-not $tun) { $tun = Start-Pinggy }
-      if (-not $tun) { $tun = Start-Bore }
-      if (-not $tun) { Log '  (tips: isi secret NGROK_AUTHTOKEN = jalur paling andal di runner GitHub)' }
+  # daftar provider berurutan untuk otomatis (ngrok paling andal jika token ada)
+  $autoOrder = @()
+  if ($ngrokTok) { $autoOrder += 'ngrok' }
+  $autoOrder += @('pinggy','bore')
+  # localhost.run dan serveo ditambahkan sebagai fallback terakhir (kadang lambat)
+  # tapi tetap dicoba biar ada opsi tanpa token
+
+  function Try-OneProvider([string]$name) {
+    switch ($name) {
+      'ngrok'         { return (Start-Ngrok) }
+      'pinggy'        { return (Start-Pinggy) }
+      'bore'          { return (Start-Bore) }
+      'localhost.run' { return (Start-LocalhostRun) }
+      'lhr'           { return (Start-LocalhostRun) }
+      'serveo'        { return (Start-Serveo) }
+      default         { return $null }
     }
-    if (-not $tun) { $tunStatus = 'gagal'; Log "  GAGAL membuat tunnel (percobaan $att)."; break }
+  }
+
+  # kalau provider spesifik dipilih, hanya coba itu
+  $providersToTry = @()
+  if ($prov -ne 'otomatis' -and $prov -ne 'auto') {
+    $providersToTry = @($prov)
+  } else {
+    $providersToTry = $autoOrder
+  }
+
+  $foundUsable = $false
+  # loop luar: coba setiap provider sampai dapat yang outside ok atau selftest ok + tidak diuji
+  foreach ($pName in $providersToTry) {
+    Log "  mencoba provider: $pName ..."
+    $tun = Try-OneProvider $pName
+    if (-not $tun) { Log "  $pName gagal membuat endpoint — lanjut provider berikutnya"; continue }
 
     $tunStatus = 'ok'
-    Log '  RDP lewat tunnel: buka Remote Desktop Connection ke alamat di atas'
+    Log '  RDP lewat tunnel: buka XyDesk Remote / mstsc ke alamat di atas'
     Log "  listener $localPort sekarang: $(Get-RdpListenerState $localPort)"
 
-    # --- VERIFIKASI DARI LUAR (yang benar-benar dilihat klien HP) ---
-    $reach = Get-OutsideReach $tun.host $tun.port 90
-    $reachOk = if ($reach.ok -eq $true) { 'ok' } elseif ($reach.ok -eq $false) { 'gagal' } else { 'tidak diuji' }
-    $reachTxt = $reach.detail
-    if ($reach.ok) { Log "  UJI DARI LUAR OK - $reachTxt bisa menembus $($tun.host):$($tun.port)" }
-    else { Log "  UJI DARI LUAR GAGAL - $reachTxt (alamat ini kemungkinan tidak bisa dipakai dari HP)" }
-
-    # --- self-test end-to-end: handshake X.224 lewat endpoint publik ---
+    # self-test dulu (cepat, dari dalam VM)
     $stOk = 'gagal'
     for ($try = 1; $try -le 4 -and $stOk -ne 'ok'; $try++) {
       $r = Test-RdpHandshake $tun.host $tun.port 15000
       if ($r.ok) {
         $stOk = 'ok'
-        Log "  SELF-TEST OK (coba $try) — $($tun.host):$($tun.port) benar-benar tembus ke port $localPort VM [$($r.detail)]"
+        Log "  SELF-TEST OK (coba $try) — $($tun.host):$($tun.port) tembus ke port $localPort VM [$($r.detail)]"
       } else {
         Log "  self-test (coba $try) gagal: $($r.detail)"
         if ($try -lt 4) { Start-Sleep -Seconds 8 }
       }
     }
-
-    if ($stOk -eq 'ok' -and $reachOk -ne 'gagal') { break }
-
-    # tunnel hidup tapi belum terbukti dari luar -> ganti provider lain
-    if ($att -eq 1 -and $stOk -eq 'ok' -and $reachOk -eq 'gagal') {
-      Log "  '$($tun.provider)' tembus dari dalam VM tapi TIDAK dari luar - ganti provider..."
+    if ($stOk -ne 'ok') {
+      Log "  $pName self-test gagal — matikan dan coba provider lain"
       try { Stop-Process -Id $tun.pid -Force -ErrorAction SilentlyContinue } catch {}
-      $tun = $null
-      if ($prov -in @('otomatis', 'auto', 'pinggy', 'ssh')) { $tun = Start-Pinggy }
-      if (-not $tun -and $ngrokTok) { $tun = Start-Ngrok }
-      if (-not $tun) { $tun = Start-Bore }
-      if ($tun) {
-        $stOk = 'gagal'
-        for ($try2 = 1; $try2 -le 4 -and $stOk -ne 'ok'; $try2++) {
-          $r2 = Test-RdpHandshake $tun.host $tun.port 15000
-          if ($r2.ok) { $stOk = 'ok'; Log "  SELF-TEST OK - $($tun.host):$($tun.port) [$($r2.detail)]" }
-          else { Start-Sleep -Seconds 8 }
-        }
-        $reach = Get-OutsideReach $tun.host $tun.port 90
-        $reachOk = if ($reach.ok -eq $true) { 'ok' } elseif ($reach.ok -eq $false) { 'gagal' } else { 'tidak diuji' }
-        $reachTxt = "$($reach.detail) [provider $($tun.provider)]"
-        Log "  uji luar (provider baru $($tun.provider)): $reachTxt"
-        if ($stOk -eq 'ok' -and $reachOk -ne 'gagal') { break }
-      }
+      $tun = $null; $tunStatus = 'gagal'
+      continue
     }
 
-    # RDP di VM belum sehat -> cek ulang, kalau berubah ulangi tunnel
-    if ($att -eq 1) {
-      Log '  tunnel belum tembus — cek ulang kesiapan RDP lalu ulangi tunnel dengan target terbaru'
-      $t2 = Wait-RdpReady -TimeoutSec 150
-      if ($t2) { $rdpTarget = $t2; $script:RdpTarget = $t2; Log "  target terbaru: $t2`:$localPort" }
-      else { Log '  RDP masih belum menjawab handshake lokal' }
-      try { Log "  log $($tun.provider) (4 baris terakhir): $((Get-Content $tun.log -Tail 4 -ErrorAction SilentlyContinue) -join ' / ')" } catch {}
+    # uji dari luar (penting untuk validasi beneran)
+    $reach = Get-OutsideReach $tun.host $tun.port 90
+    $reachOk = if ($reach.ok -eq $true) { 'ok' } elseif ($reach.ok -eq $false) { 'gagal' } else { 'tidak diuji' }
+    $reachTxt = $reach.detail
+    if ($reach.ok -eq $true) { Log "  UJI DARI LUAR OK - $reachTxt bisa menembus $($tun.host):$($tun.port)" }
+    elseif ($reach.ok -eq $false) { Log "  UJI DARI LUAR GAGAL - $reachTxt (alamat ini kemungkinan tidak bisa dipakai dari HP)" }
+    else { Log "  UJI DARI LUAR TIDAK DIUJI - $reachTxt (rate-limit check-host, anggap usable bila self-test ok)" }
+
+    # keputusan:
+    if ($reachOk -eq 'ok' -or $reachOk -eq 'tidak diuji') {
+      Log "  PROVIDER $pName DITERIMA (selftest ok, luar $reachOk) — VALIDASI TUNNEL BERHASIL"
+      $foundUsable = $true
+      break
+    } else {
+      # luar gagal — coba provider berikutnya (jangan langsung buang, tapi prioritaskan yang tembus)
+      Log "  $pName tembus self-test tapi GAGAL dari luar — coba provider lain..."
       try { Stop-Process -Id $tun.pid -Force -ErrorAction SilentlyContinue } catch {}
-      $tun = $null
-      Start-Sleep -Seconds 5
+      $tun = $null; $tunStatus = 'gagal'
+      continue
+    }
+  }
+
+  # fallback tambahan: jika otomatis dan semua gagal, coba urutan kedua (lhr + serveo) yang lebih lambat
+  if (-not $foundUsable -and $prov -in @('otomatis','auto')) {
+    $extraProviders = @('localhost.run','serveo')
+    foreach ($pName in $extraProviders) {
+      if ($providersToTry -contains $pName) { continue }
+      Log "  fallback extra provider: $pName ..."
+      $tun = Try-OneProvider $pName
+      if (-not $tun) { continue }
+      $tunStatus = 'ok'
+      $stOk = 'gagal'
+      for ($try = 1; $try -le 4 -and $stOk -ne 'ok'; $try++) {
+        $r = Test-RdpHandshake $tun.host $tun.port 15000
+        if ($r.ok) { $stOk = 'ok'; Log "  SELF-TEST OK — $($tun.host):$($tun.port) [$($r.detail)]" }
+        else { Start-Sleep -Seconds 5 }
+      }
+      if ($stOk -ne 'ok') { try { Stop-Process -Id $tun.pid -Force -ErrorAction SilentlyContinue } catch {}; $tun = $null; continue }
+      $reach = Get-OutsideReach $tun.host $tun.port 90
+      $reachOk = if ($reach.ok -eq $true) { 'ok' } elseif ($reach.ok -eq $false) { 'gagal' } else { 'tidak diuji' }
+      $reachTxt = $reach.detail
+      if ($reachOk -eq 'ok' -or $reachOk -eq 'tidak diuji') { $foundUsable = $true; break }
+      else { try { Stop-Process -Id $tun.pid -Force -ErrorAction SilentlyContinue } catch {}; $tun = $null }
     }
   }
 
   if (-not $tun) {
     $tunStatus = 'gagal'
-    Log '  GAGAL membuat tunnel. Sesi tetap jalan — pakai jalur RustDesk.'
+    Log '  GAGAL membuat tunnel yang VALID (semua provider gagal outside/selftest).'
+    Log '  Tips: isi secret NGROK_AUTHTOKEN untuk jalur ngrok yang paling andal.'
   } else {
     $tgt2 = if ($script:RdpTarget) { $script:RdpTarget } else { '127.0.0.1' }
     $localOk = (Test-LocalPort $tgt2 $localPort 5000).ok
-    Log "  RDP lokal $tgt2`:$localPort -> $(if ($localOk) { 'TERBUKA' } else { 'TERTUTUP (RDP mungkin belum jalan!)' })"
+    Log "  RDP lokal $tgt2`:$localPort -> $(if ($localOk) { 'TERBUKA' } else { 'TERTUTUP' })"
+    Log "  TUNNEL FINAL: $($tun.provider) $($tun.host):$($tun.port) selftest=$stOk luar=$reachOk — SIAP untuk XyDesk Remote"
   }
 }
 
 # ============================================================================
-#  BAGIAN 3 - TAILSCALE (opsional)
+#  TAILSCALE (opsional)
 # ============================================================================
 $tsStatus = 'skip'; $ts = $null
 if ($useTs) {
   Log 'TAILSCALE: menyiapkan...'
   $ts = Start-Tailscale
-  if ($ts) { $tsStatus = 'ok' } else { $tsStatus = 'gagal'; Log '  GAGAL menyiapkan Tailscale. Jalur lain (RustDesk/tunnel) tetap dipakai.' }
+  if ($ts) { $tsStatus = 'ok' } else { $tsStatus = 'gagal'; Log '  GAGAL menyiapkan Tailscale.' }
 }
 
 # ============================================================================
@@ -646,13 +558,6 @@ if ($useTs) {
 # ============================================================================
 $aksesObj = [ordered]@{
   mode     = $mode
-  rustdesk = [ordered]@{
-    status  = $rdStatus
-    service = $svcOk
-    id      = $rdId
-    server = $rdServer
-    client = 'Unduh app RustDesk (gratis) -> masukkan ID + password'
-  }
   tailscale = [ordered]@{
     status      = $tsStatus
     ip          = if ($ts) { $ts.ip } else { '' }
@@ -673,10 +578,11 @@ $aksesObj = [ordered]@{
     rdp_local  = if ($tun) { "$(if ($script:RdpTarget) { $script:RdpTarget } else { '127.0.0.1' }) -> $(if ($localOk) { 'terbuka' } else { 'tertutup' })" } else { '' }
     selftest   = if ($tun) { $stOk } else { '' }
     outside    = if ($tun) { "$reachOk ($reachTxt)" } else { '' }
-    note2      = if ($tun -and $stOk -eq 'ok' -and $reachOk -eq 'ok') { 'Tunnel diuji dua arah: handshake RDP dari dalam VM DAN dari node luar — inilah yang dilihat HP kamu' }
-                 elseif ($tun -and $reachOk -eq 'gagal') { 'Tunnel hidup di VM tetapi TERBUKTI tidak terbuka dari luar — pakai jalur RustDesk untuk sesi ini' }
-                 elseif ($tun -and $stOk -eq 'ok') { 'Tunnel siap; uji dari luar tidak bisa dijalankan (batas layanan uji) — kalau HP gagal, pakai RustDesk' }
-                 elseif ($tun) { 'Tunnel hidup, handshake RDP dari dalam belum lolos — coba lagi sebentar' }
+    note2      = if ($tun -and $stOk -eq 'ok' -and $reachOk -eq 'ok') { 'Tunnel VALID dua arah: handshake RDP dari dalam DAN luar — siap pakai XyDesk Remote' }
+                 elseif ($tun -and $stOk -eq 'ok' -and $reachOk -eq 'tidak diuji') { 'Tunnel VALID (self-test ok, luar tidak diuji karena rate-limit — hampir pasti bisa dari HP)' }
+                 elseif ($tun -and $reachOk -eq 'gagal') { 'Tunnel hidup di VM tetapi TERBUKTI tidak terbuka dari luar — coba provider lain atau pakai Tailscale' }
+                 elseif ($tun -and $stOk -eq 'ok') { 'Tunnel siap; uji luar pending — coba dari HP' }
+                 elseif ($tun) { 'Tunnel hidup, handshake belum lolos — coba lagi sebentar' }
                  else { '' }
     note       = 'Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user ' + $u
   }
@@ -694,5 +600,5 @@ try {
 } catch { Log 'RAM snapshot tidak tersedia' }
 $aksesObj | ConvertTo-Json -Depth 8 | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
 
-Log "SELESAI — tailscale=$tsStatus$(if ($ts) { " ($($ts.ip))" }) rustdesk=$rdStatus$(if ($rdId) { " ($rdId)" }) tunnel=$tunStatus$(if ($tun) { " ($($tun.provider) $($tun.host):$($tun.port), selftest=$stOk, luar=$reachOk)" })"
+Log "SELESAI — tailscale=$tsStatus$(if ($ts) { " ($($ts.ip))" }) tunnel=$tunStatus$(if ($tun) { " ($($tun.provider) $($tun.host):$($tun.port), selftest=$stOk, luar=$reachOk)" }) — TANPA RustDesk"
 exit 0

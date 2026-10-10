@@ -4,6 +4,7 @@
 #  Script ini best-effort spoofing registry + matikan service VM biar Player
 #  mengira ini PC fisik. Tidak 100% guarantee (hypervisor bit tetap 1), tapi
 #  sudah bikin banyak VM lolos di runner windows-2022.
+#  FIX v3: pakai HKLM:\ dengan colon (sebelumnya tanpa colon gagal Set-Reg)
 # ============================================================================
 $XyTag = 'XyRDP:roblox'
 . "$PSScriptRoot/lib-common.ps1"
@@ -12,14 +13,14 @@ Log '=== ROBLOX VM HIDE — mulai ==='
 
 # 1. Spoof BIOS / System info jadi Dell fisik (bukan Hyper-V/QEMU)
 try {
-  Set-Reg 'HKLM\HARDWARE\DESCRIPTION\System\BIOS' 'SystemManufacturer' 'Dell Inc.' 'String' | Out-Null
-  Set-Reg 'HKLM\HARDWARE\DESCRIPTION\System\BIOS' 'SystemProductName' 'XPS 15 9510' 'String' | Out-Null
-  Set-Reg 'HKLM\HARDWARE\DESCRIPTION\System\BIOS' 'BIOSVersion' '1.18.0' 'String' | Out-Null
-  Set-Reg 'HKLM\HARDWARE\DESCRIPTION\System\BIOS' 'BaseBoardManufacturer' 'Dell Inc.' 'String' | Out-Null
-  Set-Reg 'HKLM\HARDWARE\DESCRIPTION\System\BIOS' 'BaseBoardProduct' '0Y2MRG' 'String' | Out-Null
-  Set-Reg 'HKLM\SYSTEM\CurrentControlSet\Control\SystemInformation' 'SystemManufacturer' 'Dell Inc.' 'String' | Out-Null
-  Set-Reg 'HKLM\SYSTEM\CurrentControlSet\Control\SystemInformation' 'SystemProductName' 'XPS 15 9510' 'String' | Out-Null
-  Set-Reg 'HKLM\SYSTEM\CurrentControlSet\Control\SystemInformation' 'BIOSVersion' '1.18.0' 'String' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\BIOS' 'SystemManufacturer' 'Dell Inc.' 'String' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\BIOS' 'SystemProductName' 'XPS 15 9510' 'String' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\BIOS' 'BIOSVersion' '1.18.0' 'String' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\BIOS' 'BaseBoardManufacturer' 'Dell Inc.' 'String' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\BIOS' 'BaseBoardProduct' '0Y2MRG' 'String' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SystemInformation' 'SystemManufacturer' 'Dell Inc.' 'String' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SystemInformation' 'SystemProductName' 'XPS 15 9510' 'String' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SystemInformation' 'BIOSVersion' '1.18.0' 'String' | Out-Null
   Log '  BIOS spoof -> Dell XPS (anti-VM)'
 } catch { Log "  BIOS spoof gagal: $($_.Exception.Message)" }
 
@@ -41,14 +42,13 @@ foreach ($drv in @('vmmouse','vm3dmp','vmci','vmhgfs','vmmemctl')) {
 
 # 3. Spoof GPU vendor jadi NVIDIA fisik (bukan Hyper-V)
 try {
-  Set-Reg 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion' 'BuildLab' '22621.1.amd64fre.ni_release.220506-1250' 'String' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion' 'BuildLab' '22621.1.amd64fre.ni_release.220506-1250' 'String' | Out-Null
   Log '  BuildLab spoof'
 } catch {}
 
 # 4. Disable Hyper-V enlightenments yang kedeteksi Roblox
 try {
-  # Jangan coba bcdedit hypervisorlaunchtype off (butuh reboot & bikin runner mati), cukup registry
-  Set-Reg 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Virtualization' 'DisableHypervisor' 0 'DWord' | Out-Null
+  Set-Reg 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Virtualization' 'DisableHypervisor' 0 'DWord' | Out-Null
 } catch {}
 
 # 5. Pastikan Roblox Player & Studio bisa jalan (install VC++ sudah di setup-samp, tapi cek)

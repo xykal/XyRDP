@@ -4,11 +4,11 @@
 #  2) aktifkan Remote Desktop port 3389 (setting standar Windows)
 #  3) catat info sesi ke out/rdp-status.json (tanpa password)
 #
-#  Akses masuk TIDAK lewat Tailscale lagi:
-#    - RustDesk (relay publik rs-*.rustdesk.com)  -> scripts/setup-akses.ps1
-#    - tunnel TCP ke port 3389 (bore.pub / ngrok) -> scripts/setup-akses.ps1
+# Akses masuk:
+#    - tunnel TCP ke port 3389 (pinggy/bore/ngrok/localhost.run/serveo) -> scripts/setup-akses.ps1
+#    - Tailscale (opsional, 100.x bila TAILSCALE_AUTH_KEY ada)
 #  Port 3389 di VM ini tidak pernah terbuka ke internet (runner GitHub
-#  tidak punya inbound publik); hanya ditembus lewat tunnel/RustDesk.
+#  tidak punya inbound publik); hanya ditembus lewat tunnel/Tailscale.
 # ============================================================================
 
 $XyTag = 'XyRDP:rdp'
@@ -122,7 +122,7 @@ try {
   $ns = (netstat -ano | Select-String ':3389' | Select-Object -First 3) -join ' | '
   Log "  netstat :3389 -> $ns"
 } catch {}
-Log "RDP di port 3389: denyTS=$okDeny | listener=$listen (NLA default Windows). Tidak ada port publik di VM ini — akses lewat RustDesk/tunnel."
+Log "RDP di port 3389: denyTS=$okDeny | listener=$listen (NLA default Windows). Tidak ada port publik di VM ini — akses lewat tunnel/Tailscale."
 
 
 # ---------- 3. Status (tanpa password) ----------
@@ -144,7 +144,7 @@ $status = [ordered]@{
   run_number     = $env:GITHUB_RUN_NUMBER
   run_url        = "https://github.com/$($env:GITHUB_REPOSITORY)/actions/runs/$($env:GITHUB_RUN_ID)"
   mode           = 'bersih+win10'
-  akses          = @{ mode = if ($env:AKSES) { $env:AKSES } else { 'keduanya' }; rustdesk = @{ status = 'pending' }; tunnel = @{ status = 'pending' } }
+  akses          = @{ mode = if ($env:AKSES) { $env:AKSES } else { 'tunnel' }; tunnel = @{ status = 'pending' }; tailscale = @{ status = 'pending' } }
 }
 $outDir = Join-Path (Get-Workspace) 'out'
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
@@ -152,5 +152,5 @@ $status | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 -Path (Join-Path 
 $now.ToString('s') | Set-Content -Path (Join-Path $outDir 'started.txt')
 $status | ConvertTo-Json -Depth 8 | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
 
-Log "SESI DASAR SIAP — user $u, port 3389. Lanjut: setup akses (RustDesk/tunnel)."
+Log "SESI DASAR SIAP — user $u, port 3389. Lanjut: setup akses (tunnel/Tailscale)."
 exit 0

@@ -34,11 +34,16 @@ if (-not $isActive) {
     $obj | Add-Member -NotePropertyName $name -NotePropertyValue $value -Force
   }
   if ($json.PSObject.Properties['akses']) {
-    if ($json.akses.PSObject.Properties['rustdesk']) { Clear-Field $json.akses.rustdesk 'id' '' }
     if ($json.akses.PSObject.Properties['tunnel']) {
       Clear-Field $json.akses.tunnel 'host'    ''
       Clear-Field $json.akses.tunnel 'port'    0
       Clear-Field $json.akses.tunnel 'address' ''
+    }
+    if ($json.akses.PSObject.Properties['tailscale']) {
+      Clear-Field $json.akses.tailscale 'ip' ''
+      Clear-Field $json.akses.tailscale 'magicdns' ''
+      Clear-Field $json.akses.tailscale 'hostname' ''
+      Clear-Field $json.akses.tailscale 'funnel_addr' ''
     }
   }
   # sisa field lama (versi Tailscale/XyDesk) kalau masih ada di file
@@ -48,7 +53,7 @@ if (-not $isActive) {
     if ($json.extras.PSObject.Properties['xydesk_id'])  { $json.extras.xydesk_id  = '' }
     if ($json.extras.PSObject.Properties['xydesk_ids']) { $json.extras.xydesk_ids = @() }
   }
-  Log 'status inactive: ID RustDesk + alamat tunnel dibersihkan dari file publik'
+  Log 'status inactive: alamat tunnel + Tailscale dibersihkan dari file publik'
 }
 $json | ConvertTo-Json -Depth 6 | Set-Content -Path $src -Encoding utf8
 

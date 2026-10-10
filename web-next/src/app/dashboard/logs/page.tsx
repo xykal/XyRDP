@@ -1,0 +1,2 @@
+import Panel from "@/app/dashboard/panel";
+export default function Page(){return <><span className="eyebrow">Workspace / logs</span><h1>Aktivitas terbaru.</h1><p>Status workflow dari GitHub Actions.</p><Panel view="logs"/></>}

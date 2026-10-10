@@ -1,0 +1,2 @@
+import Panel from "@/app/dashboard/panel";
+export default function Page(){return <><span className="eyebrow">Workspace / folder</span><h1>Folder repository.</h1><p>Semua berkas di root repository kamu. Credit: KallAncrit.</p><Panel view="folder"/></>}

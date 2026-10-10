@@ -113,16 +113,20 @@ function unseal(str) {
 }
 
 function cookieHeader(name, value, maxAge, req) {
-  // Secure jika di Vercel (https) atau x-forwarded-proto=https, atau di produksi
-  let isHttps = !!process.env.VERCEL_ENV;
+  // Paksa Secure + SameSite=None biar cookie kesimpen walau OAuth redirect cross-site (github → vercel)
+  // Vercel selalu https, jadi Secure wajib. None + Secure = paling kompatibel untuk top-level redirect
+  let isHttps = true;
   try {
     const proto = (req && req.headers && (req.headers['x-forwarded-proto'] || '')) || '';
-    if (proto && String(proto).includes('https')) isHttps = true;
+    if (proto && String(proto).includes('http')) isHttps = proto.includes('https');
+    // fallback: Vercel selalu https di production
+    if (!isHttps && process.env.VERCEL_ENV) isHttps = true;
     if (!isHttps && process.env.VERCEL_URL) isHttps = true;
   } catch {}
-  const secure = isHttps ? '; Secure' : '';
-  // HttpOnly + Lax + Path=/; SameSite Lax aman untuk OAuth redirect 302
-  return `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+  // Selalu Secure di vercel.app (https), None biar cross-site redirect dari github ke callback kesimpen
+  const sameSite = 'None';
+  const secure = '; Secure';
+  return `${name}=${value}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}${secure}`;
 }
 function readCookies(req) {
   const out = {};

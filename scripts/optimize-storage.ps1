@@ -59,37 +59,45 @@ function Get-FreeGB {
   }
 }
 function Get-SizeGB([string]$path) {
-  try {
-    if (-not (Test-Path $path)) { return 0 }
-    $s = (Get-ChildItem $path -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
-    if (-not $s) { return 0 }
-    return [math]::Round($s/1GB,2)
-  } catch { return 0 }
+  # FAST: jangan hitung rekursif (bikin stuck 10 menit di C:\Android) — return 0 biar Remove-Tree langsung hapus
+  return 0
 }
 function Remove-Tree([string]$path, [string]$label) {
   if (-not (Test-Path $path)) { Log "  $label : tidak ada -> skip"; return 0 }
-  $sz = Get-SizeGB $path
+  # FAST: langsung hapus tanpa hitung size, timeout 90s per path biar tidak stuck
+  $sw = [Diagnostics.Stopwatch]::StartNew()
   try {
-    # gunakan takeown/icacls + remove dengan long path support
-    & takeown.exe /f $path /r /d y 2>&1 | Out-Null
-    & icacls.exe $path /grant '*S-1-5-32-544:F' /t /q 2>&1 | Out-Null
+    # coba hapus cepat tanpa takeown dulu (paling cepat)
     Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
-    # fallback robocopy empty trick untuk path panjang
+    if (-not (Test-Path $path)) { Log "  $label : DIHAPUS (cepat)"; return 1 }
+    # fallback takeown/icacls hanya jika masih ada & waktu <60s
+    if ($sw.Elapsed.TotalSeconds -lt 60) {
+      & takeown.exe /f $path /r /d y 2>&1 | Out-Null
+      & icacls.exe $path /grant '*S-1-5-32-544:F' /t /q 2>&1 | Out-Null
+      Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+      if (-not (Test-Path $path)) { Log "  $label : DIHAPUS (takeown)"; return 1 }
+    }
+    if ($sw.Elapsed.TotalSeconds -gt 90) { Log "  $label : SKIP timeout 90s (lanjut)"; return 0 }
+    # robocopy empty trick terakhir
     if (Test-Path $path) {
       $empty = Join-Path $env:RUNNER_TEMP '_empty'
       New-Item -ItemType Directory -Path $empty -Force | Out-Null
-      & robocopy $empty $path /purge /q 2>&1 | Out-Null
+      & robocopy $empty $path /purge /q /r:1 /w:1 2>&1 | Out-Null
       Remove-Item $path -Recurse -Force -ErrorAction SilentlyContinue
     }
     $still = Test-Path $path
-    if ($still) { Log "  $label : GAGAL dihapus (masih ada) - ${sz}GB" }
-    else { Log "  $label : DIHAPUS - membebaskan ~${sz}GB" }
-    return $sz
+    if ($still) { Log "  $label : GAGAL dihapus (masih ada)" }
+    else { Log "  $label : DIHAPUS" }
+    return 1
   } catch { Log "  $label : error $($_.Exception.Message)"; return 0 }
+  finally { $sw.Stop() }
 }
 
 $freeBefore = Get-FreeGB
 Log "  Free C: sebelum : ${freeBefore} GB"
+$script:BoostStart = Get-Date
+function Test-BoostTimeout { return ((Get-Date) - $script:BoostStart).TotalMinutes -gt 8 }
+
 try {
   $vd = Get-CimInstance Win32_LogicalDisk | ForEach-Object { "$($_.DeviceID) $([math]::Round($_.Size/1GB))GB total / $([math]::Round($_.FreeSpace/1GB))GB free" }
   Log "  Disk layout : $($vd -join ' | ')"
@@ -119,14 +127,14 @@ try { & choco uninstall r.project -y --no-progress 2>&1 | Out-Null } catch {}
 # Hapus versi Node/Python/Go lama kecuali yang sedang dipakai runner sekarang
 # Kita SIMPAN folder yang sedang aktif (cek PATH), hapus sisanya lebih aman
 # Strategi: hapus semua hostedtoolcache kecuali folder yang baru dipakai? Lebih simple: hapus Android & Haskell saja yang paling besar & tidak dibutuhkan buat SAMP.
-$totalFreed += Remove-Tree 'C:\Android' 'Android SDK/NDK'
+if (Test-BoostTimeout) { Log '  boost timeout 8 menit -> skip sisa'; } else { $totalFreed += Remove-Tree 'C:\Android' 'Android SDK/NDK' }
 $totalFreed += Remove-Tree 'C:\hostedtoolcache\CodeQL' 'CodeQL'
 $totalFreed += Remove-Tree 'C:\hostedtoolcache\go' 'Go cache'
 $totalFreed += Remove-Tree 'C:\agents' 'agents'
 $totalFreed += Remove-Tree 'C:\Modules' 'Modules (az)'
 
 # Hapus dotnet SDK lama tapi simpan runtime terbaru
-try {
+if (Test-BoostTimeout) { Log '  boost timeout -> skip dotnet' } else { try {
   $dotnetRoot = 'C:\Program Files\dotnet\sdk'
   if (Test-Path $dotnetRoot) {
     $sdks = Get-ChildItem $dotnetRoot -Directory | Sort-Object Name -Descending
@@ -138,7 +146,7 @@ try {
       }
     } else { Log '  dotnet SDK cuma 1 versi -> dipertahankan' }
   }
-} catch { Log "  dotnet SDK cleanup gagal: $($_.Exception.Message)" }
+} catch { Log "  dotnet SDK cleanup gagal: $($_.Exception.Message)" } }
 
 # Docker
 try {
@@ -166,9 +174,9 @@ $totalFreed += Remove-Tree 'C:\Windows\SoftwareDistribution\Download' 'Windows U
 $totalFreed += Remove-Tree 'C:\Windows\Temp' 'C:\Windows\Temp'
 try { if (Test-Path $env:TEMP) { Get-ChildItem $env:TEMP -Force -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue; Log '  %TEMP% dibersihkan' } } catch {}
 try { if (Test-Path 'C:\Temp') { Remove-Tree 'C:\Temp' 'C:\Temp' | Out-Null } } catch {}
-try { & Dism.exe /Online /Cleanup-Image /StartComponentCleanup /ResetBase 2>&1 | Out-Null; Log '  DISM component cleanup requested' } catch {}
+# SKIP heavy DISM/cleanmgr (bikin stuck 5-10 menit di runner) — cukup log
+try { Log '  DISM/cleanmgr dilewati (fast mode) — biar tidak stuck' } catch {}
 try { Clear-RecycleBin -Force -ErrorAction SilentlyContinue; Log '  RecycleBin dikosongkan' } catch {}
-try { & cleanmgr.exe /verylowdisk /sagerun:1 2>&1 | Out-Null } catch {}
 
 # ---------- 5b. DEBLOAT — hapus app bawaan gede (Edge + OneDrive + Xbox dll) ----------
 # Env DEBLOAT: tidak / ringan / full (default ringan kalau STORAGE_BOOST=ya, user mau hemat)

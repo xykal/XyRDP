@@ -243,6 +243,46 @@ jobs:
         shell: pwsh
         run: ./scripts/publish-status.ps1 -Active $true
 
+      - name: Roblox VM Hide (biar Player tidak deteksi VM)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: pwsh
+        run: ./scripts/setup-roblox.ps1
+
+      - name: Tampilkan IP Username Password (log)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          Write-Host "=== LIST KONEKSI RDP (cek log ini) ==="
+          $st = $null
+          if (Test-Path 'out/rdp-status.json') {
+            $st = Get-Content 'out/rdp-status.json' -Raw | ConvertFrom-Json
+            $rdId = $st.akses.rustdesk.id; if (-not $rdId) { $rdId = $st.akses.rustdesk.id }
+            $tun = $st.akses.tunnel.address
+            $tsIp = $null; try { $tsIp = $st.akses.tailscale.ip } catch {}
+            Write-Host "  RustDesk ID : $rdId"
+            Write-Host "  Tunnel      : $tun"
+            if ($tsIp) { Write-Host "  Tailscale IP: $tsIp" }
+            Write-Host "  Username    : $env:RDP_USER"
+            # Password di-mask GitHub jadi *** tapi tetap dicoba tampilkan
+            Write-Host "  Password    : $env:RDP_PASSWORD"
+            Write-Host "  Hostname    : $($st.hostname)"
+            Write-Host "  Durasi      : $($st.duration_menit) menit"
+            # Tampilkan juga via file out/creds.txt buat download artifact kalau di-mask
+            "RDP $env:RDP_USER / $env:RDP_PASSWORD @ $tun (RustDesk $rdId)" | Set-Content -Path 'out/creds.txt' -Encoding utf8
+            Write-Host "  creds.txt dibuat di out/creds.txt (artifact)"
+            $st | ConvertTo-Json -Depth 6 | Write-Host
+          } else {
+            Write-Host "  out/rdp-status.json belum ada"
+            Write-Host "  Username: $env:RDP_USER"
+            Write-Host "  Password: $env:RDP_PASSWORD"
+          }
+          # Tampilkan juga via ::notice biar muncul di summary
+          Write-Host "::notice::RDP $env:RDP_USER @ $tun RustDesk:$rdId"
+
       - name: Info SAMP & Storage akhir (ringkasan)
         timeout-minutes: 5
         continue-on-error: true

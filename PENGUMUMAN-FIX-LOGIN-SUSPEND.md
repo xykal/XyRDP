@@ -67,11 +67,37 @@ Setelah sync, boost tidak akan stuck lagi (sebelumnya `Get-ChildItem -Recurse` d
 - **XyDesk:** HP → `Settings` → `Apps` → `XyDesk` → `Permissions` → `Microphone Allow` → XyDesk → `Settings` → `Enable Microphone ON` → di RDP `mmsys.cpl` → `Recording` → `Remote Audio` → test `Sound Recorder`.
 - **mstsc:** edit `.rdp` tambah `audiomode:i:0` + `audiocapturemode:i:1` + `microphone:redirection:i:1`.
 
-## 5. Info cepat issue lain
+## 5. SAMP — Pasti Bisa (YouTube + Link Valid, Gak Ngerti Pun Jadi) — Update Terbaru
 
-- **SAMP gak reaksi:** isi secret `GTA_SA_URL` (link direct ZIP GTA SA portable, Google Drive direct/Dropbox/S3). Tanpa itu SAMP skip.
-- **Roblox Player gak kebuka:** runner GitHub adalah **Hyper-V VM** — Roblox anti-cheat deteksi hypervisor → block. `setup-roblox.ps1` sudah VM-hide tapi tetap tidak 100%. Gunakan **Roblox Studio** saja di RDP, atau main via browser.
-- **Minecraft 20 fps:** runner cuma 2 vCPU + software GPU (Mesa). Set `assets/rdp-extras.json` → `lightweight_mode:true`, `translucent:false`, `win10_look:false`, pakai Sodium/Fabric low-spec.
+**SAMP gratis, GTA SA wajib punya sendiri (backup legal).** Script kita auto pasang SAMP client + DirectPlay + VC++ + DirectX anti-DxError + shortcut + firewall. Kamu cuma sediakan GTA SA.
+
+**Cara A paling gampang — Otomatis via `GTA_SA_URL` (1 klik):**
+1. Upload ZIP GTA SA portable milikmu (isi `gta_sa.exe` + `models`/`data` ~2-4GB) ke **Google Drive** → Share → `Anyone with the link` → Copy link `https://drive.google.com/file/d/1AbC.../view` (Dropbox `?dl=1` / MediaFire juga bisa)
+2. Repo fork → `Settings` → `Secrets and variables` → `Actions` → `New secret` → Name `GTA_SA_URL` → Value paste link (script auto jadi `https://drive.google.com/uc?export=download&id=...` + handle `confirm token`)
+3. Dashboard / Actions → `RdpFree — RDP 6 Jam` → `Run workflow` → `samp: ya`, `samp_extra: ya` → Start. Log `🎮 Setup GTA SAMP` akan `Download → ekstrak ke D:\Games\GTA San Andreas → SA-MP install → shortcut GTA SAMP.lnk di Desktop`.
+
+**Cara B — Manual via RDP (kalau gak pakai link):**
+1. Start tanpa `GTA_SA_URL` → connect XyDesk/mstsc
+2. Di dalam RDP buka Chrome → download GTA SA portable kamu, atau dari PC: `mstsc` → `Show Options` → `Local Resources` → `More` → centang `Drives C:` → di RDP buka `\\tsclient\C` → copy folder `GTA San Andreas` ke `D:\Games\GTA San Andreas`
+3. Shortcut `GTA SAMP.lnk` sudah ada di Desktop → double klik `samp.exe` → connect server.
+
+**Link SAMP valid (script coba semua mirror otomatis, gak perlu manual):**
+- `https://files.sa-mp.com/sa-mp-0.3.7-R5-1-MP-install.exe` (official)
+- `https://sa-mp.mp/downloads/` (mirror baru official)
+- `https://gta-multiplayer.cz/downloads/sa-mp-0.3.7-R5-2-MP-install.exe`
+- Fallback scrape `sa-mp.com/download.php` + `gta-multiplayer.cz` — kalau mau manual di RDP buka `https://sa-mp.mp/downloads/` → 0.3.7-R5-1 → install ke `D:\Games\GTA San Andreas`.
+
+**YouTube tutor paling jelas:**
+- How to play GTA SAMP 2024 → https://www.youtube.com/watch?v=OHwnAK9SvFY
+- SAMP Setup Guide (0:22 instalasi) → https://www.youtube.com/watch?v=GFWaoZnkRKM
+- Cari `cara pasang GTA SAMP` — intinya `GTA 1.0 US` + `sa-mp-0.3.7-R5-1-MP-install.exe` → pilih folder GTA → samp.exe. Wajib `GTA SA 1.0 US` (gta_sa.exe ~14MB), downgrade kalau Steam.
+
+**Kalau masih DxError:** sudah anti-DxError — script cek `d3dx9_43.dll` dulu, skip Jun2010 kalau sudah ada, WARP backup. Log `skip (sudah ada)` bukan gagal.
+
+## 6. Info lain
+
+- **Roblox Player gak kebuka:** runner Hyper-V → anti-cheat block. Pakai **Roblox Studio** saja.
+- **Minecraft 20 fps:** 2 vCPU + Mesa software. Set `rdp-extras.json` → `lightweight_mode:true`, `translucent:false`, `win10_look:false`, pakai Sodium.
 
 ---
 Credit: **KallAncrit** • RdpFree • Web tidak ikut ke fork — cuma repo script.

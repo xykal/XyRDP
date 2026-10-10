@@ -174,6 +174,7 @@ if ($gtaUrl) {
   $zipPath = Join-Path $env:RUNNER_TEMP 'gta_sa.zip'
   # support Google Drive id extractor
   $realUrl = $gtaUrl
+  $id = $null
   if ($gtaUrl -match 'drive\.google\.com.*[?&]id=([a-zA-Z0-9_-]+)') {
     $id = $Matches[1]
     $realUrl = "https://drive.google.com/uc?export=download&id=$id"
@@ -182,6 +183,11 @@ if ($gtaUrl) {
     $id = $Matches[1]
     $realUrl = "https://drive.google.com/uc?export=download&id=$id"
     Log "  Google Drive file ID: $id"
+  } elseif ($gtaUrl -match 'mediafire\.com/file/') {
+    Log "  MediaFire terdeteksi — coba direct download (bisa perlu bypass halaman)"; $realUrl = $gtaUrl
+  } elseif ($gtaUrl -match 'dropbox\.com/') {
+    $realUrl = $gtaUrl -replace '\?dl=0','?dl=1'
+    Log "  Dropbox -> $realUrl"
   }
   Log "  Downloading... (bisa 2-4GB, tunggu 5-15 menit)"
   $ok = Get-File $realUrl $zipPath 1800  # 30 menit timeout
@@ -298,7 +304,10 @@ try {
   $sampUrls = @(
     'https://files.sa-mp.com/sa-mp-0.3.7-R5-1-MP-install.exe',
     'https://files.sa-mp.com/sa-mp-0.3.7-install.exe',
-    'https://dracoblue.net/files/sa-mp-0.3.DL-R1-install.exe'
+    'https://dracoblue.net/files/sa-mp-0.3.DL-R1-install.exe',
+    'https://sa-mp.mp/downloads/sa-mp-0.3.7-R5-1-MP-install.exe',
+    'https://gta-multiplayer.cz/downloads/sa-mp-0.3.7-R5-2-MP-install.exe',
+    'https://libertycity.net/files/gta-san-andreas/183871-sa-mp-0.3.7-r5.html'
   )
   $sampExe = $null
   $dlOk = $false
@@ -311,18 +320,24 @@ try {
     }
   }
   if (-not $dlOk) {
-    # fallback via samp site scrape
-    Log '  Fallback: ambil dari sa-mp.com/download.php ...'
-    try {
-      $html = Invoke-WebRequest -Uri 'https://sa-mp.com/download.php' -UseBasicParsing -TimeoutSec 30 | Select-Object -ExpandProperty Content
-      $m = [regex]::Match($html, 'href="([^"]*sa-mp[^"]*install\.exe)"')
-      if ($m.Success) {
-        $href = $m.Groups[1].Value
-        if ($href -notlike 'http*') { $href = "https://sa-mp.com/$href" }
-        $tmp2 = Join-Path $env:RUNNER_TEMP 'samp-install-fallback.exe'
-        if (Get-File $href $tmp2 300) { $sampExe = $tmp2; $dlOk = $true; $sampVersion = $href }
-      }
-    } catch { Log "  Scrape sa-mp.com gagal: $($_.Exception.Message)" }
+    # fallback via samp site scrape (sa-mp.com + sa-mp.mp + gta-multiplayer.cz)
+    foreach ($site in @('https://sa-mp.com/download.php','https://sa-mp.mp/downloads/','https://www.gta-multiplayer.cz/en/downloads/')) {
+      Log "  Fallback scrape $site ..."
+      try {
+        $html = Invoke-WebRequest -Uri $site -UseBasicParsing -TimeoutSec 30 | Select-Object -ExpandProperty Content
+        $m = [regex]::Match($html, 'href="([^"]*sa-mp[^"]*install\.exe)"')
+        if ($m.Success) {
+          $href = $m.Groups[1].Value
+          if ($href -notlike 'http*') {
+            $base = ($site -split '/')[0..2] -join '/'
+            $href = "$base/$($href.TrimStart('/'))"
+            if ($href -notlike 'http*') { $href = "https://sa-mp.com/$href" }
+          }
+          $tmp2 = Join-Path $env:RUNNER_TEMP 'samp-install-fallback.exe'
+          if (Get-File $href $tmp2 300) { $sampExe = $tmp2; $dlOk = $true; $sampVersion = $href; Log "  Fallback dapat: $href"; break }
+        }
+      } catch { Log "  Scrape $site gagal: $($_.Exception.Message)" }
+    }
   }
 
   if ($dlOk -and $sampExe) {

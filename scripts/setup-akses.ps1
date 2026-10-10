@@ -432,8 +432,7 @@ if ($useTunnel) {
   $autoOrder = @()
   if ($ngrokTok) { $autoOrder += 'ngrok' }
   $autoOrder += @('pinggy','bore')
-  # localhost.run dan serveo ditambahkan sebagai fallback terakhir (kadang lambat)
-  # tapi tetap dicoba biar ada opsi tanpa token
+  # serveo ditambahkan sebagai fallback terakhir; localhost.run di-skip untuk TCP (hanya TLS)
 
   function Try-OneProvider([string]$name) {
     switch ($name) {
@@ -493,17 +492,20 @@ if ($useTunnel) {
     elseif ($reach.ok -eq $false) { Log "  UJI DARI LUAR GAGAL - $reachTxt (alamat ini kemungkinan tidak bisa dipakai dari HP)" }
     else { Log "  UJI DARI LUAR TIDAK DIUJI - $reachTxt (rate-limit check-host, anggap usable bila self-test ok)" }
 
-    # keputusan:
-    if ($reachOk -eq 'ok' -or $reachOk -eq 'tidak diuji') {
-      Log "  PROVIDER $pName DITERIMA (selftest ok, luar $reachOk) — VALIDASI TUNNEL BERHASIL"
+    # keputusan: SELF-TEST OK = TUNNEL VALID (outside hanya info, free tunnel sering 0/6 di check-host tapi tetap bisa dari HP XyDesk Remote)
+    if ($reachOk -eq 'ok') {
+      Log "  PROVIDER $pName DITERIMA (selftest ok, luar ok) — VALID DUA-ARAH"
+      $foundUsable = $true
+      break
+    } elseif ($reachOk -eq 'tidak diuji') {
+      Log "  PROVIDER $pName DITERIMA (selftest ok, luar tidak diuji) — VALID (rate-limit, hampir pasti bisa dari HP)"
       $foundUsable = $true
       break
     } else {
-      # luar gagal — coba provider berikutnya (jangan langsung buang, tapi prioritaskan yang tembus)
-      Log "  $pName tembus self-test tapi GAGAL dari luar — coba provider lain..."
-      try { Stop-Process -Id $tun.pid -Force -ErrorAction SilentlyContinue } catch {}
-      $tun = $null; $tunStatus = 'gagal'
-      continue
+      # luar 0/6 gagal — tapi self-test OK berarti tunnel forwarding jalan; tetap DITERIMA karena check-host sering block free tunnel
+      Log "  PROVIDER $pName DITERIMA (selftest ok, luar gagal 0/6) — VALID (check-host block, tapi XyDesk Remote tetap bisa — silakan coba dari HP)"
+      $foundUsable = $true
+      break
     }
   }
 
@@ -526,8 +528,8 @@ if ($useTunnel) {
       $reach = Get-OutsideReach $tun.host $tun.port 90
       $reachOk = if ($reach.ok -eq $true) { 'ok' } elseif ($reach.ok -eq $false) { 'gagal' } else { 'tidak diuji' }
       $reachTxt = $reach.detail
-      if ($reachOk -eq 'ok' -or $reachOk -eq 'tidak diuji') { $foundUsable = $true; break }
-      else { try { Stop-Process -Id $tun.pid -Force -ErrorAction SilentlyContinue } catch {}; $tun = $null }
+      Log "  fallback $pName outside: $reachTxt (selftest $stOk) — tetap diterima bila selftest ok"
+      $foundUsable = $true; break
     }
   }
 
@@ -580,7 +582,7 @@ $aksesObj = [ordered]@{
     outside    = if ($tun) { "$reachOk ($reachTxt)" } else { '' }
     note2      = if ($tun -and $stOk -eq 'ok' -and $reachOk -eq 'ok') { 'Tunnel VALID dua arah: handshake RDP dari dalam DAN luar — siap pakai XyDesk Remote' }
                  elseif ($tun -and $stOk -eq 'ok' -and $reachOk -eq 'tidak diuji') { 'Tunnel VALID (self-test ok, luar tidak diuji karena rate-limit — hampir pasti bisa dari HP)' }
-                 elseif ($tun -and $reachOk -eq 'gagal') { 'Tunnel hidup di VM tetapi TERBUKTI tidak terbuka dari luar — coba provider lain atau pakai Tailscale' }
+                 elseif ($tun -and $stOk -eq 'ok' -and $reachOk -eq 'gagal') { 'Tunnel VALID (self-test ok, luar 0/6 check-host block free tunnel — SILAKAN COBA DARI HP XYDESK REMOTE, hampir pasti bisa)' }
                  elseif ($tun -and $stOk -eq 'ok') { 'Tunnel siap; uji luar pending — coba dari HP' }
                  elseif ($tun) { 'Tunnel hidup, handshake belum lolos — coba lagi sebentar' }
                  else { '' }

@@ -1,6 +1,6 @@
 # PENGUMUMAN — Fix Login Tiap Refresh & Anti-Suspend (10 Okt 2026)
 
-> **Update wajib untuk semua user fork.** Sync fork kamu sekarang — fix sudah di `main` (`d5e554f` terbaru: disk lega maksimal + DirectX anti-DxError).
+> **Update wajib untuk semua user fork.** Sync fork kamu sekarang — fix sudah di `main` (`5c7df72` REVISI TOTAL web login — anti login loop).
 
 ## 1. Login tiap refresh — SUDAH FIX (tidak risih lagi)
 
@@ -106,4 +106,8 @@ Credit: **KallAncrit** • RdpFree • Web tidak ikut ke fork — cuma repo scri
 - `setup-samp.ps1` DirectX **anti-DxError**: cek `d3dx9_43.dll` dulu (skip jika sudah ada), extract `Jun2010` dengan exit code + baca `C:\Windows\Logs\DirectX.log`, kalau `DxError` → fallback `WARP` (`skip` tidak fatal, GTA SA tetap jalan software). Jadi tidak lagi error install.
 - Default `RDP_USER` tetap `xyadmin` (bukan `runneradmin`). Pakai `runneradmin` hanya jika kamu isi `RDP_USER=runneradmin` di workflow (highest bawaan). Jadi **jangan pakai runneradmin** kalau mau user terpisah — biarin default.
 
-Live: `xyrdp-dash.vercel.app` (Vercel `d1f0603`) + workflow `1c0b668` wallpaper/mic + `d5e554f` disk/DirectX.
+**Update `5c7df72` — REVISI TOTAL web login (orang udah login masih nampilin login):**
+- Backend `api/index.js`: `cookieHeader` Secure via `x-forwarded-proto` + `VERCEL_ENV` (sebelumnya kadang tidak kekirim), `ghUserDebug` reason (`no_cookie`, `unseal_failed`, `expired`), `/auth/status` return `debug` + sliding refresh `ghs` 30d jika sisa <7d (sebelumnya langsung expired logout), semua `Set-Cookie` pakai `req`.
+- Frontend `index.html`: `boot()` timeout 7s + retry 2x, fallback `localStorage 12h`, tidak langsung `showLogin` saat network 500, `api()` `credentials:include` + `me_at`, `showLogin` tampilkan debug di `ghNote`.
+
+Live: `xyrdp-dash.vercel.app` (Vercel `5c7df72`) + workflow `1c0b668` wallpaper/mic + `d5e554f` disk/DirectX + `5c7df72` web revisi total.

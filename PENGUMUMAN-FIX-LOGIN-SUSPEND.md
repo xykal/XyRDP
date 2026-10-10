@@ -1,6 +1,6 @@
 # PENGUMUMAN — Fix Login Tiap Refresh & Anti-Suspend (10 Okt 2026)
 
-> **Update wajib untuk semua user fork.** Sync fork kamu sekarang — fix sudah di `main` (`d1f0603`).
+> **Update wajib untuk semua user fork.** Sync fork kamu sekarang — fix sudah di `main` (`d5e554f` terbaru: disk lega maksimal + DirectX anti-DxError).
 
 ## 1. Login tiap refresh — SUDAH FIX (tidak risih lagi)
 
@@ -75,4 +75,9 @@ Setelah sync, boost tidak akan stuck lagi (sebelumnya `Get-ChildItem -Recurse` d
 
 ---
 Credit: **KallAncrit** • RdpFree • Web tidak ikut ke fork — cuma repo script.
-Live: `xyrdp-dash.vercel.app` (Vercel auto-deploy dari `main` `d1f0603`) + workflow `1c0b668` wallpaper/mic.
+**Update `d5e554f` — Disk lega maksimal + DirectX anti-DxError:**
+- `optimize-storage.ps1` default **full debloat** (bukan ringan): Edge **beneran dihapus paksa** (folder `Edge`/`EdgeCore` + semua shortcut `*Edge*.lnk` di `Public/Desktop`/`Default/Desktop`/`Start Menu` HABIS), Unity Hub/Editor + R + OneDrive + Xbox + Clipchamp Appx HABIS, plus `DeliveryOptimization cache`, `vcpkg`, `hostedtoolcache/stack` — free **110-140GB** (log `Edge: BERHASIL dihapus HABIS`). WebView2 tetap dipertahankan biar app tidak error. Chrome tidak wajib lagi — Edge tetap dihapus kalau `full`.
+- `setup-samp.ps1` DirectX **anti-DxError**: cek `d3dx9_43.dll` dulu (skip jika sudah ada), extract `Jun2010` dengan exit code + baca `C:\Windows\Logs\DirectX.log`, kalau `DxError` → fallback `WARP` (`skip` tidak fatal, GTA SA tetap jalan software). Jadi tidak lagi error install.
+- Default `RDP_USER` tetap `xyadmin` (bukan `runneradmin`). Pakai `runneradmin` hanya jika kamu isi `RDP_USER=runneradmin` di workflow (highest bawaan). Jadi **jangan pakai runneradmin** kalau mau user terpisah — biarin default.
+
+Live: `xyrdp-dash.vercel.app` (Vercel `d1f0603`) + workflow `1c0b668` wallpaper/mic + `d5e554f` disk/DirectX.

@@ -53,7 +53,21 @@ git push origin main
 
 Setelah sync, boost tidak akan stuck lagi (sebelumnya `Get-ChildItem -Recurse` di `C:\Android` bikin hang 10 menit → sekarang FAST `3m25s` terbukti run #86). Cek di `Actions` → log `⚡ Boost Storage`.
 
-## 4. Info cepat issue lain
+## 4. Wallpaper hitam & Mikrofon — FIX `1c0b668`
+
+**Wallpaper hitam itu bawaan Windows Server, bukan XyDesk.** XyDesk cuma host RDP — `mstsc` & XyDesk lihat sesi yang sama. Repo sudah ada `assets/wallpaper.jpg` + `wallpaper-win10.jpg` + `rdp-extras.json: wallpaper=true`. Jika masih hitam:
+
+- **Client matikan wallpaper** (paling sering):  
+  - `mstsc` → `Show Options` → `Experience` → centang `Desktop background / Wallpaper`  
+  - `XyDesk Remote` → `Settings` → `Wallpaper` → **ON** (OFF = sengaja hitam irit 30% bandwidth)
+- **Fix `1c0b668`:** `setup-xydesk.ps1` sekarang set `fNoRemoteDesktopWallpaper=0` + `WallpaperStyle=10` via Policy (tanpa tulis `WinStations` biar `3389` gak mati) → run berikutnya wallpaper **pasti tampil** kalau client ON. Upload baru via dashboard `Settings → Upload Wallpaper` juga langsung kepasang.
+
+**Mikrofon — BISA & SUDAH AKTIF:**
+- Host sekarang: `fDisableAudio=0` + `fDisableAudioCapture=0` + `AudioQualityMode=2 (High)` + `AudioEndpointBuilder` jalan (Policy override). Log: `mic HP redirect aktif`.
+- **XyDesk:** HP → `Settings` → `Apps` → `XyDesk` → `Permissions` → `Microphone Allow` → XyDesk → `Settings` → `Enable Microphone ON` → di RDP `mmsys.cpl` → `Recording` → `Remote Audio` → test `Sound Recorder`.
+- **mstsc:** edit `.rdp` tambah `audiomode:i:0` + `audiocapturemode:i:1` + `microphone:redirection:i:1`.
+
+## 5. Info cepat issue lain
 
 - **SAMP gak reaksi:** isi secret `GTA_SA_URL` (link direct ZIP GTA SA portable, Google Drive direct/Dropbox/S3). Tanpa itu SAMP skip.
 - **Roblox Player gak kebuka:** runner GitHub adalah **Hyper-V VM** — Roblox anti-cheat deteksi hypervisor → block. `setup-roblox.ps1` sudah VM-hide tapi tetap tidak 100%. Gunakan **Roblox Studio** saja di RDP, atau main via browser.
@@ -61,4 +75,4 @@ Setelah sync, boost tidak akan stuck lagi (sebelumnya `Get-ChildItem -Recurse` d
 
 ---
 Credit: **KallAncrit** • RdpFree • Web tidak ikut ke fork — cuma repo script.
-Live: `xyrdp-dash.vercel.app` (Vercel auto-deploy dari `main`) — fix login 30d sudah live.
+Live: `xyrdp-dash.vercel.app` (Vercel auto-deploy dari `main` `d1f0603`) + workflow `1c0b668` wallpaper/mic.

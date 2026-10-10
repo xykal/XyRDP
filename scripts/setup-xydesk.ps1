@@ -62,17 +62,32 @@ Set-Reg $tsPol 'fSingleSessionPerUser' 0 'DWord' | Out-Null
 Log "  RDP: denyTS=$okDeny multisesi=$okMulti"
 $rdpAlive1 = Probe-Rdp 'setelah setelan multi-sesi (root+policy)'
 
-# ---------- 1b. Audio + font: kebijakan + audit kunci WinStation (tanpa tulis) ----------
-Set-Reg $tsPol 'fDisableAudioCapture' 0 'DWord' | Out-Null
+# ---------- 1b. Audio + font + wallpaper RDP: kebijakan (Policy override WinStations) ----------
+# Audio: aktifkan playback + mic via Policy (override WinStations tanpa tulis WinStations biar listener gak mati)
+$okAudioPol = Set-Reg $tsPol 'fDisableAudio' 0 'DWord'
+$okMicPol   = Set-Reg $tsPol 'fDisableAudioCapture' 0 'DWord'
+# Wallpaper RDP: jangan blok wallpaper saat RDP (hemat bandwidth -> hitam kalau 1)
+$okWallPol  = Set-Reg $tsPol 'fNoRemoteDesktopWallpaper' 0 'DWord'
+# Audio Quality: 0=Dynamic, 2=High
+Set-Reg $tsPol 'AudioQualityMode' 2 'DWord' | Out-Null
+# Pastikan Windows Audio services hidup (Audiosrv + AudioEndpointBuilder)
+try { Set-Service -Name 'AudioEndpointBuilder' -StartupType Automatic -ErrorAction SilentlyContinue; Start-Service -Name 'AudioEndpointBuilder' -ErrorAction SilentlyContinue } catch {}
+# Audit WinStations hanya untuk log (tidak ditulis, biar 3389 gak mati)
 $curAudio = Get-Reg $tsTcp 'fDisableAudio'
 $curMic   = Get-Reg $tsTcp 'fDisableAudioCapture'
+$curWall  = Get-Reg $tsTcp 'fNoRemoteDesktopWallpaper'
 $curFs    = Get-Reg $tsTcp 'fNoFontSmoothing'
 $curAa    = Get-Reg $tsTcp 'AllowFontAntiAlias'
-Log "  audit WinStations\RDP-Tcp (tanpa tulis): fDisableAudio=$curAudio fDisableAudioCapture=$curMic fNoFontSmoothing=$curFs AllowFontAntiAlias=$curAa"
-# audio out/mic dianggap aktif kalau nilainya bukan 1 (null = default Windows)
-$okAudio = ("$curAudio" -ne '1')
-$okMic   = ("$curMic"   -ne '1')
-$rdpAlive2 = Probe-Rdp 'setelah kebijakan audio + audit WinStation'
+$polAudio = Get-Reg $tsPol 'fDisableAudio'
+$polMic   = Get-Reg $tsPol 'fDisableAudioCapture'
+$polWall  = Get-Reg $tsPol 'fNoRemoteDesktopWallpaper'
+Log "  policy: fDisableAudio=$polAudio fDisableAudioCapture=$polMic fNoRemoteDesktopWallpaper=$polWall (okAudioPol=$okAudioPol okMicPol=$okMicPol okWallPol=$okWallPol)"
+Log "  audit WinStations\RDP-Tcp (tanpa tulis): fDisableAudio=$curAudio fDisableAudioCapture=$curMic fNoRemoteDesktopWallpaper=$curWall fNoFontSmoothing=$curFs AllowFontAntiAlias=$curAa"
+# Policy 0 = aktif, jadi cek Policy dulu; WinStations hanya fallback
+$okAudio = ($polAudio -eq 0) -or (($null -eq $polAudio) -and ("$curAudio" -ne '1'))
+$okMic   = ($polMic -eq 0) -or (($null -eq $polMic) -and ("$curMic" -ne '1'))
+$okWall  = ($polWall -eq 0) -or (($null -eq $polWall) -and ("$curWall" -ne '1'))
+$rdpAlive2 = Probe-Rdp 'setelah kebijakan audio+wallpaper + audit WinStation'
 
 # ---------- 2. Kebijakan grafis XyDesk (AVC444 / hardware encode) ----------
 $okAvc  = Set-Reg $tsPol 'AVC444ModePreferred'       1 'DWord'
@@ -150,15 +165,16 @@ if ($rdpReadyAt) { Log "  RDP masih sehat setelah tweak: $rdpReadyAt`:3389 (hand
 else { Log '  PERINGATAN: RDP belum menjawab handshake setelah tweak — setup-akses akan menunggu lagi' }
 
 # ---------- 7. Status (apa adanya, bukan asumsi) ----------
-$allOk = $okDeny -and $okMulti -and $okAudio -and $okMic -and $okAvc -and $okAvc2 -and ($fontTxt -like 'ok*')
+$allOk = $okDeny -and $okMulti -and $okAudio -and $okMic -and $okWall -and $okAvc -and $okAvc2 -and ($fontTxt -like 'ok*')
 Update-Status @{ xydesk = [ordered]@{
     host          = if ($allOk) { 'ok' } else { 'sebagian' }
     denyts        = if ($okDeny) { 'ok' } else { 'gagal' }
     multisession  = if ($okMulti) { 'ok' } else { 'gagal' }
     avc444        = $avcTxt
     fontsmoothing = $fontTxt
-    audio_out     = if ($okAudio) { "ok (fDisableAudio=$curAudio)" } else { "gagal (fDisableAudio=$curAudio di image)" }
-    audio_mic     = if ($okMic) { "ok (fDisableAudioCapture=$curMic)" } else { "gagal (fDisableAudioCapture=$curMic di image)" }
+    audio_out     = if ($okAudio) { "ok (policy fDisableAudio=$polAudio, WinStations=$curAudio)" } else { "gagal (policy=$polAudio WinStations=$curAudio)" }
+    audio_mic     = if ($okMic) { "ok (policy fDisableAudioCapture=$polMic, WinStations=$curMic) - mic HP redirect aktif, Allow di HP" } else { "gagal (policy=$polMic WinStations=$curMic)" }
+    wallpaper_rdp = if ($okWall) { "ok (policy fNoRemoteDesktopWallpaper=$polWall) - wallpaper RDP tampil, cek client Experience→Wallpaper ON" } else { "gagal (policy=$polWall WinStations=$curWall) - RDP blok wallpaper" }
     firewall      = "tcp3389=$fwTcp udp3389=$fwUdp udp4433=$fw4433"
     services      = $svcTxt
     rdp_ready     = if ($rdpReadyAt) { "$rdpReadyAt (handshake OK)" } else { 'belum' }

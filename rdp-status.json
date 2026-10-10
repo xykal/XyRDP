@@ -52,6 +52,11 @@
     "mode": "software",
     "note": "GPU software (CPU): OpenGL 4.6 (llvmpipe) + Vulkan lavapipe + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat."
   },
+  "memory": {
+    "total_mb": 16379,
+    "available_mb": 13644,
+    "measured": "akhir setup"
+  },
   "akses": {
     "mode": "semua",
     "tailscale": {
@@ -70,15 +75,11 @@
       "port": 46347,
       "address": "kxjqy-135-119-39-208.run.pinggy-free.link:46347",
       "rdp_local": "127.0.0.1 -> terbuka",
-      "selftest": "ok",
       "outside": "gagal (0/6 node luar bisa tersambung)",
       "note2": "Tunnel VALID (self-test ok, luar 0/6 check-host block free tunnel — SILAKAN COBA DARI HP XYDESK REMOTE, hampir pasti bisa)",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin"
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin",
+      "selftest": "gagal"
     }
   },
-  "memory": {
-    "total_mb": 16379,
-    "available_mb": 13644,
-    "measured": "akhir setup"
-  }
+  "heartbeat_at": "2026-10-10T11:41:06Z"
 }

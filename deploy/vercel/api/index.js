@@ -64,11 +64,25 @@ function normalizeRdpUser(value) {
 const WALLPAPER_RE = /^wallpaper\.(jpg|jpeg|png|bmp)$/i;
 const SECRETS_REQUIRED = ['RDP_PASSWORD', 'TAILSCALE_AUTH_KEY'];
 const SECRETS_OPTIONAL = ['NGROK_AUTHTOKEN', 'CLEANUP_TOKEN'];
-const SESSION_TTL_DAYS = 7;
-const ADMIN_TTL_SECONDS = 12 * 60 * 60;
+const SESSION_TTL_DAYS = 30;
+const ADMIN_TTL_SECONDS = 30 * 24 * 60 * 60;
 const ADMIN_LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const ADMIN_LOGIN_MAX_FAILURES = 5;
 const adminLoginAttempts = new Map();
+const startAttempts = new Map();
+const START_WINDOW_MS = 5 * 60 * 1000;
+const START_MAX = 2;
+function checkStartRate(req, login) {
+  const key = (login || clientAddress(req)).toLowerCase() + '|' + clientAddress(req);
+  const now = Date.now();
+  let b = startAttempts.get(key);
+  if (!b || now - b.at >= START_WINDOW_MS) b = { at: now, count: 0 };
+  b.count++;
+  startAttempts.set(key, b);
+  if (startAttempts.size > 2000) for (const [k,v] of startAttempts) if (now - v.at >= START_WINDOW_MS) startAttempts.delete(k);
+  if (b.count > START_MAX) return { limited: true, retry: Math.ceil((START_WINDOW_MS - (now - b.at))/1000) };
+  return { limited: false, retry: 0 };
+}
 function sessionSecretReady() {
   return !!process.env.SESSION_SECRET && Buffer.byteLength(process.env.SESSION_SECRET, 'utf8') >= 32;
 }
@@ -719,6 +733,13 @@ module.exports = async (req, res) => {
         if (st.error === 'token') return send(401, { error: 'Token GitHub kamu sudah tidak berlaku — login lagi.', need_login: true });
         if (!st.exists) return send(400, { error: `Repo ${ctx.owner}/${ctx.repo} belum ada. Buka panel "Repo kamu" → Tombol "BUAT REPO DARI TEMPLATE".` });
         if (st.missing_required.length) return send(400, { error: `Secret repo kamu belum lengkap: ${st.missing_required.join(', ')}. Isi dulu di ${ctx.owner}/${ctx.repo} → Settings → Secrets and variables → Actions.` });
+      }
+      // anti-suspend: batasi dispatch per user/IP 2x per 5 menit + cek run aktif
+      {
+        const rl = checkStartRate(req, ctx && ctx.login || '');
+        if (rl.limited) return send(429, { error: `Terlalu sering memulai sesi. Tunggu ${rl.retry}s lagi. Limit 2x per 5 menit untuk hindari deteksi abuse GitHub.`, retry: rl.retry });
+        const ar = await activeRun(ctx);
+        if (ar && (ar.status === 'queued' || ar.status === 'in_progress')) return send(429, { error: `Masih ada sesi aktif #${ar.id} (${ar.status}). Tunggu selesai atau Stop dulu.`, retry: 120 });
       }
       const body = await readBody(req);
       const rdpUser = normalizeRdpUser(body.rdp_user || 'xyadmin');

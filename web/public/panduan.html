@@ -50,6 +50,25 @@
     <div class="linkrow"><a class="btn" href="https://support.github.com/contact/reinstatement" target="_blank" rel="noopener">Buka form appeal resmi ↗</a></div>
     <div class="callout" style="margin-top:14px">Sandi/Tailscale key yang tidak lengkap biasanya menyebabkan setup atau koneksi gagal; itu bukan penjelasan yang cukup untuk suspend akun.</div>
   </article>
+  <article class="card wide" style="border-color:#3a5a4a;background:linear-gradient(145deg,#1a241e,#151712)">
+    <h2>Login tiap refresh &amp; kenapa dashboard bisa suspend (vs fork manual aman)</h2>
+    <p><b>Login tiap refresh (sudah diperbaiki):</b> sesi dashboard disimpan di cookie <code>ghs</code> (GitHub) & <code>sid</code> (admin) terenkripsi AES-256-GCM + <code>SESSION_SECRET</code> + <code>Max-Age</code>. Bug lama: fetch tanpa <code>credentials:'include'</code> bikin cookie tidak terkirim → <code>/api/auth/status</code> balikin tanpa <code>mode</code> → frontend paksa <code>showLogin()</code> tiap reload. Fix sekarang: <code>fetch(...,{credentials:'include'})</code>, <code>SESSION_TTL_DAYS</code> 7→<b>30 hari</b>, <code>ADMIN_TTL</code> 12 jam→<b>30 hari</b>, plus cache <code>localStorage: xyrdp_me_cache</code> biar refresh tetap masuk app dulu sambil verifikasi background. Pastikan <code>SESSION_SECRET</code> di Vercel tidak ganti-ganti (kalau diganti semua cookie lama invalid).</p>
+    <p><b>Kenapa “Masuk dengan GitHub” via dashboard lebih berisiko suspend daripada fork manual?</b></p>
+    <ul>
+      <li><b>Fork manual (klik “Use this template” / Fork di github.com):</b> aksi native GitHub, rate limit per akun kamu, repo hasil fork jadi <code>kamu/RdpFree</code> dan run workflow jalan di repo kamu pakai token kamu sendiri. Tidak melewati IP Vercel/dashboard. Paling aman.</li>
+      <li><b>Dashboard “Masuk dengan GitHub” (OAuth App):</b> setelah OAuth, dashboard pakai token kamu untuk <code>POST /repos/{owner}/{repo}/generate</code> (buat repo dari template), <code>PUT /actions/secrets</code>, dan <code>POST /actions/workflows/.../dispatches</code> — semua lewat API dari IP Vercel (<code>xyrdp-dash.vercel.app</code>). Kalau banyak user klik “Buat Repo” + “Start” berulang dalam menit yang sama, GitHub bisa deteksi sebagai <b>abuse/automation spam</b> (repo generate + workflow_dispatch spam dari satu IP/OAuth app) → flag → suspend.</li>
+    </ul>
+    <div class="callout">Dashboard sekarang dibatasi: <b>max 2× Start per 5 menit per user/IP</b> + blokir dispatch kalau masih ada run <code>queued/in_progress</code> (harus Stop dulu). Buat hindari deteksi spam GitHub.</div>
+    <p><b>Cara aman pakai dashboard (supaya tidak suspend):</b></p>
+    <ol>
+      <li><b>Paling aman: fork manual dulu</b> di github.com → buka <code>xykal/XyRDP</code> → <code>Use this template → Create a new repository</code> (beri nama <code>RdpFree</code>) → baru login dashboard (otomatis pakai <code>kamu/RdpFree</code>).</li>
+      <li>Jangan spam “Buat Repo” atau “Start” — tunggu run selesai. Kalau buat repo baru, diamkan 1–2 menit sebelum start.</li>
+      <li>Isi secret <code>RDP_PASSWORD</code> & <code>TAILSCALE_AUTH_KEY</code> (jangan share <code>tskey-auth-...</code> publik). Optional: <code>GTA_SA_URL</code> untuk SAMP, <code>NGROK_AUTHTOKEN</code> jika pakai ngrok.</li>
+      <li>Jangan pakai 1 akun untuk buat 5+ repo RDP dalam sejam — itu pola spam yang paling sering ke-flag.</li>
+      <li>Login dashboard sekarang tahan 30 hari — tidak perlu login tiap refresh. Kalau tetap disuruh login: clear cookie <code>ghs/sid</code> → login ulang, atau cek Vercel <code>SESSION_SECRET</code> (≥32 char, jangan di-rotate). Logout → hapus cache localStorage.</li>
+    </ol>
+    <p class="small muted">Catatan: kebijakan GitHub 27 Aug 2026 tetap berlaku — runner GitHub bukan untuk RDP umum 6 jam. Panduan ini hanya mengurangi risiko <i>automation spam</i>, bukan mengubah batas Terms.</p>
+  </article>
   <article class="card wide">
     <h2>Status teknis wallpaper</h2>
     <p>Kami menemukan bahwa skrip lama menganggap wallpaper berhasil tanpa memeriksa hasil fungsi Windows dan menulis pengaturan ke profil runner/default, bukan selalu ke sesi RDP yang sedang dilihat pengguna. Karena sesi baru dijeda, perubahan wallpaper tidak akan diterapkan atau diuji sekarang. Status “berhasil” pada log lama belum membuktikan gambar tampil di desktop. Perbaikan perlu diuji pada host desktop yang memang mengizinkan akses RDP.</p>

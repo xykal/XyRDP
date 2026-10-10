@@ -112,8 +112,16 @@ function unseal(str) {
   } catch { return null; }
 }
 
-function cookieHeader(name, value, maxAge) {
-  const secure = process.env.VERCEL_ENV ? '; Secure' : '';
+function cookieHeader(name, value, maxAge, req) {
+  // Secure jika di Vercel (https) atau x-forwarded-proto=https, atau di produksi
+  let isHttps = !!process.env.VERCEL_ENV;
+  try {
+    const proto = (req && req.headers && (req.headers['x-forwarded-proto'] || '')) || '';
+    if (proto && String(proto).includes('https')) isHttps = true;
+    if (!isHttps && process.env.VERCEL_URL) isHttps = true;
+  } catch {}
+  const secure = isHttps ? '; Secure' : '';
+  // HttpOnly + Lax + Path=/; SameSite Lax aman untuk OAuth redirect 302
   return `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 function readCookies(req) {
@@ -198,7 +206,21 @@ function ghUser(req) {
   if (s.e && Date.now() > s.e) return null;
   const [o, r] = String(s.r).split('/');
   if (!o || !r) return null;
-  return { token: s.t, login: s.l || '', name: s.n || '', avatar: s.a || '', owner: o, repo: r, is_owner: (s.l || '').toLowerCase() === ENV.owner_login };
+  return { token: s.t, login: s.l || '', name: s.n || '', avatar: s.a || '', owner: o, repo: r, is_owner: (s.l || '').toLowerCase() === ENV.owner_login, exp: s.e };
+}
+function ghUserDebug(req) {
+  // untuk /auth/status debug — tidak bocorkan token
+  if (!sessionSecretReady()) return { reason: 'session_secret_not_ready' };
+  const c = readCookies(req);
+  if (!c.ghs) return { reason: 'no_cookie_ghs' };
+  const s = unseal(c.ghs);
+  if (!s) return { reason: 'unseal_failed' };
+  if (!s.t) return { reason: 'no_token' };
+  if (!s.r) return { reason: 'no_repo' };
+  if (s.e && Date.now() > s.e) return { reason: 'expired', exp: s.e };
+  const [o,r]=String(s.r).split('/');
+  if (!o||!r) return { reason: 'bad_repo_format', r: s.r };
+  return { reason: 'ok', login: s.l, repo: s.r, exp: s.e };
 }
 
 /* ------------------------------------------------------------------ ctx ---- */
@@ -453,10 +475,26 @@ module.exports = async (req, res) => {
     /* ============================ AUTH ==================================== */
     if (req.method === 'GET' && p === '/auth/status') {
       const ctx = makeCtx(req);
+      let debug = null;
+      if (!ctx) {
+        try { debug = ghUserDebug(req); } catch (e) { debug = { reason: 'debug_error', err: String(e && e.message || e).slice(0,120) }; }
+        // jangan bocorkan token, hanya reason
+      }
+      // sliding refresh: jika login valid dan sisa <7 hari, perpanjang cookie secara silent
+      if (ctx && ctx.kind === 'user') {
+        try {
+          const u = ghUser(req);
+          if (u && u.exp && (u.exp - Date.now() < 7*24*3600*1000)) {
+            const payload = { t: u.token, l: u.login, n: u.name || '', a: u.avatar || '', r: `${u.owner}/${u.repo}`, e: Date.now() + SESSION_TTL_DAYS*24*3600*1000 };
+            res.setHeader('Set-Cookie', cookieHeader('ghs', seal(payload), SESSION_TTL_DAYS*24*3600, req));
+          }
+        } catch {}
+      }
       return send(200, {
         oauth_ready: !!(ENV.oauth_id && ENV.oauth_secret && sessionSecretReady()),
         admin_login: adminConfigured(),
         admin_login_ready: adminLoginReady(),
+        session_ready: sessionSecretReady(),
         open_admin: false,
         turnstile_required: adminConfigured(),
         turnstile_site_key: ENV.turnstile_site_key,
@@ -466,6 +504,7 @@ module.exports = async (req, res) => {
         mode: ctx ? ctx.kind : null,
         login: ctx && ctx.kind === 'user' ? ctx.login : (ctx ? ENV.owner_login : null),
         repo: ctx ? `${ctx.owner}/${ctx.repo}` : null,
+        debug: debug,
       });
     }
 
@@ -478,7 +517,7 @@ module.exports = async (req, res) => {
         + `&redirect_uri=${encodeURIComponent(cb)}`
         + `&scope=${encodeURIComponent('repo')}`
         + `&state=${state}&allow_signup=0`;
-      return redirect(loc, [cookieHeader('ost', state, 900)]);
+      return redirect(loc, [cookieHeader('ost', state, 900, req)]);
     }
 
     if (req.method === 'GET' && p === '/auth/callback') {
@@ -502,11 +541,11 @@ module.exports = async (req, res) => {
         r: `${me.login}/${ENV.repo}`,
         e: Date.now() + SESSION_TTL_DAYS * 24 * 3600 * 1000,
       };
-      return redirect('/', [cookieHeader('ghs', seal(payload), SESSION_TTL_DAYS * 24 * 3600), cookieHeader('ost', '', 0)]);
+      return redirect('/', [cookieHeader('ghs', seal(payload), SESSION_TTL_DAYS * 24 * 3600, req), cookieHeader('ost', '', 0, req)]);
     }
 
     if (req.method === 'POST' && p === '/auth/logout') {
-      res.writeHead(200, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': [cookieHeader('ghs', '', 0), cookieHeader('sid', '', 0)] }, SECURITY_HEADERS));
+      res.writeHead(200, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': [cookieHeader('ghs', '', 0, req), cookieHeader('sid', '', 0, req)] }, SECURITY_HEADERS));
       return res.end(JSON.stringify({ ok: true }));
     }
 
@@ -532,7 +571,7 @@ module.exports = async (req, res) => {
       }
       loginRate(req, false, true);
       const sid = seal({ k: 'admin', v: adminCredVersion(), e: Date.now() + ADMIN_TTL_SECONDS * 1000 });
-      res.writeHead(200, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookieHeader('sid', sid, ADMIN_TTL_SECONDS) }, SECURITY_HEADERS));
+      res.writeHead(200, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookieHeader('sid', sid, ADMIN_TTL_SECONDS, req) }, SECURITY_HEADERS));
       return res.end(JSON.stringify({ ok: true }));
     }
 
@@ -541,7 +580,7 @@ module.exports = async (req, res) => {
     if ((req.method === 'POST' || req.method === 'GET') && p === '/ad/verify') {
       const body = await readBody(req).catch(()=>({}));
       // simple verify: client watched 15s; we trust client + set cookie; APK can send X-Ad-Verified
-      res.setHeader('Set-Cookie', cookieHeader('ad_verified', '1', 60*60*24*30));
+      res.setHeader('Set-Cookie', cookieHeader('ad_verified', '1', 60*60*24*30, req));
       // also set local flag via header for APK
       return send(200, { ok: true, unlocked: true, via: 'cookie', at: Date.now() });
     }
@@ -621,7 +660,7 @@ module.exports = async (req, res) => {
             t: ctx.token, l: ctx.login, n: ctx.name || '', a: ctx.avatar || '',
             r: `${ctx.login}/${name}`, e: Date.now() + SESSION_TTL_DAYS * 24 * 3600 * 1000,
           };
-          res.setHeader('Set-Cookie', cookieHeader('ghs', seal(payload), SESSION_TTL_DAYS * 24 * 3600));
+          res.setHeader('Set-Cookie', cookieHeader('ghs', seal(payload), SESSION_TTL_DAYS * 24 * 3600, req));
           notes.push(`Sesi dipindah ke ${ctx.login}/${name}`);
         }
       }

@@ -1,5 +1,5 @@
 {
-  "active": true,
+  "active": false,
   "hostname": "xyrdp-tunnel-valid-84",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
@@ -52,33 +52,34 @@
     "mesa": "26.2.4",
     "debug": ""
   },
-  "akses": {
-    "mode": "tunnel",
-    "tailscale": {
-      "status": "skip",
-      "ip": "",
-      "magicdns": "",
-      "hostname": "",
-      "funnel": "",
-      "funnel_addr": "",
-      "note": "tidak dipakai di sesi ini"
-    },
-    "tunnel": {
-      "status": "ok",
-      "provider": "pinggy",
-      "host": "kxmyg-20-106-191-80.run.pinggy-free.link",
-      "port": 42233,
-      "address": "kxmyg-20-106-191-80.run.pinggy-free.link:42233",
-      "rdp_local": "127.0.0.1 -> terbuka",
-      "selftest": "ok",
-      "outside": "gagal (0/6 node luar bisa tersambung)",
-      "note2": "Tunnel VALID (self-test ok, luar 0/6 check-host block free tunnel — SILAKAN COBA DARI HP XYDESK REMOTE, hampir pasti bisa)",
-      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin"
-    }
-  },
   "memory": {
     "total_mb": 16379,
     "available_mb": 13890,
     "measured": "akhir setup"
-  }
+  },
+  "akses": {
+    "mode": "tunnel",
+    "tailscale": {
+      "status": "skip",
+      "funnel": "",
+      "note": "tidak dipakai di sesi ini",
+      "ip": "",
+      "magicdns": "",
+      "hostname": "",
+      "funnel_addr": ""
+    },
+    "tunnel": {
+      "status": "ok",
+      "provider": "pinggy",
+      "rdp_local": "127.0.0.1 -> terbuka",
+      "outside": "gagal (0/6 node luar bisa tersambung)",
+      "note2": "Tunnel VALID (self-test ok, luar 0/6 check-host block free tunnel — SILAKAN COBA DARI HP XYDESK REMOTE, hampir pasti bisa)",
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user runneradmin",
+      "selftest": "gagal",
+      "host": "",
+      "port": 0,
+      "address": ""
+    }
+  },
+  "stopped_at": "2026-10-10T10:59:53Z"
 }

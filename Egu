@@ -1,0 +1,206 @@
+
+xykal
+XyRDP
+Repository navigation
+Code
+Issues
+Pull requests
+Actions
+Projects
+Commit 3a02b53
+xykal
+xykal
+committed
+8 hours ago
+fix: preserve Windows installer temp and validate Tailscale installation; verify published session state
+main
+1 parent 
+b0b399a
+ commit 
+3a02b53
+6 files changed
+
++71
+-18
+Lines changed: 71 additions & 18 deletions
+Search within code
+ 
+‎.github/workflows/rdp-6h.yml‎
+Original file line number	Diff line number	Diff line change
+@@ -271,7 +271,6 @@ jobs:
+        Write-Host "Mikrofon: $($st.media.microphone) | Wallpaper: $($st.media.wallpaper)"'
+    - name: Publish status ke branch 'status'
+      continue-on-error: true
+      timeout-minutes: 10
+      shell: pwsh
+      run: ./scripts/publish-status.ps1 -Active $true
+‎.github/workflows/validate-tailscale.yml‎
+Original file line number	Diff line number	Diff line change
+@@ -0,0 +1,32 @@
+name: Validate Tailscale installer
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: windows-2022
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse changed PowerShell scripts
+        shell: pwsh
+        run: |
+          foreach ($file in @('setup-akses','optimize-storage','setup-rdp','publish-status')) {
+            $errors=$null; $tokens=$null
+            [System.Management.Automation.Language.Parser]::ParseFile("$pwd/scripts/$file.ps1",[ref]$tokens,[ref]$errors) | Out-Null
+            if ($errors.Count) { throw ($errors | Out-String) }
+          }
+      - name: Simulate missing Windows temp directory after old storage cleanup
+        shell: pwsh
+        run: |
+          # Disposable CI runner only; no RDP, credentials, or tailnet registration.
+          Remove-Item "$env:SystemRoot\Temp" -Recurse -Force -ErrorAction SilentlyContinue
+      - name: Install and verify signed Tailscale package
+        shell: pwsh
+        run: ./scripts/setup-akses.ps1 -InstallOnly
+      - name: Verify idempotent installation and service
+        shell: pwsh
+        run: |
+          ./scripts/setup-akses.ps1 -InstallOnly
+          if ((Get-Service Tailscale).Status -ne 'Running') { throw 'Tailscale service is not running' }
+‎scripts/optimize-storage.ps1‎
+Original file line number	Diff line number	Diff line change
+@@ -171,7 +171,8 @@ try {
+
+# ---------- 5. Windows Update + Temp ----------
+$totalFreed += Remove-Tree 'C:\Windows\SoftwareDistribution\Download' 'Windows Update Download'
+$totalFreed += Remove-Tree 'C:\Windows\Temp' 'C:\Windows\Temp'
+# Preserve the SYSTEM temp directory and its ACL; MSI installers need it later.
+try { Get-ChildItem "$env:SystemRoot\Temp" -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; Log '  Windows Temp dibersihkan tanpa menghapus folder/ACL' } catch {}
+try { if (Test-Path $env:TEMP) { Get-ChildItem $env:TEMP -Force -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue; Log '  %TEMP% dibersihkan' } } catch {}
+try { if (Test-Path 'C:\Temp') { Remove-Tree 'C:\Temp' 'C:\Temp' | Out-Null } } catch {}
+# SKIP heavy DISM/cleanmgr (bikin stuck 5-10 menit di runner) — cukup log
+‎scripts/publish-status.ps1‎
+Original file line number	Diff line number	Diff line change
+@@ -2,8 +2,7 @@
+#  publish-status.ps1 — publikasikan out/rdp-status.json ke branch `status`
+#  1) GitHub Contents API via Invoke-RestMethod (Bearer GITHUB_TOKEN)  <- utama
+#  2) Fallback: git push pakai header "Authorization: Bearer"          <- terbukti jalan
+#  Verifikasi via raw.githubusercontent (retry). Publish gagal TIDAK
+#  mematikan sesi (exit 0) — web dashboard masih bisa baca IP dari log run.
+#  Verifikasi API mencocokkan run, attempt, dan active. Gagal publikasi = exit 1.
+#  File TIDAK berisi password.
+# ============================================================================
+# [string] + koersi: supaya aman dipanggil baik sebagai `-Active $false` (blok pwsh)
+@@ -60,7 +59,7 @@ $json | ConvertTo-Json -Depth 6 | Set-Content -Path $src -Encoding utf8
+function GH([string]$method, [string]$apiPath, $body) {
+  $hdrs = @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = 'application/vnd.github+json'; 'User-Agent' = 'XyRDP' }
+  try {
+    $p = @{ Uri = "https://api.github.com$apiPath"; Method = $method; Headers = $hdrs }
+    $p = @{ Uri = "https://api.github.com$apiPath"; Method = $method; Headers = $hdrs; TimeoutSec = 30 }
+    if ($null -ne $body) { $p.Body = ($body | ConvertTo-Json -Depth 6); $p.ContentType = 'application/json' }
+    Invoke-RestMethod @p
+  } catch { Log "GH $method $apiPath -> $($_.Exception.Message)"; $null }
+@@ -99,16 +98,16 @@ function Verify-Published {
+
+function Verify-PublishedAPI {
+  try {
+    $c = GH 'GET' "/repos/$repo/contents/rdp-status.json?ref=status" $null
+    $c = GH 'GET' "/repos/$repo/contents/rdp-status.json?ref=$statusBranch" $null
+    if ($c -and $c.content) {
+      $t = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($c.content)) | ConvertFrom-Json
+      return "$($t.run_id)" -eq "$($env:GITHUB_RUN_ID)"
+      return ("$($t.run_id)" -eq "$($env:GITHUB_RUN_ID)" -and "$($t.run_attempt)" -eq "$($json.run_attempt)" -and [bool]$t.active -eq $isActive)
+    }
+  } catch {}
+  return $false
+}
+
+if (-not (Verify-PublishedAPI) -and -not (Verify-Published)) {
+if (-not (Verify-PublishedAPI)) {
+  Log "verifikasi belum lolos — coba fallback git push..."
+  $tmp = Join-Path $env:RUNNER_TEMP ("xyrdpstatus-" + (Get-Random -Maximum 999999))
+  try {
+@@ -128,9 +127,9 @@ if (-not (Verify-PublishedAPI) -and -not (Verify-Published)) {
+  }
+}
+
+if (Verify-Published) {
+  Log "OK — rdp-status.json (active=$($json.active)) live: https://raw.githubusercontent.com/$repo/$statusBranch/rdp-status.json"
+} else {
+  Log "status belum terverifikasi via raw (cache bisa telat s/d 5 menit; web pakai fallback API + parser log). Sesi TETAP jalan."
+if (Verify-PublishedAPI) {
+  Log "OK — status run/attempt/active terverifikasi melalui GitHub API."
+  exit 0
+}
+exit 0
+Log 'Gagal mempublikasikan status. Dashboard tidak dapat menyediakan koneksi; periksa izin Contents write workflow.'
+exit 1
+‎scripts/setup-akses.ps1‎
+Original file line number	Diff line number	Diff line change
+@@ -1,4 +1,5 @@
+# RdpFree: private Tailscale access only. Credit: KallAncrit.
+param([switch]$InstallOnly)
+$XyTag = 'RdpFree:access'
+. "$PSScriptRoot/lib-common.ps1"
+$ErrorActionPreference = 'Stop'
+@@ -9,24 +10,44 @@ function Run-Bounded([string]$File, [string[]]$ArgsList, [int]$Seconds=90) {
+  $err = "$out.err"
+  try {
+    $p = Start-Process -FilePath $File -ArgumentList $ArgsList -PassThru -NoNewWindow -RedirectStandardOutput $out -RedirectStandardError $err
+    try { $p | Wait-Process -Timeout $Seconds -ErrorAction Stop } catch { $p | Stop-Process -Force -ErrorAction SilentlyContinue; throw 'Perintah Tailscale melewati timeout' }
+    $p.Refresh()
+    return @{ code=$p.ExitCode; text=(Get-Content $out -Raw -ErrorAction SilentlyContinue) }
+    if (-not $p.WaitForExit($Seconds * 1000)) { $p | Stop-Process -Force -ErrorAction SilentlyContinue; throw 'Perintah Tailscale melewati timeout' }
+    $p.WaitForExit()
+    return @{ code=$p.ExitCode; text=(Get-Content $out -Raw -ErrorAction SilentlyContinue); error=(Get-Content $err -Raw -ErrorAction SilentlyContinue) }
+  } finally { Remove-Item $out,$err -Force -ErrorAction SilentlyContinue }
+}
+try {
+  if (-not $env:TAILSCALE_AUTH_KEY) { throw 'Isi secret TAILSCALE_AUTH_KEY terlebih dahulu.' }
+  if (-not $InstallOnly -and -not $env:TAILSCALE_AUTH_KEY) { throw 'Isi secret TAILSCALE_AUTH_KEY terlebih dahulu.' }
+  $exe = "$env:ProgramFiles\Tailscale\tailscale.exe"
+  if (-not (Test-Path $exe)) {
+    $msi=Join-Path $work 'tailscale.msi'
+    if (-not (Get-File 'https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi' $msi 90)) { throw 'Unduhan Tailscale gagal' }
+    $signature=Get-AuthenticodeSignature $msi
+    if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Tailscale') { throw 'Signature installer Tailscale tidak valid' }
+    $install=Run-Bounded 'msiexec.exe' @('/i',"`"$msi`"",'/qn','/norestart') 300
+    # Storage cleanup must preserve these directories: Windows Installer runs as SYSTEM.
+    foreach ($dir in @("$env:SystemRoot\Temp", $env:TEMP, $env:TMP, $env:RUNNER_TEMP)) {
+      if ($dir) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    }
+    $msiLog=Join-Path $work 'tailscale-install.log'
+    for ($attempt=1; $attempt -le 3; $attempt++) {
+      $install=Run-Bounded 'msiexec.exe' @('/i',"`"$msi`"",'/qn','/norestart','/L*v',"`"$msiLog`"") 240
+      if ($install.code -ne 1618 -or $attempt -eq 3) { break }
+      Log 'Windows Installer sedang sibuk; mencoba lagi dalam 15 detik.'
+      Start-Sleep -Seconds 15
+    }
+    Log "Installer Tailscale selesai: exit $($install.code)"
+    if ($install.code -notin @(0,3010)) {
+      # Emit selected installer diagnostics only. Never upload the full environment/log.
+      Get-Content $msiLog -ErrorAction SilentlyContinue | Where-Object { $_ -match 'Return value 3|error [0-9]{3,}|Installation success or error status|Product:.*--' } | Select-Object -Last 15 | ForEach-Object {
+        $line="$_"
+        Get-ChildItem Env: | Where-Object { $_.Name -match 'TOKEN|PASSWORD|SECRET|KEY' -and $_.Value.Length -ge 4 } | ForEach-Object { $line=$line.Replace($_.Value,'[redacted]') }
+        Log $line
+      }
+    }
+    if ($install.code -notin @(0,3010)) { throw "Installer Tailscale gagal, exit $($install.code)" }
+  }
+  if (-not (Test-Path $exe)) { throw 'Tailscale CLI tidak ditemukan' }
+  Start-Service Tailscale -ErrorAction Stop
+  if ($InstallOnly) { $version=Run-Bounded $exe @('version') 30; if ($version.code -ne 0) { throw 'Verifikasi CLI Tailscale gagal' }; Log "Install-only validation OK: $($version.text.Trim())"; return }
+  $hostName=("$env:HOSTNAME-$env:GITHUB_RUN_NUMBER" -replace '[^a-zA-Z0-9-]','').Trim('-')
+  if (-not $hostName) { $hostName='rdpfree' }; if ($hostName.Length -gt 60) { $hostName=$hostName.Substring(0,60) }
+  $up=Run-Bounded $exe @('up',"--auth-key=$env:TAILSCALE_AUTH_KEY","--hostname=$hostName",'--accept-dns=false','--timeout=90s') 120
+‎scripts/setup-rdp.ps1‎
+Original file line number	Diff line number	Diff line change
+@@ -141,6 +141,7 @@ $status = [ordered]@{
+  expires_at     = $now.AddMinutes($dur).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+  duration_menit = $dur
+  run_id         = $env:GITHUB_RUN_ID
+  run_attempt    = $env:GITHUB_RUN_ATTEMPT
+  run_number     = $env:GITHUB_RUN_NUMBER
+  run_url        = "https://github.com/$($env:GITHUB_REPOSITORY)/actions/runs/$($env:GITHUB_RUN_ID)"

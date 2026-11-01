@@ -143,13 +143,50 @@ function Install-ChocoCodingTool([string]$Label, [string]$Package) {
     return ($code -eq 0)
   } catch { Log "  pemasangan $Label gagal: $($_.Exception.Message)"; return $false }
 }
+function Install-WingetCodingTool([string]$Label, [string]$Id) {
+  $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+  if (-not $winget) { Log "  $Label dilewati: winget tidak tersedia"; return $false }
+  try {
+    Log "  memasang $Label dari winget ($Id)..."
+    & $winget.Source install --id $Id -e --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
+    return $true
+  } catch { Log "  winget $Label gagal: $($_.Exception.Message)"; return $false }
+}
+function Install-VSCodeDirect {
+  try {
+    Log '  memasang VS Code (installer resmi Microsoft, unduh langsung)...'
+    $exe = Join-Path $env:TEMP 'vscode-system-x64.exe'
+    & curl.exe -fL --retry 1 --connect-timeout 15 --max-time 180 -sS 'https://update.code.visualstudio.com/latest/win32-x64-system/stable' -o $exe
+    if (-not (Test-Path $exe) -or (Get-Item $exe).Length -lt 65536) { Log '  unduhan VS Code gagal'; return }
+    $p = Start-Process -FilePath $exe -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/MERGETASKS=!runcode', '/ALLUSERS') -Wait -PassThru -WindowStyle Hidden
+    Log "  installer VS Code exit=$($p.ExitCode)"
+    Remove-Item $exe -Force -ErrorAction SilentlyContinue
+  } catch { Log "  VS Code direct gagal: $($_.Exception.Message)" }
+}
+function Install-NotepadPPDirect {
+  try {
+    Log '  memasang Notepad++ (installer resmi GitHub, unduh langsung)...'
+    $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/notepad-plus-plus/notepad-plus-plus/releases/latest' -TimeoutSec 20
+    $asset = $rel.assets | Where-Object { $_.name -match '^npp\..+\.Installer\.x64\.exe$' } | Select-Object -First 1
+    if (-not $asset) { Log '  aset installer Notepad++ tidak ditemukan'; return }
+    $exe = Join-Path $env:TEMP 'npp-installer-x64.exe'
+    & curl.exe -fL --retry 1 --connect-timeout 15 --max-time 180 -sS $asset.browser_download_url -o $exe
+    if (-not (Test-Path $exe) -or (Get-Item $exe).Length -lt 65536) { Log '  unduhan Notepad++ gagal'; return }
+    $p = Start-Process -FilePath $exe -ArgumentList @('/S') -Wait -PassThru -WindowStyle Hidden
+    Log "  installer Notepad++ exit=$($p.ExitCode)"
+    Remove-Item $exe -Force -ErrorAction SilentlyContinue
+  } catch { Log "  Notepad++ direct gagal: $($_.Exception.Message)" }
+}
 
 $resVSCode = 'skip'
 if ($cfg.vscode) {
   Log 'VS CODE: cek / pasang...'
   if (Find-VSCode) { $resVSCode = 'sudah ada'; Log '  VS Code sudah tersedia' }
   else {
-    Install-ChocoCodingTool 'VS Code' 'vscode.install' | Out-Null
+    # Rantai fallback: winget -> Chocolatey -> installer resmi langsung.
+    Install-WingetCodingTool 'VS Code' 'Microsoft.VisualStudioCode' | Out-Null
+    if (-not (Find-VSCode)) { Install-ChocoCodingTool 'VS Code' 'vscode.install' | Out-Null }
+    if (-not (Find-VSCode)) { Install-VSCodeDirect }
     Start-Sleep -Seconds 2
     $resVSCode = if (Find-VSCode) { 'ok' } else { 'gagal' }
     Log "  VS Code: $resVSCode"
@@ -161,7 +198,10 @@ if ($cfg.notepadpp) {
   Log 'NOTEPAD++: cek / pasang...'
   if (Find-NotepadPP) { $resNotepadPP = 'sudah ada'; Log '  Notepad++ sudah tersedia' }
   else {
-    Install-ChocoCodingTool 'Notepad++' 'notepadplusplus.install' | Out-Null
+    # Rantai fallback: winget -> Chocolatey -> installer resmi langsung.
+    Install-WingetCodingTool 'Notepad++' 'Notepad++.Notepad++' | Out-Null
+    if (-not (Find-NotepadPP)) { Install-ChocoCodingTool 'Notepad++' 'notepadplusplus.install' | Out-Null }
+    if (-not (Find-NotepadPP)) { Install-NotepadPPDirect }
     Start-Sleep -Seconds 2
     $resNotepadPP = if (Find-NotepadPP) { 'ok' } else { 'gagal' }
     Log "  Notepad++: $resNotepadPP"

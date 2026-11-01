@@ -273,6 +273,13 @@ jobs:
         shell: pwsh
         run: ./scripts/setup-rdp.ps1
 
+      - name: Runtime aplikasi & game (VC++/DirectX/.NET)
+        timeout-minutes: 12
+        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') }}
+        shell: pwsh
+        continue-on-error: true
+        run: ./scripts/setup-runtimes.ps1
+
       - name: Pulihkan simpanan sesi sebelumnya
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') }}
         shell: pwsh

@@ -20,7 +20,8 @@ Halaman `/dashboard/games` menyimpan pilihan persiapan SA-MP, Roblox, Minecraft 
 
 Persiapan game hanya berjalan pada runner Windows self-hosted khusus milikmu, berlabel `self-hosted`, `Windows`, `X64`, `rdpfree`. Jangan izinkan workflow/PR dari pihak tidak tepercaya memakai runner ini. Finalize memutus Tailscale, tetapi tidak menghapus akun, aplikasi, atau perubahan sistem pada mesin self-hosted; reset image setelah pemakaian.
 
-- **SA-MP**: membutuhkan GTA SA milikmu. Installer/dependensi atau keberadaan EXE bukan bukti berhasil masuk server.
+- **SA-MP**: membutuhkan GTA SA milikmu. Installer/dependensi atau keberadaan EXE bukan bukti berhasil masuk server. GTA SA yang sudah terpasang dicerminkan ke `C:\Persist` supaya sesi berikutnya tidak mengunduh ulang.
+- **Runtime aplikasi**: VC++ 2005-2022, DirectX June 2010, dan .NET 3.5 dipasang otomatis (`scripts/setup-runtimes.ps1`) supaya aplikasi bisa dibuka pada percobaan pertama. VS Code/Notepad++ memakai rantai fallback winget → Chocolatey → installer resmi bila salah satunya tidak tersedia.
 - **Roblox**: installer resmi dengan signature diverifikasi. VM dapat ditolak Roblox. Tidak ada spoofing BIOS, penghapusan driver VM, atau bypass anti-cheat.
 - **Minecraft Java**: launcher resmi, akun berlisensi dan dukungan OpenGL/GPU tetap diperlukan.
 - **Minecraft Bedrock**: Windows desktop dengan Store/Xbox. Windows Server tidak didukung oleh setup ini. Instalasi dan login Store tetap interaktif.

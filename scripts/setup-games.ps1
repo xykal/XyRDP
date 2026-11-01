@@ -126,6 +126,7 @@ function Install-PrismLauncherPortable {
   New-Item -ItemType Directory -Path $prismDir -Force | Out-Null
   $sevenZip = 'C:\Program Files\7-Zip\7z.exe'
   if (-not (Test-Path $sevenZip)) { $sevenZip = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
+  if (-not (Test-Path $sevenZip)) { $sevenZip = Get-SevenZipPath }
 
   # Prioritaskan build Portable yang mendukung akun Microsoft & Offline sekaligus, fallback ke upstream PrismLauncher
   foreach ($repo in @('Diegiwg/PrismLauncher-Cracked', 'PrismLauncher/PrismLauncher')) {
@@ -350,10 +351,9 @@ function Install-RobloxAntiVmSuite {
   $rbxDir = 'C:\Games\Roblox'
   New-Item -ItemType Directory -Path $rbxDir -Force -ErrorAction SilentlyContinue | Out-Null
 
-  # 1. Jalankan Anti-VM SMBIOS/Hyper-V Spoofing & Gaming Boost terlebih dahulu
-  if (Test-Path 'C:\XyRDP\tools\Apply-AntiVM-Boost.ps1') {
-    try { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\XyRDP\tools\Apply-AntiVM-Boost.ps1' | Out-Null } catch {}
-  }
+  # 1. Tanpa spoofing BIOS / penghapusan driver VM / bypass anti-cheat
+  #    (kebijakan repo). Hanya instalasi resmi + optimasi performa wajar.
+  Disable-DefenderForGames
 
   $rbxExe = Join-Path $rbxDir 'RobloxPlayerInstaller.exe'
   if (-not (Test-Path $rbxExe)) {
@@ -364,6 +364,7 @@ function Install-RobloxAntiVmSuite {
   #    agar 100% terinstal di C:\Games\Roblox\Versions\<ver> sebelum sesi RDP aktif!
   $sevenZip = 'C:\Program Files\7-Zip\7z.exe'
   if (-not (Test-Path $sevenZip)) { $sevenZip = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
+  if (-not (Test-Path $sevenZip)) { $sevenZip = Get-SevenZipPath }
   $verFolder = $null
   $playerBetaExe = $null
   try {
@@ -546,7 +547,7 @@ if ($playerBeta) {
 
 # Jika RobloxPlayerBeta.exe diblokir Hyperion CPUID VM Check Azure, buka Dialog Pemilihan Mode Anti-VM
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'Roblox Player - XyRDP Anti-VM Launcher'
+$form.Text = 'Roblox Player - XyRDP Launcher'
 $form.Size = New-Object System.Drawing.Size(520, 310)
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
@@ -636,7 +637,7 @@ public class RobloxLauncherForm : Form
 
     public RobloxLauncherForm(string[] args)
     {
-        this.Text = "Roblox Player - XyRDP Anti-VM Client & Discovery Hub";
+        this.Text = "Roblox Player - XyRDP Player & Studio Hub";
         this.Size = new Size(560, 320);
         this.StartPosition = FormStartPosition.Manual;
         this.Location = new Point(440, 410);
@@ -652,7 +653,7 @@ public class RobloxLauncherForm : Form
         }
 
         Label title = new Label();
-        title.Text = "ROBLOX PLAYER & STUDIO SUITE (ANTI-VM READY)";
+        title.Text = "ROBLOX PLAYER & STUDIO SUITE";
         title.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
         title.ForeColor = Color.White;
         title.Location = new Point(20, 16);
@@ -797,7 +798,7 @@ public class RobloxLauncherForm : Form
     try {
       Remove-Item -LiteralPath (Join-Path $desk 'Install Roblox Player.exe') -Force -ErrorAction SilentlyContinue
       $wsh = New-Object -ComObject WScript.Shell
-      $lnk = $wsh.CreateShortcut((Join-Path $desk 'Roblox Player (Anti-VM Boost).lnk'))
+      $lnk = $wsh.CreateShortcut((Join-Path $desk 'Roblox Player.lnk'))
       if (Test-Path $rbxLauncherExe) {
         $lnk.TargetPath = $rbxLauncherExe
         $lnk.Arguments  = ''
@@ -811,7 +812,7 @@ public class RobloxLauncherForm : Form
       } elseif (Test-Path $rbxExe) {
         $lnk.IconLocation = "$rbxExe,0"
       }
-      $lnk.Description = 'Roblox Player dengan Anti-VM Spoofing + Direct3D 11 120 FPS Boost'
+      $lnk.Description = 'Roblox Player resmi + optimasi performa wajar (tanpa spoofing/bypass anti-cheat)'
       $lnk.Save()
     } catch {}
   }
@@ -1477,11 +1478,12 @@ if ($wantMcBed) {
 }
 
 # 3. Selalu siapkan Roblox Anti-VM Suite + Shortcut Unik di Desktop
-Log 'Menyiapkan Roblox Player (Anti-VM Spoofing + Direct3D 11 120 FPS Boost)...'
+Log 'Menyiapkan Roblox Player & Studio (instalasi resmi, tanpa spoofing/bypass)...'
 Install-RobloxAntiVmSuite
 $report['roblox'] = @{
-  status   = if (Test-Path 'C:\Games\Roblox\RobloxPlayerInstaller.exe') { 'ready-antivm' } else { 'launcher-ready' }
+  status   = 'installer_ready'
   launcher = 'C:\Games\Roblox\Launch-Roblox-AntiVM.ps1'
+  catatan  = 'Instalasi resmi Roblox siap. VM dapat ditolak anti-cheat Roblox; tidak ada spoofing BIOS/bypass.'
 }
 
 # 4. Selalu siapkan Shortcut Aplikasi Prank FiveM (Ikon FiveM + Popup Prank + Sound Voicemod Tuna)

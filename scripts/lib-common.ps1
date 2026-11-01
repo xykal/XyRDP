@@ -650,7 +650,7 @@ function Ensure-XyDesktopIcons {
   New-XyAppIcon "$icoDir\tlauncher.ico"          'TL'  16  185 129 4   120 87  'CRACKED'   | Out-Null
   New-XyAppIcon "$icoDir\prismlauncher.ico"      'PL'  139 92  246 76  29  149 'MODPACK'   | Out-Null
   New-XyAppIcon "$icoDir\minecraft-official.ico" 'MC'  245 158 11  180 83  9   'OFFICIAL'  | Out-Null
-  New-XyAppIcon "$icoDir\roblox-antivm.ico"      'RBX' 239 68  68  153 27  27  'ANTI-VM'   | Out-Null
+  New-XyAppIcon "$icoDir\roblox-antivm.ico"      'RBX' 239 68  68  153 27  27  'ROBLOX'    | Out-Null
   New-XyAppIcon "$icoDir\samp-launcher.ico"      'SA'  249 115 22  194 65  12  'SA-MP'     | Out-Null
   New-XyAppIcon "$icoDir\samp-antiban.ico"       'FIX' 20  184 166 15  118 110 'ANTI-BAN'  | Out-Null
   New-XyAppIcon "$icoDir\cloud-save.ico"         'CLD' 56  189 248 3   105 161 'SAVE'      | Out-Null
@@ -662,6 +662,47 @@ function Ensure-XyDesktopIcons {
   New-XyAppIcon "$icoDir\blender.ico"            '3D'  234 88  12  37  99  235 'BLENDER'   | Out-Null
   New-XyAppIcon "$icoDir\fivem.ico"              'V'   249 115 22  220 38  38  'FiveM'     | Out-Null
   return $icoDir
+}
+
+# ---------- Kokohkan dependensi ekstraksi & game (2026-11) ----------
+
+function Get-SevenZipPath {
+  # Kembalikan path 7z.exe yang valid; kalau belum terpasang, pasang best-effort
+  # (winget -> choco). Tanpa 7-Zip, ekstraksi .rar/.7z diam-diam gagal dan
+  # GTA SA / paket game tidak pernah terpasang.
+  $cands = @(
+    'C:\Program Files\7-Zip\7z.exe',
+    "${env:ProgramFiles(x86)}\7-Zip\7z.exe",
+    'C:\XyRDP\tools\7z.exe'
+  )
+  foreach ($c in $cands) { if ($c -and (Test-Path $c)) { return $c } }
+  $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+  if ($winget) {
+    try {
+      & $winget.Source install --id 7zip.7zip -e --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
+    } catch {}
+  }
+  foreach ($c in $cands) { if ($c -and (Test-Path $c)) { return $c } }
+  $choco = Get-Command choco.exe -ErrorAction SilentlyContinue
+  if ($choco) {
+    try { & $choco.Source install 7zip -y --no-progress 2>&1 | Out-Null } catch {}
+    foreach ($c in $cands) { if ($c -and (Test-Path $c)) { return $c } }
+  }
+  Log '7-Zip tidak tersedia - ekstraksi .rar/.7z akan dilewati'
+  return $null
+}
+
+function Disable-DefenderForGames {
+  # Best-effort pada VM sekali-pakai: cegah karantina false-positive terhadap
+  # file game (samp.dll, mod GTA SA, wrapper dgVoodoo, dsb.) yang membuat game
+  # "tidak bisa dibuka saat pertama kali".
+  try {
+    Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue | Out-Null
+    foreach ($x in @('C:\Games', 'C:\XyRDP', 'C:\Persist', 'C:\Users')) {
+      try { Add-MpPreference -ExclusionPath $x -ErrorAction SilentlyContinue } catch {}
+    }
+    Log 'Defender real-time dimatikan + exclusion folder game (best-effort)'
+  } catch { Log "Defender tweak dilewati: $($_.Exception.Message)" }
 }
 
 Log 'lib-common dimuat'

@@ -42,6 +42,10 @@ $wow64 = Join-Path $env:SystemRoot 'SysWOW64'
 $work  = 'C:\XyRDP\deps\samp'
 New-Item -ItemType Directory -Path $work -Force | Out-Null
 
+# Cegah Defender mengkarantina samp.dll / mod GTA SA / wrapper dgVoodoo saat
+# pertama kali dibuka (VM sekali-pakai, best-effort).
+Disable-DefenderForGames
+
 function Test-FilesPresent([string]$Dir, [string[]]$Names) {
   foreach ($n in $Names) {
     if (-not (Test-Path (Join-Path $Dir $n))) { return $false }
@@ -242,6 +246,7 @@ function Install-CompleteSampSuite {
 
   $sevenZip = 'C:\Program Files\7-Zip\7z.exe'
   if (-not (Test-Path $sevenZip)) { $sevenZip = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
+  if (-not (Test-Path $sevenZip)) { $sevenZip = Get-SevenZipPath }
 
   # Pastikan tidak ada sisa dinput8.dll lama di $modsDir yang bentrok dengan vorbisFile.dll
   # CATATAN PENTING: JANGAN PERNAH menghapus ddraw.dll / d3dimm.dll karena gta_sa.exe US 1.0
@@ -468,6 +473,17 @@ function Install-CompleteSampSuite {
       Remove-Item $gtaArc -Force -ErrorAction SilentlyContinue
     } catch { Log "Auto-download GTA SA selesai/dilewati: $($_.Exception.Message)" }
   }
+
+  # 9b. Cerminkan GTA SA ke C:\Persist agar sesi berikutnya TIDAK unduh ulang
+  #     590MB - persist-state.ps1 membawa C:\Persist ke sesi berikutnya, dan
+  #     restore-state.ps1 + blok C:\Persist di atas memasangnya kembali.
+  try {
+    if ((Test-Path (Join-Path $gameDir 'gta_sa.exe')) -and -not (Test-Path 'C:\Persist\GTA San Andreas\gta_sa.exe')) {
+      Log 'Mencerminkan GTA San Andreas ke C:\Persist (anti unduh-ulang sesi depan)...'
+      New-Item -ItemType Directory -Path 'C:\Persist\GTA San Andreas' -Force -ErrorAction SilentlyContinue | Out-Null
+      & robocopy.exe $gameDir 'C:\Persist\GTA San Andreas' /E /R:1 /W:1 /NFL /NDL /NJH /NJS 2>&1 | Out-Null
+    }
+  } catch { Log "Cermin GTA ke C:\Persist dilewati: $($_.Exception.Message)" }
 
   # 10. Buat Script Auto-Patcher & Control Center GUI (GTA-SAMP-Manager.ps1)
   $patcherPath = Join-Path $kitRoot 'Patch-GTA-SAMP.ps1'

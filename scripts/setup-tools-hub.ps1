@@ -91,7 +91,7 @@ namespace XyDeskTools
             title.Location = new Point(18, 10);
 
             Label sub = new Label();
-            sub.Text = "[Anti-VM: AKTIF (ASUS ROG B650)]   [Gaming Boost: ULTIMATE 120 FPS]   [Cloud Save: AUTO-SYNC TIAP 4 MENIT]   [User: " + Environment.UserName + "]";
+            sub.Text = "[Game Boost: AKTIF]   [Cloud Save: AUTO-SYNC TIAP 4 MENIT]   [User: " + Environment.UserName + "]";
             sub.Font = new Font("Segoe UI", 8.8f, FontStyle.Bold);
             sub.ForeColor = Color.FromArgb(52, 211, 153);
             sub.AutoSize = true;

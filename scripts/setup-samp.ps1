@@ -349,6 +349,11 @@ function Install-CompleteSampSuite {
           $confTxt = $confTxt -replace '(?m)^OutputAPI\s*=.*$', 'OutputAPI = bestavailable'
           $confTxt = $confTxt -replace '(?m)^dgVoodooWatermark\s*=.*$', 'dgVoodooWatermark = false'
           $confTxt = $confTxt -replace '(?m)^VRAM\s*=.*$', 'VRAM = 512'
+          # Tuning performa WARP (software GPU): matikan AA/aniso/vsync supaya
+          # frame game tidak ditahan filter berat di render software.
+          $confTxt = $confTxt -replace '(?m)^AntialiasingMode\s*=.*$', 'AntialiasingMode = 0'
+          $confTxt = $confTxt -replace '(?m)^AnisotropicFiltering\s*=.*$', 'AnisotropicFiltering = 0'
+          $confTxt = $confTxt -replace '(?m)^VSync\s*=.*$', 'VSync = false'
           Set-Content -Path (Join-Path $modsDir 'dgVoodoo.conf') -Value $confTxt -Encoding ASCII -Force
         }
         Log 'dgVoodoo2 x86 LENGKAP (d3d9.dll + ddraw.dll + d3dimm.dll + d3d8.dll -> D3D11 WARP) berhasil dipasang (Anti-Crash 0x00746929)!'

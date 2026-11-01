@@ -73,6 +73,14 @@ Apply-Tweak 'Game Mode + Game Bar auto' {
   Set-RegBoth 'Software\Microsoft\GameBar' 'AutoGameModeEnabled' 1 'DWord'
   Set-RegBoth 'Software\Microsoft\GameBar' 'AllowAutoGameMode' 1 'DWord'
 }
+Apply-Tweak 'Matikan Xbox Game Bar capture (GameDVR) - hemat CPU saat game jalan' {
+  # GameDVR/AppCapture merekam game di latar belakang dan memakan frame.
+  # Game Mode tetap AKTIF (scheduling boost); yang dimatikan hanya perekamannya.
+  Set-RegBoth 'Software\Microsoft\Windows\CurrentVersion\GameDVR' 'AppCaptureEnabled' 0 'DWord'
+  Set-RegBoth 'System\GameConfigStore' 'GameDVR_Enabled' 0 'DWord'
+  Set-RegBoth 'Software\Policies\Microsoft\Windows\GameDVR' 'AllowGameDVR' 0 'DWord'
+  Set-RegBoth 'Software\Microsoft\GameBar' 'ShowStartupPanel' 0 'DWord'
+}
 Apply-Tweak 'Hardware-Accelerated GPU Scheduling (jika didukung)' {
   # HAGS hanya berguna kalau ada adapter WDDM 2.7+. Kalau tidak ada, registry
   # diabaikan Windows — aman, tidak bikin boot gagal.

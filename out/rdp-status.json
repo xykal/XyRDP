@@ -1,56 +1,56 @@
 {
   "active": true,
-  "hostname": "rdpfree-151",
+  "hostname": "rdpfree-152",
   "os": "Microsoft Windows Server 2022 Datacenter",
   "os_build": "10.0.20348",
   "os_style": "Native Windows",
   "hardware": {
-    "cpu_threads": 4,
     "ram_gb": 16.0,
-    "disk_free_gb": 76.9
+    "cpu_threads": 4,
+    "disk_free_gb": 77.0
   },
   "rdp_port": 3389,
   "rdp_user": "xyadmin",
   "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
   "rdp_denyts": true,
-  "started_at": "2026-11-01T05:49:49Z",
-  "expires_at": "2026-11-01T11:31:49Z",
+  "started_at": "2026-11-01T12:51:02Z",
+  "expires_at": "2026-11-01T18:33:02Z",
   "duration_menit": 342,
-  "run_id": "41278363111",
+  "run_id": "41308368664",
   "run_attempt": "1",
-  "run_number": "151",
-  "run_url": "https://github.com/xykal/XyRDP/actions/runs/41278363111",
+  "run_number": "152",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/41308368664",
   "mode": "bersih+win10",
   "persist": {
-    "source": "xyrdp-state.7z.enc",
     "profile": "C:\\Users\\xyadmin",
-    "files": 4561,
+    "files": 4552,
+    "source": "xyrdp-state.7z.enc",
     "restored": true
   },
   "storage": {
     "status": "ok",
     "mode": "boost-full",
-    "before_gb": 75.87,
-    "after_gb": 112.52,
-    "gained_gb": 36.65,
+    "before_gb": 76.17,
+    "after_gb": 113.32,
+    "gained_gb": 37.15,
     "removed_targets": 35,
     "drives": [
       {
-        "free_gb": 112.52,
-        "used_gb": 142.93,
+        "used_gb": 142.13,
+        "free_gb": 113.32,
         "letter": "C",
         "size_gb": 255.45
       },
       {
-        "free_gb": 219.86,
         "used_gb": 0.13,
+        "free_gb": 219.86,
         "letter": "D",
         "size_gb": 219.98
       }
     ],
     "game_dir": "D:\\Games (disarankan untuk GTA)",
     "note": "Cleanup selesai. gained_gb adalah perubahan ruang aktual, bukan kapasitas yang dijanjikan. Target terkunci bisa tersisa.",
-    "updated_at": "2026-11-01T05:58:40.2816576Z"
+    "updated_at": "2026-11-01T12:57:58.0522172Z"
   },
   "fps_boost": {
     "status": "ok",
@@ -65,9 +65,9 @@
     ],
     "skipped": [],
     "applied_count": 7,
-    "elapsed_sec": 1.1,
+    "elapsed_sec": 1.3,
     "note": "Tweak rendering RDP & scheduler OS. Tidak menaikkan FPS game 3D tanpa GPU fisik; Mesa3D/WARP tetap dipakai.",
-    "updated_at": "2026-11-01T05:58:41.6742276Z"
+    "updated_at": "2026-11-01T12:57:59.7741409Z"
   },
   "win10": {
     "look": "ok",
@@ -79,39 +79,39 @@
   },
   "media": {
     "audio_output": "rdp_playback_enabled",
+    "wallpaper": "xyverse_configured_for_user_logon",
     "microphone": "rdp_capture_enabled",
-    "verification": "Login ulang, aktifkan mic di XyDesk dan izinkan Android. Uji Windows Settings > Sound > Input; kebijakan aktif bukan bukti capture end-to-end.",
-    "wallpaper": "xyverse_configured_for_user_logon"
+    "verification": "Login ulang, aktifkan mic di XyDesk dan izinkan Android. Uji Windows Settings > Sound > Input; kebijakan aktif bukan bukti capture end-to-end."
   },
   "grafis": {
+    "mesa": "26.2.5",
+    "vulkan": "lavapipe 1.3 (CPU)",
+    "opengl": "4.6 (Mesa llvmpipe system-wide x64/x86 + OpenGL ES 3.2)",
     "mode": "software",
     "path": "C:\\XyRDP\\grafis\\mesa-x64",
-    "vulkan": "lavapipe 1.3 (CPU)",
-    "adapters": "Microsoft Hyper-V Video",
-    "opengl": "4.6 (Mesa llvmpipe system-wide x64/x86 + OpenGL ES 3.2)",
-    "mesa": "26.2.5"
+    "adapters": "Microsoft Hyper-V Video"
   },
   "samp": {
-    "vc2013_x86": true,
-    "directx9": true,
-    "playable": true,
-    "fullscreen": true,
-    "game_present": true,
-    "status": "runtimes-2026-ready",
     "vc2015_x64": true,
-    "dgvoodoo_d3d9": true,
-    "dep_optin": true,
-    "silentpatch": false,
-    "samp_client": true,
-    "vc2015_x86": true,
+    "playable": true,
     "webview2": true,
+    "dgvoodoo_d3d9": true,
+    "samp_client": true,
+    "directx9": true,
     "directplay": true,
-    "vc2013_x64": true
+    "vc2013_x64": true,
+    "game_present": true,
+    "vc2015_x86": true,
+    "dep_optin": true,
+    "fullscreen": true,
+    "silentpatch": false,
+    "vc2013_x86": true,
+    "status": "runtimes-2026-ready"
   },
   "samp_antiban": {
     "status": "ok",
-    "machine_guid_prefix": "71da6de6",
-    "player_name": "XyPlayer_3183",
+    "machine_guid_prefix": "263e8194",
+    "player_name": "XyPlayer_8287",
     "steps": [
       "Patch-GTA-SAMP.ps1 -ResetAntiBan",
       "MachineGuid / ProductId / HwProfileGuid baru",
@@ -120,9 +120,20 @@
     ],
     "errors": [],
     "note": "GPCI/HWID direset. Tidak menjamin bebas ban bila IP datacenter tetap terdeteksi server; WARP split-tunnel bisa dipilih manual di Control Center.",
-    "updated_at": "2026-11-01T06:01:19.8211463Z"
+    "updated_at": "2026-11-01T13:00:30.2681797Z"
   },
   "games": {
+    "minecraft_java": {
+      "official_exe": true,
+      "tlauncher_jar": true,
+      "opengl46": true,
+      "prismlauncher": true,
+      "status": "ready"
+    },
+    "memu": {
+      "launcher": "C:\\Games\\MEmu\\Launch-MEmu.ps1",
+      "status": "ready"
+    },
     "fivem": {
       "sound": true,
       "status": true
@@ -131,39 +142,19 @@
       "launcher": "C:\\Games\\ETS2\\Launch-ETS2-Free.ps1",
       "status": "ready"
     },
-    "roblox": {
-      "launcher": "C:\\Games\\Roblox\\Launch-Roblox-AntiVM.ps1",
-      "status": "ready-antivm"
-    },
-    "memu": {
-      "launcher": "C:\\Games\\MEmu\\Launch-MEmu.ps1",
-      "status": "ready"
-    },
-    "minecraft_java": {
-      "tlauncher_jar": true,
-      "official_exe": true,
-      "opengl46": true,
-      "status": "ready",
-      "prismlauncher": true
-    },
     "blender": {
       "launcher": "C:\\Games\\Blender\\Launch-Blender.ps1",
       "status": "ready"
+    },
+    "roblox": {
+      "launcher": "C:\\Games\\Roblox\\Launch-Roblox-AntiVM.ps1",
+      "status": "ready-antivm"
     }
-  },
-  "mumu": {
-    "status": "fallback",
-    "installer": "",
-    "source": "",
-    "exe": "",
-    "fallback": "MEmu (setup-games.ps1)",
-    "note": "MuMu tidak dapat dipasang otomatis: link installer resmi MuMu tidak ditemukan di halaman unduhan. MEmu dari setup-games.ps1 tetap tersedia.",
-    "updated_at": "2026-11-01T06:04:16.302845Z"
   },
   "tools_hub": {
     "auto_start": true,
-    "exe": "C:\\XyRDP\\tools\\XyDeskDashboard.exe",
-    "installed": true
+    "installed": true,
+    "exe": "C:\\XyRDP\\tools\\XyDeskDashboard.exe"
   },
   "xydesk": {
     "host": "ok",
@@ -184,19 +175,19 @@
   },
   "akses": {
     "tailscale": {
-      "note": "HP/PC harus login Tailscale pada tailnet yang sama. TCP 3389 harus diizinkan ACL.",
       "status": "ok",
+      "hostname": "rdpfree",
+      "note": "HP/PC harus login Tailscale pada tailnet yang sama. TCP 3389 harus diizinkan ACL.",
       "magicdns": "rdpfree.tail01cd7c.ts.net.",
-      "ip": "100.73.79.110",
-      "hostname": "rdpfree"
+      "ip": "100.91.121.38"
     },
     "mode": "tailscale",
     "tunnel": {
-      "status": "ok",
-      "address": "100.73.79.110:3389",
-      "outside": "tailscale",
+      "address": "100.91.121.38:3389",
       "port": 3389,
-      "host": "100.73.79.110",
+      "outside": "tailscale",
+      "host": "100.91.121.38",
+      "status": "ok",
       "selftest": "ok"
     }
   },

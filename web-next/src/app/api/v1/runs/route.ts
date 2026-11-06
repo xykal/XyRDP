@@ -1,7 +1,6 @@
 import {NextRequest} from "next/server";
 import {context,guarded,reply,origin,body,gh,ApiError} from "@/lib/api";
 import {workflowCompatible} from "@/lib/workflow-contract";
-import {portmapEndpointReady} from "@/lib/access-options";
 import {inspect} from "@/lib/setup";
 import {runs,active,validate,loadSettings} from "@/lib/workflow";
 import {db,rateLimit} from "@/lib/db";
@@ -17,13 +16,9 @@ export async function POST(req:NextRequest){return guarded(async()=>{const c=awa
  const repo=await gh<{default_branch:string;permissions?:{push?:boolean}}>(c,"");if(!c.installationId&&!repo.permissions?.push)throw new ApiError(403,"Akses write ke repository diperlukan");
  const workflow=await gh<{content:string}>(c,"/contents/.github/workflows/rdp-6h.yml?ref="+encodeURIComponent(repo.default_branch));
  if(!workflowCompatible(Buffer.from(workflow.content,"base64").toString("utf8")))throw new ApiError(409,"Repository masih memakai workflow lama. Sinkronkan workflow, scripts, dan assets dari xykal/XyRDP sebelum memulai; App tidak punya izin menulis source.");
- // 1.1.28: akses publik butuh endpoint yang valid. Tanpa ini dispatch tetap
- // diterima GitHub tapi rdp-status.json tidak pernah punya alamat koneksi.
- if(valid.akses!=="tailscale"&&!portmapEndpointReady(valid))throw new ApiError(400,"Endpoint publik belum lengkap. Isi host & port (1–65535) pada pengaturan akses.");
+ // 1.1.29: tunnel Tailscale only — tidak ada lagi validasi endpoint publik.
  const secrets=await gh<{secrets:{name:string}[]}>(c,"/actions/secrets?per_page=100");const names=secrets.secrets.map(s=>s.name);
- const required=["RDP_PASSWORD"];
- if(valid.akses==="tailscale")required.push("TAILSCALE_AUTH_KEY");
- else if(valid.akses==="portmap")required.push("PORTMAP_OVPN_CONFIG");
+ const required=["RDP_PASSWORD","TAILSCALE_AUTH_KEY"];
  const missing=required.filter(k=>!names.includes(k));if(missing.length)throw new ApiError(400,"Secret belum lengkap: "+missing.join(", "));
  await gh(c,"/actions/workflows/rdp-6h.yml/dispatches","POST",{ref:repo.default_branch,inputs:valid});return reply({ok:true,repo:c.repo,inputs:valid,message:"Workflow diterima GitHub. Status akan muncul setelah antre."},202);
  })}

@@ -3,6 +3,9 @@
 #         dan opsi akses portmap/railway. Penanda skema sengaja tetap 5 supaya
 #         kontrak web-next/src/lib/workflow-contract.ts tetap menerima workflow.
 #         Input baru semuanya required:false, jadi repo lama tetap kompatibel.
+# 1.1.29: tunnel Tailscale only. Opsi portmap/railway dihapus (sesuai arahan
+#         pemilik: "Untuk Tunnel cukup tailscale only"). Input akses tetap ada
+#         dengan satu pilihan agar dashboard & kontrak lama tetap kompatibel.
 name: RdpFree — RDP 6 Jam
 
 on:
@@ -24,24 +27,12 @@ on:
         default: 'xyadmin'
         type: string
       akses:
-        description: 'Jalur akses ke RDP (tailscale disarankan)'
+        description: 'Jalur akses ke RDP (hanya Tailscale)'
         required: false
         default: 'tailscale'
         type: choice
         options:
           - tailscale
-          - portmap
-          - railway
-      portmap_host:
-        description: 'Host tunnel publik (opsional; isi saat akses portmap/railway)'
-        required: false
-        default: ''
-        type: string
-      portmap_port:
-        description: 'Port publik tunnel (opsional; kosong = 3389)'
-        required: false
-        default: ''
-        type: string
       storage_boost:
         description: 'Bersihkan toolcache untuk ruang disk ekstra'
         required: false
@@ -218,9 +209,6 @@ jobs:
       SAMP_ANTIBAN: ${{ inputs.samp_antiban || 'tidak' }}
       FPS_BOOST: ${{ inputs.fps_boost || 'ya' }}
       MUMU: ${{ inputs.mumu || 'tidak' }}
-      PORTMAP_HOST: ${{ inputs.portmap_host || '' }}
-      PORTMAP_PORT: ${{ inputs.portmap_port || '' }}
-      PORTMAP_OVPN_CONFIG: ${{ secrets.PORTMAP_OVPN_CONFIG }}
       WIN10: ${{ inputs.win10 || 'ya' }}
       XYDESK: ${{ inputs.xydesk || 'ya' }}
       EKSTRA: ${{ inputs.ekstra || 'ya' }}
@@ -373,13 +361,6 @@ jobs:
         shell: pwsh
         run: ./scripts/setup-akses.ps1
 
-      - name: Setup akses publik (Portmap / Railway)
-        timeout-minutes: 12
-        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.akses || 'tailscale') != 'tailscale' }}
-        shell: pwsh
-        continue-on-error: true
-        run: ./scripts/setup-public-tunnel.ps1
-
       - name: Pasang Discord desktop
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.discord || 'tidak') == 'ya' }}
         shell: pwsh
@@ -445,8 +426,6 @@ jobs:
               samp_antiban        = "$($env:SAMP_ANTIBAN)"
               fps_boost           = "$($env:FPS_BOOST)"
               mumu                = "$($env:MUMU)"
-              portmap_host        = "$($env:PORTMAP_HOST)"
-              portmap_port        = "$($env:PORTMAP_PORT)"
               win10               = "$($env:WIN10)"
               xydesk              = "$($env:XYDESK)"
               ekstra              = "$($env:EKSTRA)"

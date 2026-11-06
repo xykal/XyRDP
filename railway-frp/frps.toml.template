@@ -1,8 +1,0 @@
-bindPort = 7000
-auth.method = "token"
-auth.token = "__FRP_TOKEN__"
-
-# Hanya port ini yang boleh diminta frpc (port RDP publik internal).
-allowPorts = [
-  { single = 13389 }
-]

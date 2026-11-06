@@ -38,7 +38,7 @@ Workflow baru bertanda `# rdpfree-workflow-schema: 3`. Dashboard menolak dispatc
 
 - `.github/workflows/rdp-6h.yml`: Windows session + persiapan host.
 - `scripts/`: skrip Windows; `assets/`: wallpaper dan konfigurasi.
-- `web-next/`: dashboard Next.js/OpenNext/Cloudflare aktif. Folder `web/`, `deploy/`, dan dokumentasi lama adalah arsip implementasi terdahulu, bukan konfigurasi akses saat ini.
+- `web-next/`: dashboard Next.js/OpenNext/Cloudflare aktif. Folder `deploy/` (konfigurasi Vercel) dan dokumentasi lama adalah arsip; kode tunnel lama (`railway-frp/`, `relay-panel/`, `web/`, `setup-public-tunnel.ps1`) sudah dihapus — tunnel hanya Tailscale.
 - Admin tetap tersembunyi, login email/password + Turnstile; tidak dipindah ke GitHub login.
 - Native API: lihat `web-next/docs/XYDESK-API.md`. Token terikat repository dan dapat dicabut. Token OAuth native lama perlu dibuat ulang setelah pemisahan App.
 - Login terpisah tidak mencegah suspend. Untuk akun tester yang ditangguhkan, review hanya melalui GitHub Support; penyebab tidak dapat disimpulkan dari 404 atau pola login saja.

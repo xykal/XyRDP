@@ -6,6 +6,8 @@
 # 1.1.29: tunnel Tailscale only. Opsi portmap/railway dihapus (sesuai arahan
 #         pemilik: "Untuk Tunnel cukup tailscale only"). Input akses tetap ada
 #         dengan satu pilihan agar dashboard & kontrak lama tetap kompatibel.
+#         Runtime dibagi cepat/penuh (input runtimes, default auto) + cache
+#         installer (actions/cache) supaya setup sesi jauh lebih cepat.
 name: RdpFree — RDP 6 Jam
 
 on:
@@ -50,6 +52,15 @@ on:
           - ringan
           - full
           - tidak
+      runtimes:
+        description: 'Runtime VC++/DirectX/.NET (auto = penuh hanya bila SA-MP dipilih; cepat = VC++ 2010-2022)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - cepat
+          - penuh
       samp:
         description: 'Pasang runtime + SilentPatch GTA SA & SA-MP'
         required: false
@@ -206,6 +217,7 @@ jobs:
       STORAGE_BOOST: ${{ inputs.storage_boost || 'ya' }}
       DEBLOAT: ${{ inputs.debloat || 'ringan' }}
       SAMP: ${{ inputs.samp || 'ya' }}
+      RUNTIMES: ${{ inputs.runtimes || 'auto' }}
       SAMP_ANTIBAN: ${{ inputs.samp_antiban || 'tidak' }}
       FPS_BOOST: ${{ inputs.fps_boost || 'ya' }}
       MUMU: ${{ inputs.mumu || 'tidak' }}
@@ -261,11 +273,22 @@ jobs:
         shell: pwsh
         run: ./scripts/setup-rdp.ps1
 
+      - name: Cache installer runtime
+        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') }}
+        uses: actions/cache@v4
+        with:
+          path: ~/xyrt-cache
+          key: xyrt-runtimes-v1-${{ hashFiles('scripts/setup-runtimes.ps1') }}
+          restore-keys: |
+            xyrt-runtimes-v1-
+
       - name: Runtime aplikasi & game (VC++/DirectX/.NET)
         timeout-minutes: 12
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') }}
         shell: pwsh
         continue-on-error: true
+        env:
+          XYRT_MODE: ${{ (inputs.runtimes == 'penuh' || ((inputs.runtimes || 'auto') == 'auto' && (inputs.samp || 'ya') == 'ya')) && 'penuh' || 'cepat' }}
         run: ./scripts/setup-runtimes.ps1
 
       - name: Pulihkan simpanan sesi sebelumnya
@@ -422,6 +445,7 @@ jobs:
               akses               = "$($env:AKSES)"
               storage_boost       = "$($env:STORAGE_BOOST)"
               debloat             = "$($env:DEBLOAT)"
+              runtimes            = "$($env:RUNTIMES)"
               samp                = "$($env:SAMP)"
               samp_antiban        = "$($env:SAMP_ANTIBAN)"
               fps_boost           = "$($env:FPS_BOOST)"

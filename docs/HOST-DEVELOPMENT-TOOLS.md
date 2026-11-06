@@ -29,8 +29,8 @@ Installers have timeouts, and no automatic reboot is issued.
 Named inbound Windows Firewall allow rules for both protocols are created and
 read back. Rules are replaced by name on repeat execution, avoiding duplicates.
 These are firewall permissions only: they do not start a listener, forward ports,
-create a public address, or override Tailscale ACLs. The existing RDP Portmap
-mapping is unchanged and does NOT also forward 7777.
+create a public address, or override Tailscale ACLs. The RDP tunnel is
+Tailscale-only and does NOT also forward 7777.
 
 For the current Tailscale default, start your own SA-MP server on port 7777 and
 connect from a permitted tailnet device to the runner's Tailscale IP:7777.

@@ -375,16 +375,5 @@
   "Foto dan nama GitHub akun baru dapat tampil di komunitas. Kamu bisa menyembunyikannya kapan saja di dashboard.": "New accounts may display their GitHub photo and name in the community. You can hide your profile anytime in the dashboard.",
   "Profil akun baru ditampilkan otomatis setelah pemberitahuan login. Pilihan privasi akun lama tetap dipertahankan. Menyembunyikan profil tidak mengubah akses RDP atau jumlah pengguna.": "New profiles appear automatically after the login notice. Existing privacy choices are preserved. Hiding a profile does not change RDP access or user counts.",
   "Status diperbarui setiap 8 detik saat halaman terlihat. Waktu berasal dari status workflow; job GitHub memiliki batas total 6 jam termasuk setup.": "Status refreshes every 8 seconds while visible. Timing comes from the workflow; GitHub jobs have a total six-hour limit including setup.",
-  "Hostname publik Portmap": "Portmap public hostname",
-  "Port publik Portmap": "Portmap public port",
-  "RDP_PASSWORD wajib. Tailscale memakai TAILSCALE_AUTH_KEY; Portmap memakai PORTMAP_OVPN_CONFIG. Hostname dan port publik Portmap diisi di atas. Secrets tidak ikut saat fork.": "RDP_PASSWORD is required. Tailscale uses TAILSCALE_AUTH_KEY; Portmap uses PORTMAP_OVPN_CONFIG. Enter the public Portmap hostname and port above. Secrets are not copied when forking.",
-  "Buat konfigurasi OpenVPN dan mapping TCP menuju port Windows 3389 di akun Portmap milikmu.": "Create an OpenVPN configuration and a TCP mapping to Windows port 3389 in your own Portmap account.",
-  "Simpan isi file .ovpn sebagai GitHub Actions Secret bernama PORTMAP_OVPN_CONFIG. Jangan commit file atau membagikannya ke fork.": "Save the .ovpn file contents as a GitHub Actions Secret named PORTMAP_OVPN_CONFIG. Do not commit the file or share it across forks.",
-  "Isi hostname dan port publik di Settings, lalu Periksa ulang. OpenVPN hanya berjalan di Windows; HP tidak perlu VPN.": "Enter the public hostname and port in Settings, then Check again. OpenVPN runs only on Windows; your phone does not need a VPN.",
-  "Hostname/port Portmap belum lengkap. Isi melalui Pengaturan.": "Portmap hostname/port is incomplete. Enter it in Settings.",
-  "portmap — belum dikonfigurasi": "portmap — not configured",
-  "Default akses adalah Tailscale. Portmap baru bisa dipilih setelah secret PORTMAP_OVPN_CONFIG, hostname, dan port publik lengkap.": "Tailscale is the default. Portmap becomes selectable only after PORTMAP_OVPN_CONFIG, the public hostname and port are configured.",
-  "Status secret belum terverifikasi. Portmap dikunci sampai pemeriksaan berhasil.": "The secret could not be verified. Portmap stays locked until verification succeeds.",
-  "Lengkapi konfigurasi Portmap, lalu muat ulang halaman setelah menyimpan secret. Hostname dan port dapat diisi sambil tetap memilih Tailscale.": "Complete Portmap configuration, then reload after saving the secret. You can enter the hostname and port while keeping Tailscale selected.",
   "Pilih repo untuk GitHub App, lalu siapkan jalur akses dan password Windows.": "Choose a repository for the GitHub App, then set up your connection and Windows password."
 }

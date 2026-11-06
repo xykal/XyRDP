@@ -547,7 +547,7 @@ namespace XyDeskTools
 
             Panel infoPro = new Panel { Location = new Point(16, 198), Size = new Size(816, 68), BackColor = Color.FromArgb(20, 26, 38) };
             Label lblPro = new Label {
-                Text = "ENGINE SERVER PRO: Mendukung Multi-Part Cloud Persistence hingga 5.4 GB, Tunnel Failover (Tailscale / Railway / Bore.pub / Portmap), Anti-VM Spoofing ASUS ROG B650, dan Hot-Reload Engine tanpa putus sesi.",
+                Text = "ENGINE SERVER PRO: Mendukung Multi-Part Cloud Persistence hingga 5.4 GB, Tunnel privat Tailscale, Anti-VM Spoofing ASUS ROG B650, dan Hot-Reload Engine tanpa putus sesi.",
                 Location = new Point(14, 14),
                 Size = new Size(788, 42),
                 ForeColor = Color.FromArgb(148, 163, 184),

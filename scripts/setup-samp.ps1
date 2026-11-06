@@ -624,7 +624,7 @@ function Enable-CloudflareWarpSafeSplitTunnel {
   Start-Sleep -Seconds 2
   & $warpCli --accept-tos registration new 2>&1 | Out-Null
   & $warpCli --accept-tos mode warp 2>&1 | Out-Null
-  # WAJIB: Exclude subnet Tailscale (100.64.0.0/10), Portmap OpenVPN (10.0.0.0/8), LAN, dan Azure Host
+  # WAJIB: Exclude subnet Tailscale (100.64.0.0/10), VPN (10.0.0.0/8), LAN, dan Azure Host
   # agar koneksi RDP (:3389) & SSH (:22) TIDAK PERNAH PUTUS saat WARP aktif!
   foreach ($cidr in @('100.64.0.0/10', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '168.63.129.16/32', '169.254.169.254/32')) {
     & $warpCli --accept-tos tunnel ip add $cidr 2>&1 | Out-Null
@@ -758,7 +758,7 @@ if ($ResetAntiBan) {
   if ($Interactive) {
     Add-Type -AssemblyName System.Windows.Forms
     $res = [System.Windows.Forms.MessageBox]::Show(
-      "GPCI Serial & HWID SA-MP berhasil di-reset ke identitas baru!`r`nPath GPCI Baru: $newJunc`r`nMetric VPN (Tailscale/Portmap) telah dikunci agar tidak bocor ke SA-MP.`r`n`r`nApakah server tujuan masih mendeteksi IP Hosting/VPN dan Anda ingin mengaktifkan Cloudflare WARP Split-Tunnel (Aman RDP tidak putus)?",
+      "GPCI Serial & HWID SA-MP berhasil di-reset ke identitas baru!`r`nPath GPCI Baru: $newJunc`r`nMetric VPN (Tailscale) telah dikunci agar tidak bocor ke SA-MP.`r`n`r`nApakah server tujuan masih mendeteksi IP Hosting/VPN dan Anda ingin mengaktifkan Cloudflare WARP Split-Tunnel (Aman RDP tidak putus)?",
       "XyRDP - Anti-Banned & Anti-VPN SAMP",
       [System.Windows.Forms.MessageBoxButtons]::YesNo,
       [System.Windows.Forms.MessageBoxIcon]::Information
@@ -766,7 +766,7 @@ if ($ResetAntiBan) {
     if ($res -eq [System.Windows.Forms.DialogResult]::Yes) {
       Enable-CloudflareWarpSafeSplitTunnel | Out-Null
       [System.Windows.Forms.MessageBox]::Show(
-        "Cloudflare WARP Split-Tunnel Aktif! (Subnet RDP Tailscale/Portmap dikecualikan sehingga RDP tetap aman). Silakan join server SA-MP sekarang.",
+        "Cloudflare WARP Split-Tunnel Aktif! (Subnet RDP Tailscale dikecualikan sehingga RDP tetap aman). Silakan join server SA-MP sekarang.",
         "Mode Anti-VPN Aktif", 0, 64
       ) | Out-Null
     }
@@ -977,12 +977,12 @@ $btnAntiBan.BackColor = [System.Drawing.Color]::FromArgb(217, 119, 6)
 $btnAntiBan.ForeColor = [System.Drawing.Color]::White
 $btnAntiBan.FlatStyle = 'Flat'
 $btnAntiBan.Add_Click({
-  $lblStatus.Text = "Mereset Serial GPCI / HWID & mengisolasi route VPN Tailscale/Portmap..."
+  $lblStatus.Text = "Mereset Serial GPCI / HWID & mengisolasi route VPN Tailscale..."
   $form.Refresh()
   $newJunc = Invoke-SampAntiBanAndAntiVpn -BaseDir $script:activeDir -ForceNewGpci
   Update-GuiStatus
   $ask = [System.Windows.Forms.MessageBox]::Show(
-    "Serial GPCI & HWID SA-MP berhasil di-reset ke identitas baru!`r`nPath GPCI Baru: $newJunc`r`nAdapter VPN (Tailscale/Portmap) telah diisolasi (Metric 5000 + TTL 128).`r`n`r`nJika server masih memblokir IP Datacenter/VPN, klik YES untuk mengaktifkan Cloudflare WARP Split-Tunnel (Aman RDP tidak putus), atau NO bila cukup Reset GPCI.",
+    "Serial GPCI & HWID SA-MP berhasil di-reset ke identitas baru!`r`nPath GPCI Baru: $newJunc`r`nAdapter VPN (Tailscale) telah diisolasi (Metric 5000 + TTL 128).`r`n`r`nJika server masih memblokir IP Datacenter/VPN, klik YES untuk mengaktifkan Cloudflare WARP Split-Tunnel (Aman RDP tidak putus), atau NO bila cukup Reset GPCI.",
     "Atasi Banned & Anti-VPN SAMP",
     [System.Windows.Forms.MessageBoxButtons]::YesNo,
     [System.Windows.Forms.MessageBoxIcon]::Question

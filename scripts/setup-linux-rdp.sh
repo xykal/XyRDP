@@ -317,7 +317,7 @@ EOF
   sudo sed -i 's/^#\?KbdInteractiveAuthentication.*/KbdInteractiveAuthentication yes/' /etc/ssh/sshd_config || true
   sudo systemctl enable ssh >/dev/null 2>&1 || sudo systemctl enable sshd >/dev/null 2>&1 || true
   sudo systemctl restart ssh >/dev/null 2>&1 || sudo systemctl restart sshd >/dev/null 2>&1 || true
-  log "OpenSSH Server aktif di port :22 dan :3389 (siap untuk Tailscale & Portmap)."
+  log "OpenSSH Server aktif di port :22 dan :3389 (siap untuk Tailscale)."
 else
   # ==========================================================================
   # MODE LINUX DESKTOP (XFCE4 + XRDP :3389 + OpenSSH :22 + PulseAudio On-Mic)
@@ -375,29 +375,20 @@ sudo ln -sfn /persist "/home/${RDP_USER}/Desktop/Folder-Permanen-AntiReset" || t
 sudo ln -sfn /persist "/home/${RDP_USER}/persist" || true
 sudo chown -h "${RDP_USER}:${RDP_USER}" "/home/${RDP_USER}/Desktop/Folder-Permanen-AntiReset" "/home/${RDP_USER}/persist" 2>/dev/null || true
 
-# 4. Hubungkan Tailscale / Portmap
+# 4. Hubungkan Tailscale
 TS_IP=""
-if [ "${AKSES:-tailscale}" = "portmap" ] && [ -n "${PORTMAP_OVPN_CONFIG:-}" ]; then
-  log "Menyiapkan akses Portmap OpenVPN..."
-  sudo apt-get install -y -qq openvpn
-  echo "${PORTMAP_OVPN_CONFIG}" > /tmp/portmap.ovpn
-  sudo openvpn --config /tmp/portmap.ovpn --daemon
-  sleep 8
-  TS_IP="${PORTMAP_HOST:-portmap.io}"
-else
-  log "Menyiapkan akses Tailscale..."
-  if ! command -v tailscale >/dev/null 2>&1; then
-    curl -fsSL https://tailscale.com/install.sh | sh
-  fi
-  sudo systemctl enable --now tailscaled
-  sudo tailscale up --authkey="${TAILSCALE_AUTH_KEY}" --hostname="${FULL_HOST}" --accept-routes --reset
-  for _ in $(seq 1 20); do
-    TS_IP="$(tailscale ip -4 2>/dev/null | head -n1 | tr -d '[:space:]')"
-    [ -n "$TS_IP" ] && break
-    sleep 2
-  done
-  log "Tailscale terhubung: IP=${TS_IP}"
+log "Menyiapkan akses Tailscale..."
+if ! command -v tailscale >/dev/null 2>&1; then
+  curl -fsSL https://tailscale.com/install.sh | sh
 fi
+sudo systemctl enable --now tailscaled
+sudo tailscale up --authkey="${TAILSCALE_AUTH_KEY}" --hostname="${FULL_HOST}" --accept-routes --reset
+for _ in $(seq 1 20); do
+  TS_IP="$(tailscale ip -4 2>/dev/null | head -n1 | tr -d '[:space:]')"
+  [ -n "$TS_IP" ] && break
+  sleep 2
+done
+log "Tailscale terhubung: IP=${TS_IP}"
 
 START_ISO="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 EXP_EPOCH="$(( $(date -u +%s) + DUR * 60 ))"

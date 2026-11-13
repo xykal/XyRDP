@@ -84,26 +84,11 @@ function Sync-And-Heal-DesktopShortcuts {
         }
       }
 
-      # 4. Shortcut FiveM (Ikon Asli FiveM_Official_Icon.exe)
-      $fivemExe = 'C:\Games\FiveM\FiveM.exe'
-      $fivemIconDonor = 'C:\Games\FiveM\FiveM_Official_Icon.exe'
-      if (Test-Path $fivemExe) {
-        $lnkFivem = Join-Path $desk 'FiveM.lnk'
-        if (-not (Test-Path $lnkFivem)) {
-          $sc4 = $wsh.CreateShortcut($lnkFivem)
-          $sc4.TargetPath = $fivemExe
-          $sc4.WorkingDirectory = 'C:\Games\FiveM'
-          $sc4.Description = 'FiveM - Cfx.re CitizenFX GTA V Roleplay Client'
-          if (Test-Path $fivemIconDonor) { $sc4.IconLocation = "$fivemIconDonor,0" }
-          else { $sc4.IconLocation = "$fivemExe,0" }
-          $sc4.Save()
-        }
-      }
-
-      # 5. Shortcut MEmu Emulator, Euro Truck Simulator 2 Free, & Blender 3D (100% Ikon Asli .exe)
-      $blenderExe = (Get-ChildItem -Path 'C:\Games\Blender' -Recurse -File -Filter 'blender.exe' -ErrorAction SilentlyContinue | Select-Object -First 1)
-      $etsExe     = 'C:\Games\ETS2\bin\win_x86\eurotrucks2.exe'
-      $memuExe    = if (Test-Path 'C:\Program Files\Microvirt\MEmu\MEmuConsole.exe') { 'C:\Program Files\Microvirt\MEmu\MEmuConsole.exe' } else { 'C:\Games\MEmu\MEmu-Setup.exe' }
+      # 4. Shortcut Studio 3D, WinRAR & XyMac OS Launcher (100% Ikon Asli .exe)
+      $blenderExe = (Get-ChildItem -Path @('C:\Studio\Blender', 'C:\Games\Blender') -Recurse -File -Filter 'blender.exe' -ErrorAction SilentlyContinue | Select-Object -First 1)
+      $studioExe  = if (Test-Path 'C:\Studio\RobloxStudio\RobloxStudioBeta.exe') { 'C:\Studio\RobloxStudio\RobloxStudioBeta.exe' } elseif (Test-Path 'C:\Games\Roblox\Studio\RobloxStudioBeta.exe') { 'C:\Games\Roblox\Studio\RobloxStudioBeta.exe' } else { $null }
+      $winrarExe  = if (Test-Path 'C:\Program Files\WinRAR\WinRAR.exe') { 'C:\Program Files\WinRAR\WinRAR.exe' } elseif (Test-Path 'C:\Program Files (x86)\WinRAR\WinRAR.exe') { 'C:\Program Files (x86)\WinRAR\WinRAR.exe' } else { $null }
+      $macExe     = 'C:\XyRDP\bin\XyMacLauncher.exe'
 
       if ($blenderExe) {
         $lnkB = Join-Path $desk 'Blender 3D.lnk'
@@ -117,29 +102,40 @@ function Sync-And-Heal-DesktopShortcuts {
         }
       }
 
-      if (Test-Path $etsExe) {
-        $lnkE = Join-Path $desk 'Euro Truck Simulator 2.lnk'
-        if (-not (Test-Path $lnkE)) {
-          $scE = $wsh.CreateShortcut($lnkE)
-          $scE.TargetPath = $etsExe
-          $scE.Arguments = '-nofullscreen -nointro'
-          $scE.WorkingDirectory = (Split-Path $etsExe -Parent)
-          $scE.IconLocation = "$etsExe,0"
-          $scE.Description = 'Euro Truck Simulator 2 (Ready-to-Play di XyRDP)'
-          $scE.Save()
+      if ($studioExe) {
+        $lnkS = Join-Path $desk 'Roblox Studio.lnk'
+        if (-not (Test-Path $lnkS)) {
+          $scS = $wsh.CreateShortcut($lnkS)
+          $scS.TargetPath = $studioExe
+          $scS.WorkingDirectory = (Split-Path $studioExe -Parent)
+          $scS.IconLocation = "$studioExe,0"
+          $scS.Description = 'Roblox Studio IDE (Direct3D 11 Ready)'
+          $scS.Save()
         }
       }
 
-      if (Test-Path 'C:\Games\MEmu\Launch-MEmu.ps1') {
-        $lnkM = Join-Path $desk 'MEmu Emulator.lnk'
-        if (-not (Test-Path $lnkM)) {
-          $scM = $wsh.CreateShortcut($lnkM)
-          $scM.TargetPath = 'powershell.exe'
-          $scM.Arguments = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Games\MEmu\Launch-MEmu.ps1"'
-          $scM.WorkingDirectory = 'C:\Games\MEmu'
-          if (Test-Path $memuExe) { $scM.IconLocation = "$memuExe,0" }
-          $scM.Description = 'MEmu Play Android Emulator'
-          $scM.Save()
+      if ($winrarExe) {
+        $lnkR = Join-Path $desk 'WinRAR.lnk'
+        if (-not (Test-Path $lnkR)) {
+          $scR = $wsh.CreateShortcut($lnkR)
+          $scR.TargetPath = $winrarExe
+          $scR.WorkingDirectory = (Split-Path $winrarExe -Parent)
+          $scR.IconLocation = "$winrarExe,0"
+          $scR.Description = 'WinRAR Archiver'
+          $scR.Save()
+        }
+      }
+
+      if (Test-Path $macExe) {
+        $lnkMac = Join-Path $desk 'XyMac OS Launcher (Mac Style).lnk'
+        if (-not (Test-Path $lnkMac)) {
+          $scMac = $wsh.CreateShortcut($lnkMac)
+          $scMac.TargetPath = $macExe
+          $scMac.Arguments = '--hide-taskbar'
+          $scMac.WorkingDirectory = 'C:\XyRDP\bin'
+          $scMac.IconLocation = 'shell32.dll,277'
+          $scMac.Description = 'Launcher Desktop bergaya macOS (Dock + Top Bar + Launchpad)'
+          $scMac.Save()
         }
       }
     }
@@ -219,10 +215,6 @@ while ([DateTime]::UtcNow -lt $exp) {
     $deployGl = 'C:\XyRDP\grafis\Deploy-OpenGL-To-Java.ps1'
     if (Test-Path $deployGl) {
       try { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $deployGl 2>&1 | Out-Null } catch {}
-    }
-    $patchSamp = 'C:\Games\GTA-SAMP\Patch-GTA-SAMP.ps1'
-    if (Test-Path $patchSamp) {
-      try { & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $patchSamp 2>&1 | Out-Null } catch {}
     }
     foreach ($lu in @('xyadmin', 'runneradmin')) {
       $lSet = "C:\Users\$lu\AppData\Local\Lively Wallpaper\Settings.json"

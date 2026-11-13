@@ -5,3 +5,13 @@ out/
 node_modules/
 .vercel/
 deploy/vercel/.vercel/
+
+# artefak kompilasi modul native (source tetap di-commit)
+native/**/target/
+native/**/bin/
+native/**/obj/
+native/**/*.exe
+native/**/*.dll
+native/**/*.pdb
+native/**/*.o
+native/**/*.out

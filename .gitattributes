@@ -1,0 +1,10 @@
+# Pastikan GitHub Linguist mengenali seluruh bahasa inti XyRDP secara akurat
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+*.ps1 linguist-language=PowerShell
+native/**/*.rs linguist-language=Rust linguist-detectable=true linguist-vendored=false
+native/**/*.c linguist-language=C linguist-detectable=true linguist-vendored=false
+native/**/*.h linguist-language=C linguist-detectable=true linguist-vendored=false
+native/**/*.cpp linguist-language=C++ linguist-detectable=true linguist-vendored=false
+native/**/*.hpp linguist-language=C++ linguist-detectable=true linguist-vendored=false
+native/**/*.cs linguist-language=C# linguist-detectable=true linguist-vendored=false

@@ -114,7 +114,7 @@ on:
           - ya
           - tidak
       ekstra:
-        description: 'Pasang aplikasi ekstra (7-Zip, Chrome, Lightshot, wallpaper)'
+        description: 'Pasang aplikasi ekstra (Chrome, WinRAR, 7-Zip, Lightshot, wallpaper)'
         required: false
         default: 'ya'
         type: choice
@@ -122,7 +122,7 @@ on:
           - ya
           - tidak
       grafis:
-        description: 'Akselerasi OpenGL 4.6 D3D12 (Mesa3D untuk Minecraft & Game)'
+        description: 'Akselerasi OpenGL 4.6 D3D12 (Mesa3D untuk Blender 3D & Studio)'
         required: false
         default: 'software'
         type: choice
@@ -205,6 +205,22 @@ on:
         options:
           - ya
           - tidak
+      studio_tools:
+        description: 'Studio 3D & Kreator: Blender 3D 4.2 LTS, Roblox Studio, WebView2, FFmpeg'
+        required: false
+        default: 'ya'
+        type: choice
+        options:
+          - ya
+          - tidak
+      mac_launcher:
+        description: 'Launcher Desktop bergaya macOS (XyMac Dock, Top Menu Bar & Launchpad)'
+        required: false
+        default: 'tidak'
+        type: choice
+        options:
+          - ya
+          - tidak
 
 permissions:
   contents: write
@@ -237,6 +253,8 @@ jobs:
       LINUX_MODE: ${{ inputs.linux_mode || 'desktop' }}
       MICROPHONE: ${{ inputs.microphone || 'ya' }}
       DEVTOOLS: ${{ inputs.devtools || 'tidak' }}
+      STUDIO_TOOLS: ${{ inputs.studio_tools || 'ya' }}
+      MAC_LAUNCHER: ${{ inputs.mac_launcher || 'tidak' }}
       PERPANJANG_OTOMATIS: ${{ inputs.perpanjang_otomatis || 'ya' }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -347,11 +365,25 @@ jobs:
         continue-on-error: true
         run: ./scripts/setup-devtools.ps1
 
-      - name: Aplikasi ekstra (7-Zip, Chrome, Lightshot, Wallpaper)
+      - name: Native Core & XyMac OS Launcher (C, C++, C#, Rust)
+        timeout-minutes: 8
+        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') }}
+        shell: pwsh
+        continue-on-error: true
+        run: ./scripts/setup-native-core.ps1
+
+      - name: Aplikasi ekstra (Chrome, WinRAR, 7-Zip, Lightshot, Wallpaper)
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.ekstra || 'ya') != 'tidak' }}
         shell: pwsh
         continue-on-error: true
         run: ./scripts/setup-extras.ps1
+
+      - name: Studio 3D & Utilitas (Blender 3D, Roblox Studio, WebView2, FFmpeg)
+        timeout-minutes: 15
+        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.studio_tools || 'ya') != 'tidak' }}
+        shell: pwsh
+        continue-on-error: true
+        run: ./scripts/setup-studio-3d.ps1
 
       - name: Host setup XyDesk Remote
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.xydesk || 'ya') != 'tidak' }}
@@ -421,10 +453,7 @@ jobs:
               storage_boost       = "$($env:STORAGE_BOOST)"
               debloat             = "$($env:DEBLOAT)"
               runtimes            = "$($env:RUNTIMES)"
-              samp                = "$($env:SAMP)"
-              samp_antiban        = "$($env:SAMP_ANTIBAN)"
               fps_boost           = "$($env:FPS_BOOST)"
-              mumu                = "$($env:MUMU)"
               win10               = "$($env:WIN10)"
               xydesk              = "$($env:XYDESK)"
               ekstra              = "$($env:EKSTRA)"
@@ -432,10 +461,9 @@ jobs:
               runner              = "${{ inputs.runner || 'windows-2022' }}"
               linux_mode          = "$($env:LINUX_MODE)"
               microphone          = "$($env:MICROPHONE)"
-              roblox              = "$($env:ROBLOX)"
-              minecraft_java      = "$($env:MINECRAFT_JAVA)"
-              minecraft_bedrock   = "$($env:MINECRAFT_BEDROCK)"
-              discord             = "$($env:DISCORD)"
+              devtools            = "$($env:DEVTOOLS)"
+              studio_tools        = "$($env:STUDIO_TOOLS)"
+              mac_launcher        = "$($env:MAC_LAUNCHER)"
               perpanjang_otomatis = "$($env:PERPANJANG_OTOMATIS)"
             }
           } | ConvertTo-Json -Depth 5

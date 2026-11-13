@@ -5,7 +5,7 @@
 > Runtime kini **cepat** (VC++ 2015-2022) dengan **grafis 3D lengkap** (DirectX Juni 2010).
 > Input game pada workflow tetap diterima demi kompatibilitas APK lama, tetapi diabaikan.
 
-Dashboard: **https://rdpfree.projectkal.my.id** · Credit: **KallAncrit**
+Dashboard: **https://rdpfree.projectkal.my.id** · Founder: **xykal (Haekal Saputra)** · Tim: **XyVerse** (Indonesia)
 
 Windows RDP melalui **Tailscale privat**, dengan dashboard Next.js/Cloudflare dan integrasi API native XyDesk Remote. Tidak ada Pinggy, bore, ngrok, Serveo, localhost.run, Funnel, atau relay publik pada workflow aktif.
 

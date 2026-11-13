@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <AssemblyName>XyMacLauncher</AssemblyName>
+    <RootNamespace>XyMacLauncher</RootNamespace>
+    <Authors>Haekal Saputra (xykal) - XyVerse</Authors>
+    <Company>XyVerse Technology Global</Company>
+    <Description>macOS-style Desktop Dock, Top Menu Bar, and Launchpad for XyRDP Windows Sessions.</Description>
+  </PropertyGroup>
+</Project>

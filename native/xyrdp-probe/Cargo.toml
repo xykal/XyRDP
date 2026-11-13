@@ -1,0 +1,11 @@
+[package]
+name = "xyrdp-probe"
+version = "1.0.0"
+edition = "2021"
+authors = ["Haekal Saputra (xykal) <xykal@users.noreply.github.com>"]
+description = "Native RDP X.224 handshake probe, Tailscale CGNAT validator, and telemetry emitter for XyRDP."
+license = "Apache-2.0"
+
+[[bin]]
+name = "xyrdp-probe"
+path = "src/main.rs"

@@ -28,7 +28,7 @@ if ($env:EXTRAS) {
 }
 if (-not $master) {
   Log "EXTRAS='$env:EXTRAS' - semua langkah ekstra dilewati."
-  Update-Status @{ extras = @{ lightshot = 'skip'; wallpaper = 'skip'; wallpaper_file = ''; vscode = 'skip'; notepadpp = 'skip'; admin = $true } } | Out-Null
+  Update-Status @{ extras = @{ lightshot = 'skip'; winrar = 'skip'; wallpaper = 'skip'; wallpaper_file = ''; vscode = 'skip'; notepadpp = 'skip'; admin = $true } } | Out-Null
   exit 0
 }
 
@@ -415,20 +415,67 @@ try {
   } else { Log '  user/grup tidak ditemukan (harusnya dibuat setup-rdp.ps1)' }
 } catch { Log "  verifikasi gagal: $($_.Exception.Message)" }
 
-# ---------- 6. Build & Pasang XyDeskTools.exe (Gaming & Tools Hub) ----------
+# ---------- 6. WINRAR 7.23 x64 (Utilitas Arsip Esensial) ----------
+function Find-WinRAR {
+  foreach ($cand in @(
+    "$env:ProgramFiles\WinRAR\WinRAR.exe",
+    "${env:ProgramFiles(x86)}\WinRAR\WinRAR.exe"
+  )) {
+    if ($cand -and (Test-Path $cand)) { return $cand }
+  }
+  return $null
+}
+
+$resWinRAR = 'skip'
 try {
-  $toolsHubScript = Join-Path $PSScriptRoot 'setup-tools-hub.ps1'
-  if (Test-Path $toolsHubScript) {
-    & $toolsHubScript
+  Log 'WINRAR: memeriksa / memasang WinRAR x64 resmi...'
+  $rarExe = Find-WinRAR
+  if (-not $rarExe) {
+    $rarInstaller = Join-Path $env:RUNNER_TEMP 'winrar-x64-723.exe'
+    $expectedRarHash = '8FF0DAF3ED564CC743C0E23FF2E253997FFC74460F9673F0B6DD037B2DB4CE7B'
+    if (Get-File 'https://www.rarlab.com/rar/winrar-x64-723.exe' $rarInstaller 180) {
+      if ((Get-FileHash -LiteralPath $rarInstaller -Algorithm SHA256).Hash -eq $expectedRarHash) {
+        $pRar = Start-Process -FilePath $rarInstaller -ArgumentList @('/S') -PassThru -WindowStyle Hidden
+        if ($pRar) { $pRar.WaitForExit(120000) | Out-Null }
+      } else {
+        Log '  Installer WinRAR langsung dilewati: SHA256 berubah, mencoba winget...'
+      }
+      Remove-Item $rarInstaller -Force -ErrorAction SilentlyContinue
+    }
+    $rarExe = Find-WinRAR
+    if (-not $rarExe) {
+      Install-WingetCodingTool 'WinRAR' 'RARLab.WinRAR' | Out-Null
+      $rarExe = Find-WinRAR
+    }
+  }
+  if ($rarExe) {
+    foreach ($desk in @("C:\Users\$u\Desktop", 'C:\Users\Public\Desktop', 'C:\Users\Default\Desktop')) {
+      New-Item -ItemType Directory -Path $desk -Force -ErrorAction SilentlyContinue | Out-Null
+      try {
+        $wsh = New-Object -ComObject WScript.Shell
+        $lnkRar = $wsh.CreateShortcut((Join-Path $desk 'WinRAR.lnk'))
+        $lnkRar.TargetPath = $rarExe
+        $lnkRar.WorkingDirectory = Split-Path $rarExe -Parent
+        $lnkRar.IconLocation = "$rarExe,0"
+        $lnkRar.Description = 'WinRAR Archiver (RAR / ZIP / 7Z)'
+        $lnkRar.Save()
+      } catch {}
+    }
+    $resWinRAR = 'ok'
+    Log "  WinRAR siap di: $rarExe"
+  } else {
+    $resWinRAR = 'gagal'
   }
 } catch {
-  Log "setup-tools-hub warning: $($_.Exception.Message)"
+  Log "  WinRAR warning: $($_.Exception.Message)"
+  $resWinRAR = 'gagal'
 }
 
 # ---------- 7. Rangkum ke status ----------
 Update-Status @{ extras = [ordered]@{
     lightshot      = $resLightshot
-        wallpaper      = $resWall
+    winrar         = $resWinRAR
+    wallpaper      = $resWall
     wallpaper_file = $wallName
     vscode         = $resVSCode
     notepadpp      = $resNotepadPP
@@ -437,7 +484,7 @@ Update-Status @{ extras = [ordered]@{
 Close-DefaultHive
 
 $adminTxt = $(if ($adminOk) { 'YA' } else { 'TIDAK' })
-Log ("SELESAI - lightshot={0} wallpaper={1} admin={2}" -f $resLightshot, $resWall, $adminTxt)
+Log ("SELESAI - lightshot={0} winrar={1} wallpaper={2} admin={3}" -f $resLightshot, $resWinRAR, $resWall, $adminTxt)
 try { Probe-Rdp 'akhir step' | Out-Null } catch {}
 
 exit 0

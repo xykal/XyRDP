@@ -647,20 +647,11 @@ function Ensure-XyDesktopIcons {
   $icoDir = 'C:\XyRDP\icons'
   New-Item -ItemType Directory -Path $icoDir -Force -ErrorAction SilentlyContinue | Out-Null
   New-XyAppIcon "$icoDir\xydesk-dashboard.ico"   'XY'  2   132 199 15  23  42  'DASHBOARD' | Out-Null
-  New-XyAppIcon "$icoDir\tlauncher.ico"          'TL'  16  185 129 4   120 87  'CRACKED'   | Out-Null
-  New-XyAppIcon "$icoDir\prismlauncher.ico"      'PL'  139 92  246 76  29  149 'MODPACK'   | Out-Null
-  New-XyAppIcon "$icoDir\minecraft-official.ico" 'MC'  245 158 11  180 83  9   'OFFICIAL'  | Out-Null
-  New-XyAppIcon "$icoDir\roblox-antivm.ico"      'RBX' 239 68  68  153 27  27  'ROBLOX'    | Out-Null
-  New-XyAppIcon "$icoDir\samp-launcher.ico"      'SA'  249 115 22  194 65  12  'SA-MP'     | Out-Null
-  New-XyAppIcon "$icoDir\samp-antiban.ico"       'FIX' 20  184 166 15  118 110 'ANTI-BAN'  | Out-Null
   New-XyAppIcon "$icoDir\cloud-save.ico"         'CLD' 56  189 248 3   105 161 'SAVE'      | Out-Null
   New-XyAppIcon "$icoDir\persist-folder.ico"     'DIR' 234 179 8   161 98  7   'PERSIST'   | Out-Null
-  New-XyAppIcon "$icoDir\bluestacks.ico"         'BS5' 59  130 246 29  78  216 'ANDROID'   | Out-Null
-  New-XyAppIcon "$icoDir\mumu.ico"               'MM'  236 72  153 157 23  77  'ANDROID'   | Out-Null
-  New-XyAppIcon "$icoDir\memu.ico"               'ME'  16  185 129 5   150 105 'MEMU PLAY' | Out-Null
-  New-XyAppIcon "$icoDir\ets2.ico"               'ETS' 245 158 11  180 83  9   'ETS 2'     | Out-Null
   New-XyAppIcon "$icoDir\blender.ico"            '3D'  234 88  12  37  99  235 'BLENDER'   | Out-Null
-  New-XyAppIcon "$icoDir\fivem.ico"              'V'   249 115 22  220 38  38  'FiveM'     | Out-Null
+  New-XyAppIcon "$icoDir\roblox-studio.ico"      'RBS' 0   162 255 15  23  42  'STUDIO'    | Out-Null
+  New-XyAppIcon "$icoDir\xymac-launcher.ico"     'MAC' 168 85  247 30  27  75  'XYMAC'     | Out-Null
   return $icoDir
 }
 

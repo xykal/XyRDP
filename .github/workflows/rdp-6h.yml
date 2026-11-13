@@ -2,7 +2,8 @@
 # 2026-11-13 (permintaan pemilik): suite game DIHAPUS (GTA/SA-MP, Roblox,
 # Minecraft, MuMu, Tools-Hub game) — tidak stabil & bikin runtime lambat.
 # Runtime kini cepat (VC++ 2015-2022 + DirectX Juni 2010 = grafis 3D lengkap).
-# Input game masih DITERIMA (kompatibilitas APK lama) tetapi DIABAIKAN.
+# Input game lama tetap diterima tetapi diabaikan. Discord dihapus agar
+# workflow_dispatch tetap dalam batas 25 input GitHub; klien lama perlu diperbarui.
 # 1.1.28: tambah fps_boost, samp_antiban, mumu, portmap_host/portmap_port,
 #         dan opsi akses portmap/railway. Penanda skema sengaja tetap 5 supaya
 #         kontrak web-next/src/lib/workflow-contract.ts tetap menerima workflow.
@@ -185,14 +186,6 @@ on:
         description: 'Lanjutkan otomatis ke sesi berikutnya saat waktu habis (data tetap utuh)'
         required: false
         default: 'ya'
-        type: choice
-        options:
-          - ya
-          - tidak
-      discord:
-        description: '(diabaikan) Fitur non-RDP dihapus 2026-11'
-        required: false
-        default: 'tidak'
         type: choice
         options:
           - ya

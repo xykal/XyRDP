@@ -1,4 +1,8 @@
 # rdpfree-workflow-schema: 5
+# 2026-11-13 (permintaan pemilik): suite game DIHAPUS (GTA/SA-MP, Roblox,
+# Minecraft, MuMu, Tools-Hub game) — tidak stabil & bikin runtime lambat.
+# Runtime kini cepat (VC++ 2015-2022 + DirectX Juni 2010 = grafis 3D lengkap).
+# Input game masih DITERIMA (kompatibilitas APK lama) tetapi DIABAIKAN.
 # 1.1.28: tambah fps_boost, samp_antiban, mumu, portmap_host/portmap_port,
 #         dan opsi akses portmap/railway. Penanda skema sengaja tetap 5 supaya
 #         kontrak web-next/src/lib/workflow-contract.ts tetap menerima workflow.
@@ -53,24 +57,24 @@ on:
           - full
           - tidak
       runtimes:
-        description: 'Runtime VC++/DirectX/.NET (auto = penuh hanya bila SA-MP dipilih; cepat = VC++ 2010-2022)'
+        description: 'Runtime (cepat = VC++ 2015-2022 + DirectX 3D lengkap; penuh = tambah VC++ lawas + .NET 3.5)'
         required: false
-        default: 'auto'
+        default: 'cepat'
         type: choice
         options:
           - auto
           - cepat
           - penuh
       samp:
-        description: 'Pasang runtime + SilentPatch GTA SA & SA-MP'
+        description: '(diabaikan) Fitur game dihapus 2026-11'
         required: false
-        default: 'ya'
+        default: 'tidak'
         type: choice
         options:
           - ya
           - tidak
       samp_antiban:
-        description: 'Reset GPCI/HWID SA-MP ke identitas baru (anti-ban)'
+        description: '(diabaikan) Fitur game dihapus 2026-11'
         required: false
         default: 'tidak'
         type: choice
@@ -86,7 +90,7 @@ on:
           - ya
           - tidak
       mumu:
-        description: 'Pasang MuMu Player 12 (emulator Android) + shortcut desktop'
+        description: '(diabaikan) Fitur game dihapus 2026-11'
         required: false
         default: 'tidak'
         type: choice
@@ -154,7 +158,7 @@ on:
           - ya
           - tidak
       roblox:
-        description: 'Siapkan installer Roblox Player'
+        description: '(diabaikan) Fitur game dihapus 2026-11'
         required: false
         default: 'tidak'
         type: choice
@@ -162,7 +166,7 @@ on:
           - ya
           - tidak
       minecraft_java:
-        description: 'Pasang Minecraft Java + JDK 21/JRE 8 + OpenGL 4.6 D3D12'
+        description: '(diabaikan) Fitur game dihapus 2026-11'
         required: false
         default: 'tidak'
         type: choice
@@ -170,7 +174,7 @@ on:
           - ya
           - tidak
       minecraft_bedrock:
-        description: 'Pasang Minecraft Launcher (Bedrock)'
+        description: '(diabaikan) Fitur game dihapus 2026-11'
         required: false
         default: 'tidak'
         type: choice
@@ -216,20 +220,14 @@ jobs:
       TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
       STORAGE_BOOST: ${{ inputs.storage_boost || 'ya' }}
       DEBLOAT: ${{ inputs.debloat || 'ringan' }}
-      SAMP: ${{ inputs.samp || 'ya' }}
-      RUNTIMES: ${{ inputs.runtimes || 'auto' }}
-      SAMP_ANTIBAN: ${{ inputs.samp_antiban || 'tidak' }}
+      RUNTIMES: ${{ inputs.runtimes || 'cepat' }}
       FPS_BOOST: ${{ inputs.fps_boost || 'ya' }}
-      MUMU: ${{ inputs.mumu || 'tidak' }}
       WIN10: ${{ inputs.win10 || 'ya' }}
       XYDESK: ${{ inputs.xydesk || 'ya' }}
       EKSTRA: ${{ inputs.ekstra || 'ya' }}
       GRAFIS: ${{ inputs.grafis || 'software' }}
       LINUX_MODE: ${{ inputs.linux_mode || 'desktop' }}
       MICROPHONE: ${{ inputs.microphone || 'ya' }}
-      ROBLOX: ${{ inputs.roblox || 'tidak' }}
-      MINECRAFT_JAVA: ${{ inputs.minecraft_java || 'tidak' }}
-      MINECRAFT_BEDROCK: ${{ inputs.minecraft_bedrock || 'tidak' }}
       DISCORD: ${{ inputs.discord || 'tidak' }}
       PERPANJANG_OTOMATIS: ${{ inputs.perpanjang_otomatis || 'ya' }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -288,7 +286,7 @@ jobs:
         shell: pwsh
         continue-on-error: true
         env:
-          XYRT_MODE: ${{ (inputs.runtimes == 'penuh' || ((inputs.runtimes || 'auto') == 'auto' && (inputs.samp || 'ya') == 'ya')) && 'penuh' || 'cepat' }}
+          XYRT_MODE: ${{ inputs.runtimes == 'penuh' && 'penuh' || 'cepat' }}
         run: ./scripts/setup-runtimes.ps1
 
       - name: Pulihkan simpanan sesi sebelumnya
@@ -329,49 +327,17 @@ jobs:
         continue-on-error: true
         run: ./scripts/setup-media.ps1
 
-      - name: Grafis OpenGL 4.6 D3D12 (Mesa3D untuk Minecraft & Game)
+      - name: Grafis 3D Lengkap (OpenGL 4.6 / D3D12 Mesa3D)
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.grafis || 'software') != 'tidak' }}
         shell: pwsh
         continue-on-error: true
         run: ./scripts/setup-grafis.ps1
-
-      - name: Runtime All-Software 2026 & GTA SA-MP By SilentPatch
-        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.samp || 'ya') != 'tidak' }}
-        shell: pwsh
-        continue-on-error: true
-        run: ./scripts/setup-samp.ps1
-
-      - name: Reset Anti-Ban SAMP (GPCI / HWID baru)
-        timeout-minutes: 10
-        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.samp_antiban || 'tidak') == 'ya' }}
-        shell: pwsh
-        continue-on-error: true
-        run: ./scripts/setup-samp-antiban.ps1
-
-      - name: Pasang Suite Game & Studio (Minecraft, Roblox, ETS 2, Blender, MEmu, FiveM)
-        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') }}
-        shell: pwsh
-        continue-on-error: true
-        run: ./scripts/setup-games.ps1
-
-      - name: MuMu Player 12 (Android Emulator)
-        timeout-minutes: 25
-        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.mumu || 'tidak') == 'ya' }}
-        shell: pwsh
-        continue-on-error: true
-        run: ./scripts/setup-mumu.ps1
 
       - name: Aplikasi ekstra (7-Zip, Chrome, Lightshot, Wallpaper)
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.ekstra || 'ya') != 'tidak' }}
         shell: pwsh
         continue-on-error: true
         run: ./scripts/setup-extras.ps1
-
-      - name: Pasang XyDeskTools.exe (Gaming & Tools Hub di Desktop RDP)
-        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') }}
-        shell: pwsh
-        continue-on-error: true
-        run: ./scripts/setup-tools-hub.ps1
 
       - name: Host setup XyDesk Remote
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.xydesk || 'ya') != 'tidak' }}

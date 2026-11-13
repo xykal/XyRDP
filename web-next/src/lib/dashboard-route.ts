@@ -1,4 +1,4 @@
-const sections=new Set(['','connection','setup','folder','settings','logs','devices','games']);
+const sections=new Set(['','connection','setup','folder','settings','logs','devices']);
 export function dashboardRoute(path:string,login:string|null,admin=false):{kind:'redirect'|'rewrite';path:string}|{kind:'next'|'reject'|'login'}{
  if(path!=='/dashboard'&&!path.startsWith('/dashboard/'))return {kind:'next'};
  const parts=path.slice('/dashboard'.length).split('/').filter(Boolean).map(v=>{try{return decodeURIComponent(v)}catch{return '!invalid'}});

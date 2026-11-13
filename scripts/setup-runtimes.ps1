@@ -1,71 +1,102 @@
 # ============================================================================
-#  setup-runtimes.ps1 - Runtime aplikasi & game (VC++ / DirectX / .NET)
+#  setup-runtimes.ps1 - Runtime VC++ & DirectX
 # ----------------------------------------------------------------------------
-#  1.1.29 (cepat): unduhan diparalelkan (curl --parallel), installer di-cache di
-#  %USERPROFILE%\xyrt-cache (di-persist lewat actions/cache oleh workflow), dan
-#  runtime dibagi dua tingkat:
-#    - Mode cepat : VC++ 2010-2022 x64+x86 (cukup untuk hampir semua aplikasi).
-#    - Mode penuh : + VC++ 2008/2005 (winget), DirectX June 2010, .NET 3.5 —
-#      untuk sesi game/legacy (SA-MP, Roblox, Minecraft, emulator).
-#    - Mode auto  : workflow yang memutuskan (penuh bila ada toggle game).
-#  Semua langkah BEST-EFFORT; satu gagal tidak mematikan sesi.
+#  2026-11-13 (permintaan pemilik): runtime dibuat CEPAT + grafis 3D lengkap.
+#    - Mode 'cepat' (DEFAULT): VC++ 2015-2022 (x64+x86) + DirectX Juni 2010
+#      (3D lengkap via setup-directx.ps1). Tanpa VC++ lawas / .NET 3.5.
+#    - Mode 'penuh' (opsi manual): + VC++ 2010-2013 + .NET 3.5 + VC++ 2005/2008
+#      untuk aplikasi lawas.
+#  Cache: ~/xyrt-cache (dipakai ulang lintas run bila ada). Tidak fail job.
 # ============================================================================
-
-param([string]$Mode = 'penuh')
-
-$XyTag = 'XyRDP:runtimes'
-. "$PSScriptRoot/lib-common.ps1"
-
-if ($env:XYRT_MODE) { $Mode = $env:XYRT_MODE }
-if ($Mode -notin @('cepat', 'penuh', 'auto')) { $Mode = 'penuh' }
-if ($Mode -eq 'auto') { $Mode = 'penuh' }   # fallback manual: aman = penuh
-
-$cacheDir = if ($env:XYRT_CACHE) { $env:XYRT_CACHE } else { Join-Path $env:USERPROFILE 'xyrt-cache' }
-New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
-
-$res = [ordered]@{}
-$res['mode'] = $Mode
-
-# Daftar paket unduh-langsung (semua = tingkat "cepat").
-# VerifyPath kosong = tidak diverifikasi berkas (instal tetap dicek exit code).
-$pkgs = @(
-  @{ k = 'vc2022x64'; label = 'VC++ 2015-2022 x64'; url = 'https://aka.ms/vs/17/release/vc_redist.x64.exe'; args = '/install /quiet /norestart'; verify = 'C:\Windows\System32\vcruntime140.dll' },
-  @{ k = 'vc2022x86'; label = 'VC++ 2015-2022 x86'; url = 'https://aka.ms/vs/17/release/vc_redist.x86.exe'; args = '/install /quiet /norestart'; verify = 'C:\Windows\SysWOW64\vcruntime140.dll' },
-  @{ k = 'vc2013x64'; label = 'VC++ 2013 x64'; url = 'https://aka.ms/vs/12/release/vc_redist.x64.exe'; args = '/install /quiet /norestart'; verify = 'C:\Windows\System32\msvcr120.dll' },
-  @{ k = 'vc2013x86'; label = 'VC++ 2013 x86'; url = 'https://aka.ms/vs/12/release/vc_redist.x86.exe'; args = '/install /quiet /norestart'; verify = 'C:\Windows\SysWOW64\msvcr120.dll' },
-  @{ k = 'vc2012x64'; label = 'VC++ 2012 x64'; url = 'https://aka.ms/vs/11/release/vc_redist.x64.exe'; args = '/install /quiet /norestart'; verify = 'C:\Windows\System32\msvcr110.dll' },
-  @{ k = 'vc2012x86'; label = 'VC++ 2012 x86'; url = 'https://aka.ms/vs/11/release/vc_redist.x86.exe'; args = '/install /quiet /norestart'; verify = 'C:\Windows\SysWOW64\msvcr110.dll' },
-  @{ k = 'vc2010x64'; label = 'VC++ 2010 x64'; url = 'https://aka.ms/vs/10/release/vc_redist.x64.exe'; args = '/install /quiet /norestart'; verify = 'C:\Windows\System32\msvcr100.dll' },
-  @{ k = 'vc2010x86'; label = 'VC++ 2010 x86'; url = 'https://aka.ms/vs/10/release/vc_redist.x86.exe'; args = '/install /quiet /norestart'; verify = 'C:\Windows\SysWOW64\msvcr100.dll' }
+param(
+  [ValidateSet('auto', 'cepat', 'penuh')]
+  [string]$Mode = $(if ($env:XYRT_MODE) { $env:XYRT_MODE } else { 'auto' })
 )
+$ErrorActionPreference = 'Continue'
+
+# Sumber util: Log + Update-Status (lib-common) bila ada.
+$lib = Join-Path $PSScriptRoot 'lib-common.ps1'
+if (Test-Path $lib) {
+  try { . $lib } catch {}
+}
+if (-not (Get-Command Log -ErrorAction SilentlyContinue)) {
+  function Log([string]$m) { Write-Host ("[runtimes] " + $m) }
+}
+if (-not (Get-Command Update-Status -ErrorAction SilentlyContinue)) {
+  function Update-Status([hashtable]$h) { return $null }
+}
+
+if ($Mode -eq 'auto') { $Mode = 'cepat' }
+Log "Mode runtime: $Mode (auto -> cepat; game dihapus 2026-11)"
+
+$cacheDir = Join-Path $env:USERPROFILE 'xyrt-cache'
+New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+
+$res = @{}
 
 function Get-CacheFile([hashtable]$p) {
-  Join-Path $cacheDir ((($p.url -split '\?')[0] -split '/')[-1])
+  return Join-Path $cacheDir $p.file
 }
 
-# ---- Tahap 1: unduh PARALEL hanya yang belum ada di cache/terpasang --------
-$need = @()
-foreach ($p in $pkgs) {
-  if ($p.verify -and (Test-Path $p.verify)) { $res[$p.k] = 'sudah ada'; continue }
-  $exe = Get-CacheFile $p
-  if ((Test-Path $exe) -and (Get-Item $exe).Length -gt 65536) { $res[$p.k] = 'cache'; continue }
-  $need += $p
+# ---- Paket unduh langsung (cepat): VC++ 2015-2022 x64+x86 -----------------
+$pkgs = @(
+  @{ k = 'vc2022x64'; label = 'Microsoft Visual C++ 2015-2022 Redistributable x64';
+     url = 'https://aka.ms/vs/17/release/vc_redist.x64.exe'; file = 'vc2022x64.exe';
+     args = @('/install', '/passive', '/norestart'); verify = 'C:\Windows\System32\msvcp140.dll' },
+  @{ k = 'vc2022x86'; label = 'Microsoft Visual C++ 2015-2022 Redistributable x86';
+     url = 'https://aka.ms/vs/17/release/vc_redist.x86.exe'; file = 'vc2022x86.exe';
+     args = @('/install', '/passive', '/norestart'); verify = 'C:\Windows\SysWOW64\msvcp140.dll' }
+)
+
+# ---- Mode penuh: tambah VC++ 2010-2013 (legacy apps) ----------------------
+if ($Mode -eq 'penuh') {
+  $pkgs += @(
+    @{ k = 'vc2013x64'; label = 'VC++ 2013 x64';
+       url = 'https://aka.ms/highdpimfc_redist_x64_en'; file = 'vc2013x64.exe';
+       args = @('/install', '/passive', '/norestart'); verify = 'C:\Windows\System32\msvcr120.dll' },
+    @{ k = 'vc2013x86'; label = 'VC++ 2013 x86';
+       url = 'https://aka.ms/highdpimfc_redist_x86_en'; file = 'vc2013x86.exe';
+       args = @('/install', '/passive', '/norestart'); verify = 'C:\Windows\SysWOW64\msvcr120.dll' },
+    @{ k = 'vc2012x64'; label = 'VC++ 2012 x64';
+       url = 'https://aka.ms/highdpimfc_redist_x64_en'; file = 'vc2012x64.exe';
+       args = @('/install', '/passive', '/norestart'); verify = 'C:\Windows\System32\msvcr110.dll' },
+    @{ k = 'vc2012x86'; label = 'VC++ 2012 x86';
+       url = 'https://aka.ms/highdpimfc_redist_x86_en'; file = 'vc2012x86.exe';
+       args = @('/install', '/passive', '/norestart'); verify = 'C:\Windows\SysWOW64\msvcr110.dll' },
+    @{ k = 'vc2010x64'; label = 'VC++ 2010 x64';
+       url = 'https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-215CEBAD8AB7/vcredist_x64.exe'; file = 'vc2010x64.exe';
+       args = @('/q', '/norestart'); verify = 'C:\Windows\System32\msvcr100.dll' },
+    @{ k = 'vc2010x86'; label = 'VC++ 2010 x86';
+       url = 'https://download.microsoft.com/download/C/6/D/C6D0FD4E-9E53-4897-9B91-836EBA2AACD3/vcredist_x86.exe'; file = 'vc2010x86.exe';
+       args = @('/q', '/norestart'); verify = 'C:\Windows\SysWOW64\msvcr100.dll' }
+  )
 }
-if ($need.Count -gt 0) {
-  Log ("Mengunduh {0} installer runtime (paralel, cache: {1})..." -f $need.Count, $cacheDir)
-  $curlArgs = @('-fL', '--retry', '2', '--connect-timeout', '15', '--max-time', '300', '-sS', '--parallel', '--parallel-max', '6')
-  foreach ($p in $need) { $curlArgs += @('-o', (Get-CacheFile $p), $p.url) }
-  & curl.exe @curlArgs
-  foreach ($p in $need) {
-    $exe = Get-CacheFile $p
-    if (-not (Test-Path $exe) -or (Get-Item $exe).Length -lt 65536) {
-      Remove-Item $exe -Force -ErrorAction SilentlyContinue
+
+# ---- Tahap 1: unduh paralel ke cache --------------------------------------
+foreach ($p in $pkgs) {
+  $exe = Get-CacheFile $p
+  if ($p.verify -and (Test-Path $p.verify)) {
+    $res[$p.k] = 'sudah ada'
+    continue
+  }
+  if ((Test-Path $exe) -and (Get-Item $exe).Length -gt 65536) {
+    $res[$p.k] = 'cache'
+    continue
+  }
+  Log "  Mengunduh $($p.label)..."
+  try {
+    & curl.exe -fsSL $p.url -o $exe 2>&1 | Out-Null
+    if ((Test-Path $exe) -and (Get-Item $exe).Length -gt 65536) {
+      $res[$p.k] = 'cache'
+    } else {
       $res[$p.k] = 'gagal unduh'
     }
+  } catch {
+    $res[$p.k] = 'gagal unduh'
   }
 }
 
-# ---- Tahap 2: instal berurutan (quiet; unduhan sudah selesai) -------------
+# ---- Tahap 2: instal berurutan --------------------------------------------
 foreach ($p in $pkgs) {
   if ($res[$p.k] -in @('sudah ada')) { Log "  $($p.label) sudah terpasang"; continue }
   if ($res[$p.k] -eq 'gagal unduh') { Log "  $($p.label) unduhan gagal"; continue }
@@ -80,50 +111,17 @@ foreach ($p in $pkgs) {
   }
 }
 
-# ---- Fallback winget bila unduhan langsung gagal (hanya yang gagal) --------
-function Install-WingetId([string]$Key, [string]$Label, [string]$Id, [string]$VerifyPath) {
-  if ($VerifyPath -and (Test-Path $VerifyPath)) { $res[$Key] = 'sudah ada'; return }
-  $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-  if (-not $winget) { $res[$Key] = 'gagal (winget absen)'; Log "  $Label dilewati: winget tidak tersedia"; return }
-  try {
-    & $winget.Source install --id $Id -e --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
-    if ($VerifyPath -and -not (Test-Path $VerifyPath)) { $res[$Key] = 'gagal' } else { $res[$Key] = 'ok' }
-    Log "  $Label (winget $Id) -> $($res[$Key])"
-  } catch {
-    $res[$Key] = 'gagal'
-    Log "  $Label (winget $Id) gagal: $($_.Exception.Message)"
-  }
+# ---- DirectX Juni 2010 (grafis 3D lengkap) - mode cepat & penuh -----------
+try {
+  & (Join-Path $PSScriptRoot 'setup-directx.ps1')
+  if (Test-Path 'C:\Windows\System32\d3dx9_43.dll') { $res['directx9'] = 'ok' } else { $res['directx9'] = 'gagal' }
+} catch {
+  $res['directx9'] = 'gagal'
+  Log "  DirectX gagal: $($_.Exception.Message)"
 }
 
-foreach ($fb in @(
-    @('vc2013x64', 'Microsoft.VCRedist.2013.x64', 'C:\Windows\System32\msvcr120.dll'),
-    @('vc2013x86', 'Microsoft.VCRedist.2013.x86', 'C:\Windows\SysWOW64\msvcr120.dll'),
-    @('vc2012x64', 'Microsoft.VCRedist.2012.x64', 'C:\Windows\System32\msvcr110.dll'),
-    @('vc2012x86', 'Microsoft.VCRedist.2012.x86', 'C:\Windows\SysWOW64\msvcr110.dll'),
-    @('vc2010x64', 'Microsoft.VCRedist.2010.x64', 'C:\Windows\System32\msvcr100.dll'),
-    @('vc2010x86', 'Microsoft.VCRedist.2010.x86', 'C:\Windows\SysWOW64\msvcr100.dll')
-  )) {
-  if ($res[$fb[0]] -notin @('ok', 'sudah ada', 'cache')) {
-    Install-WingetId $fb[0] "VC++ fallback $($fb[0])" $fb[1] $fb[2]
-  }
-}
-# catatan: status 'cache' sudah berubah jadi 'ok'/'gagal' pada tahap instal.
-
-# ---- Tingkat PENUH: legacy untuk game ------------------------------------
+# ---- Mode penuh: .NET 3.5 + VC++ 2005/2008 (legacy) ----------------------
 if ($Mode -eq 'penuh') {
-  Install-WingetId 'vc2008x64' 'VC++ 2008 x64' 'Microsoft.VCRedist.2008.x64' 'C:\Windows\System32\msvcr90.dll'
-  Install-WingetId 'vc2008x86' 'VC++ 2008 x86' 'Microsoft.VCRedist.2008.x86' 'C:\Windows\SysWOW64\msvcr90.dll'
-  Install-WingetId 'vc2005x64' 'VC++ 2005 x64' 'Microsoft.VCRedist.2005.x64' $null
-  Install-WingetId 'vc2005x86' 'VC++ 2005 x86' 'Microsoft.VCRedist.2005.x86' $null
-
-  try {
-    & "$PSScriptRoot\setup-samp.ps1" -DirectXOnly
-    if (Test-Path 'C:\Windows\System32\d3dx9_43.dll') { $res['directx9'] = 'ok' } else { $res['directx9'] = 'gagal' }
-  } catch {
-    $res['directx9'] = 'gagal'
-    Log "  DirectX gagal: $($_.Exception.Message)"
-  }
-
   try {
     if (Test-Path 'C:\Windows\Microsoft.NET\Framework\v3.5') {
       $res['net35'] = 'sudah ada'
@@ -133,12 +131,29 @@ if ($Mode -eq 'penuh') {
       Log "  .NET 3.5 -> $($res['net35'])"
     }
   } catch { $res['net35'] = 'gagal' }
+
+  function Install-WingetId([string]$Key, [string]$Label, [string]$Id, [string]$VerifyPath) {
+    if ($VerifyPath -and (Test-Path $VerifyPath)) { $res[$Key] = 'sudah ada'; return }
+    $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+    if (-not $winget) { $res[$Key] = 'gagal (winget absen)'; Log "  $Label dilewati"; return }
+    try {
+      & $winget.Source install --id $Id -e --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
+      if ($VerifyPath -and -not (Test-Path $VerifyPath)) { $res[$Key] = 'gagal' } else { $res[$Key] = 'ok' }
+      Log "  $Label -> $($res[$Key])"
+    } catch {
+      $res[$Key] = 'gagal'
+      Log "  $Label gagal: $($_.Exception.Message)"
+    }
+  }
+  Install-WingetId 'vc2008x64' 'VC++ 2008 x64' 'Microsoft.VCRedist.2008.x64' 'C:\Windows\System32\msvcr90.dll'
+  Install-WingetId 'vc2008x86' 'VC++ 2008 x86' 'Microsoft.VCRedist.2008.x86' 'C:\Windows\SysWOW64\msvcr90.dll'
+  Install-WingetId 'vc2005x64' 'VC++ 2005 x64' 'Microsoft.VCRedist.2005.x64' $null
+  Install-WingetId 'vc2005x86' 'VC++ 2005 x86' 'Microsoft.VCRedist.2005.x86' $null
 } else {
-  $res['directx9'] = 'dilewati (mode cepat)'
   $res['net35'] = 'dilewati (mode cepat)'
   $res['vc2008x64'] = 'dilewati (mode cepat)'
   $res['vc2005x64'] = 'dilewati (mode cepat)'
-  Log 'Mode cepat: VC++ 2005-2008, DirectX, dan .NET 3.5 dilewati (pilih runtimes=penuh bila butuh game lawas).'
+  Log 'Mode cepat: VC++ lawas 2005-2013 & .NET 3.5 dilewati (pilih runtimes=penuh bila butuh).'
 }
 
 Update-Status @{ runtimes = $res } | Out-Null

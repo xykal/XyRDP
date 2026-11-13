@@ -190,7 +190,15 @@ on:
           - ya
           - tidak
       discord:
-        description: 'Pasang aplikasi Discord desktop'
+        description: '(diabaikan) Fitur non-RDP dihapus 2026-11'
+        required: false
+        default: 'tidak'
+        type: choice
+        options:
+          - ya
+          - tidak
+      devtools:
+        description: 'Toolchain Developer: LLVM C/C++, .NET SDK 8 (C#), Rust, VS Code'
         required: false
         default: 'tidak'
         type: choice
@@ -228,7 +236,7 @@ jobs:
       GRAFIS: ${{ inputs.grafis || 'software' }}
       LINUX_MODE: ${{ inputs.linux_mode || 'desktop' }}
       MICROPHONE: ${{ inputs.microphone || 'ya' }}
-      DISCORD: ${{ inputs.discord || 'tidak' }}
+      DEVTOOLS: ${{ inputs.devtools || 'tidak' }}
       PERPANJANG_OTOMATIS: ${{ inputs.perpanjang_otomatis || 'ya' }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -280,7 +288,7 @@ jobs:
           restore-keys: |
             xyrt-runtimes-v1-
 
-      - name: Runtime aplikasi & game (VC++/DirectX/.NET)
+      - name: Runtime aplikasi (VC++/DirectX/.NET)
         timeout-minutes: 12
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') }}
         shell: pwsh
@@ -333,6 +341,12 @@ jobs:
         continue-on-error: true
         run: ./scripts/setup-grafis.ps1
 
+      - name: Toolchain Developer (LLVM C/C++, .NET SDK C#, Rust, VS Code)
+        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.devtools || 'tidak') == 'ya' }}
+        shell: pwsh
+        continue-on-error: true
+        run: ./scripts/setup-devtools.ps1
+
       - name: Aplikasi ekstra (7-Zip, Chrome, Lightshot, Wallpaper)
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.ekstra || 'ya') != 'tidak' }}
         shell: pwsh
@@ -350,15 +364,10 @@ jobs:
         shell: pwsh
         run: ./scripts/setup-akses.ps1
 
-      - name: Pasang Discord desktop
-        if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') && (inputs.discord || 'tidak') == 'ya' }}
-        shell: pwsh
-        continue-on-error: true
-        run: ./scripts/setup-discord.ps1
 
 
 
-      - name: Publish status siap pakai (setelah seluruh aplikasi & game siap)
+      - name: Publish status siap pakai (setelah seluruh setup siap)
         if: ${{ !startsWith(inputs.runner || 'windows-2022', 'ubuntu') }}
         shell: pwsh
         continue-on-error: true

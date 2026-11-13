@@ -1,5 +1,10 @@
 # Changelog XyRDP
 
+## 2026-11-13 (lanjutan) — Toolchain Developer + hapus Discord
+- **Toolchain Developer (baru, opt-in `devtools=ya`)**: LLVM (C/C++), .NET SDK 8 (C#), Rust (rustup stable), VS Code. Default tidak dipasang supaya run tetap cepat. Script: `scripts/setup-devtools.ps1`.
+- **Discord dihapus** dari workflow & opsi (fitur non-RDP, arahan pemilik: hapus yang tidak berhubungan dengan koneksi RDP). Input `discord` tetap diterima (diabaikan) demi kompatibilitas APK lama.
+- Nama step dirapikan: "Runtime aplikasi (VC++/DirectX/.NET)", "Publish status siap pakai (setelah seluruh setup siap)".
+
 ## 2026-11-13 — Hapus suite game, runtime cepat, grafis 3D lengkap (permintaan pemilik)
 
 - **Dihapus total:** GTA/SA-MP (+ anti-ban), Suite Game & Studio (Minecraft, Roblox, ETS 2, Blender, MEmu, FiveM), MuMu Player, XyDeskTools Gaming & Tools Hub, halaman `/dashboard/games`.

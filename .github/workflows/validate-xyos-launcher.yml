@@ -1,0 +1,26 @@
+name: Validate XyOS launcher
+on:
+  pull_request:
+    paths: ['native/XyMacLauncher/**', '.github/workflows/validate-xyos-launcher.yml']
+  push:
+    branches: [main]
+    paths: ['native/XyMacLauncher/**', '.github/workflows/validate-xyos-launcher.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Compile launcher and run noninteractive self-test
+        shell: pwsh
+        run: |
+          dotnet build native/XyMacLauncher/XyMacLauncher.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & native/XyMacLauncher/bin/Release/net8.0-windows/XyMacLauncher.exe --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -120,6 +120,31 @@ namespace XyMacLauncher
               catch (IOException) { }
         }
 
+        // Lightweight local badges avoid network dependencies and keep every shortcut legible.
+        private static Bitmap CreateAppBadge(string name)
+        {
+            Bitmap image = new Bitmap(44, 44);
+            int hue = (StringComparer.OrdinalIgnoreCase.GetHashCode(name) & 0x7fffffff) % 3;
+            Color top = hue == 0 ? Color.FromArgb(97, 147, 236) :
+                hue == 1 ? Color.FromArgb(142, 113, 224) : Color.FromArgb(78, 170, 174);
+            Color bottom = hue == 0 ? Color.FromArgb(51, 84, 166) :
+                hue == 1 ? Color.FromArgb(80, 65, 157) : Color.FromArgb(39, 102, 122);
+            using (Graphics g = Graphics.FromImage(image))
+            using (GraphicsPath shape = MacTheme.CreateRoundedRect(new Rectangle(1, 1, 42, 42), 11))
+            using (LinearGradientBrush gradient = new LinearGradientBrush(new Rectangle(0, 0, 44, 44), top, bottom, 90f))
+            using (Pen edge = new Pen(Color.FromArgb(115, 255, 255, 255)))
+            using (Font font = new Font("Segoe UI", 15f, FontStyle.Bold))
+            using (StringFormat format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.FillPath(gradient, shape);
+                g.DrawPath(edge, shape);
+                string initial = string.IsNullOrWhiteSpace(name) ? "•" : name.Trim().Substring(0, 1).ToUpperInvariant();
+                g.DrawString(initial, font, Brushes.White, new RectangleF(0, 0, 44, 44), format);
+            }
+            return image;
+        }
+
         private void PopulateShortcuts(string query)
         {
             gridPanel.SuspendLayout();
@@ -142,6 +167,9 @@ namespace XyMacLauncher
                 };
                 tile.FlatAppearance.BorderColor = Color.FromArgb(91, 129, 159, 202);
                 tile.FlatAppearance.MouseOverBackColor = Color.FromArgb(58, 76, 103);
+                tile.Image = CreateAppBadge(label);
+                tile.ImageAlign = ContentAlignment.TopCenter;
+                tile.Disposed += delegate { if (tile.Image != null) tile.Image.Dispose(); };
                 string captured = path;
                 tile.Click += delegate {
                     try {
